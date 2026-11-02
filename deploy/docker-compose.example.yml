@@ -1,0 +1,33 @@
+# Example single-host deployment (API + Redis). MySQL is expected to be a managed instance
+# (e.g. AWS RDS / Azure Database for MySQL in Mumbai); set DB_* in deploy/.env.production.
+#
+#   docker compose -f deploy/docker-compose.example.yml --env-file deploy/.env.production run --rm migrate
+#   docker compose -f deploy/docker-compose.example.yml --env-file deploy/.env.production up -d api
+services:
+  api:
+    build: { context: .., target: runtime }
+    image: cloakroom-api
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      TRUST_PROXY: '1'
+    ports:
+      - '127.0.0.1:4000:4000' # only Nginx on the host talks to the API
+    volumes:
+      - ./downloads:/app/downloads:ro # APKs served at /downloads
+    depends_on: [redis]
+    logging:
+      driver: json-file
+      options: { max-size: '50m', max-file: '10' } # log rotation
+
+  migrate:
+    build: { context: .., target: migrator }
+    env_file: .env.production
+    profiles: [tools]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--save', '', '--appendonly', 'no'] # rate-limit counters only
