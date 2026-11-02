@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      # Test credentials only (the suite creates and drops `cloak_room_billing_test`).
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: ''
+      JWT_ACCESS_SECRET: ci_access_secret_at_least_32_characters_long
+      JWT_REFRESH_SECRET: ci_refresh_secret_at_least_32_characters_long
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Banned hard DELETE / TRUNCATE check
+        run: node scripts/check-no-delete.mjs
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npx prettier --check .
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests + coverage thresholds (core ≥ 90 %, domain 100 %, overall ≥ 80 %)
+        run: npm run test:coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Migrations apply cleanly to a fresh database (twice = idempotent)
+        env:
+          DB_NAME: cloak_room_billing_ci
+        run: |
+          npm run migrate
+          npm run seed
+          npm run migrate
+          npm run seed
