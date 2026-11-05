@@ -44,6 +44,7 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(48).to
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` / `npm run test:coverage` | Vitest (recreates `cloak_room_billing_test`), coverage thresholds |
 | `npm run openapi` | Export `docs/openapi.json` + `docs/postman_collection.json` |
+| `npm run docs:frontend` | Regenerate `docs/FRONTEND_API_GUIDE.md` (frontend integration guide with real samples; uses the test DB) |
 | `npm run loadtest` | Build, then autocannon load test → `docs/load-test-results.md` |
 | `npm run format` | Prettier |
 
