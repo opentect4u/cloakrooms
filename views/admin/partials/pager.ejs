@@ -1,0 +1,12 @@
+<% if (pager && pager.total > 0) { %>
+<nav class="pager" aria-label="Pages">
+  <span class="pager-info">Showing <strong><%= num(pager.from) %>–<%= num(pager.to) %></strong> of <strong><%= num(pager.total) %></strong></span>
+  <% if (pager.pages > 1) { %>
+    <div class="pager-links">
+      <% if (pager.prev) { %><a class="btn btn-light btn-sm" href="<%= pager.prev %>"><i class="bi bi-chevron-left"></i> Previous</a><% } else { %><span class="btn btn-light btn-sm disabled" aria-disabled="true"><i class="bi bi-chevron-left"></i> Previous</span><% } %>
+      <span class="pager-page">Page <%= pager.page %> of <%= pager.pages %></span>
+      <% if (pager.next) { %><a class="btn btn-light btn-sm" href="<%= pager.next %>">Next <i class="bi bi-chevron-right"></i></a><% } else { %><span class="btn btn-light btn-sm disabled" aria-disabled="true">Next <i class="bi bi-chevron-right"></i></span><% } %>
+    </div>
+  <% } %>
+</nav>
+<% } %>

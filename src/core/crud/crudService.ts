@@ -35,8 +35,8 @@ export function serializeRow(row: Row): Row {
 
 export interface ListParams {
   parentId?: number;
-  /** Exact-match filters, already restricted to the config's filterable columns. */
-  filters?: Record<string, string | number>;
+  /** Conditions, already restricted to the config's filterable columns by the caller. */
+  filters?: Where;
   page: number;
   limit: number;
   sort?: readonly OrderBy[];

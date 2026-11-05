@@ -1,0 +1,44 @@
+<%- include('../partials/shell-start') %>
+<% if (typeof customer !== 'undefined' && customer) { %>
+  <%- include('../partials/customer-head') %>
+<% } else { %>
+  <div class="page-head">
+    <div>
+      <div class="page-eyebrow">Platform · applies to every station</div>
+      <h1 class="page-title"><%= r.title %></h1>
+    </div>
+  </div>
+<% } %>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <form class="card card-soft form-card" method="post" action="<%= action %>" data-busy-form novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-card-head">
+        <a class="back-link mb-2" href="<%= cancel %>"><i class="bi bi-arrow-left"></i> <%= r.title %></a>
+        <h2 class="card-title"><i class="bi bi-<%= r.icon %> me-2 text-primary"></i><%= mode === 'create' ? 'Add ' + r.singular : 'Edit ' + r.singular %></h2>
+        <p class="card-sub mb-0"><%= r.blurb %></p>
+      </div>
+      <%- include('../partials/form-errors', { fields: fields }) %>
+      <div class="row g-3">
+        <% fields.forEach(function (f) { %><%- include('../partials/field', { f: f }) %><% }) %>
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-light" href="<%= cancel %>">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <span class="btn-label"><i class="bi bi-check2 me-1"></i><%= mode === 'create' ? 'Add ' + r.singular : 'Save changes' %></span>
+          <span class="btn-busy"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving…</span>
+        </button>
+      </div>
+    </form>
+    <% if (deleteAction) { %>
+      <form class="mt-3 text-end" method="post" action="<%= deleteAction %>"
+            data-confirm="<%= r.deleteWarning || 'This cannot be undone from the panel.' %>"
+            data-confirm-title="Remove this <%= r.singular %>?" data-confirm-button="Remove" data-confirm-tone="danger">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-link link-danger btn-sm" type="submit"><i class="bi bi-trash3 me-1"></i>Remove this <%= r.singular %></button>
+      </form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/shell-end') %>

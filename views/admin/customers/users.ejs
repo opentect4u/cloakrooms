@@ -1,0 +1,117 @@
+<%- include('../partials/shell-start') %>
+<%- include('../partials/customer-head') %>
+<% var usersBase = base + '/users'; var pct = Math.min(100, Math.round((allowed / Math.max(1, customer.user_limit)) * 100)); %>
+
+<div class="section-head">
+  <div>
+    <h2 class="section-title"><i class="bi bi-people"></i>Users</h2>
+    <p class="section-sub">Station admins manage the station in the app; counter users check bags in and out.</p>
+  </div>
+  <div class="section-actions">
+    <div class="seat-card">
+      <div class="small"><strong><%= allowed %></strong> of <%= customer.user_limit %> licensed users enabled</div>
+      <svg class="meter" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="meter-track" width="100" height="6" rx="3"/><rect class="meter-fill<%= pct >= 100 ? ' is-full' : '' %>" width="<%= Math.max(pct, 2) %>" height="6" rx="3"/></svg>
+    </div>
+    <a class="btn btn-primary" href="<%= usersBase %>/new"><i class="bi bi-person-plus me-1"></i>Add user</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="<%= usersBase %>" role="search" data-autosubmit>
+  <div class="input-icon filter-search">
+    <i class="bi bi-search"></i>
+    <input class="form-control" type="search" name="q" value="<%= q %>" placeholder="Search name, login id or code" aria-label="Search users">
+  </div>
+  <select class="form-select" name="type" aria-label="Role">
+    <option value="">All roles</option>
+    <option value="A"<%= type === 'A' ? ' selected' : '' %>>Station admins</option>
+    <option value="O"<%= type === 'O' ? ' selected' : '' %>>Counter users</option>
+  </select>
+  <select class="form-select" name="status" aria-label="Status">
+    <option value="">Enabled and blocked</option>
+    <option value="Y"<%= status === 'Y' ? ' selected' : '' %>>Enabled</option>
+    <option value="N"<%= status === 'N' ? ' selected' : '' %>>Blocked</option>
+  </select>
+  <button class="btn btn-light autosave-btn" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button>
+</form>
+
+<div class="card card-soft">
+  <% if (!rows.length) { %>
+    <div class="empty-state empty-state-md">
+      <div class="empty-icon"><i class="bi bi-person-plus"></i></div>
+      <div class="empty-title-sm"><%= q || type || status ? 'No users match' : 'No users yet' %></div>
+      <div class="empty-text small"><%= q || type || status ? 'Try other filters.' : 'Create the station admin first, then the counter users.' %></div>
+      <a class="btn btn-primary btn-sm" href="<%= usersBase %>/new"><i class="bi bi-person-plus me-1"></i>Add user</a>
+    </div>
+  <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-modern align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">User</th>
+            <th scope="col">Role</th>
+            <th scope="col" class="d-none d-md-table-cell">Code</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="d-none d-lg-table-cell">Session</th>
+            <th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.forEach(function (u) { var ub = usersBase + '/' + u.id; %>
+            <tr class="<%= u.allow_flag === 'N' ? 'is-muted' : '' %>">
+              <td>
+                <a class="cell-main" href="<%= ub %>/edit">
+                  <span class="avatar <%= u.user_type === 'A' ? '' : 'avatar-soft' %>"><%= initials(u.user_name) %></span>
+                  <span>
+                    <span class="list-title d-block"><%= u.user_name %></span>
+                    <span class="list-sub mono"><%= u.user_id %></span>
+                  </span>
+                </a>
+              </td>
+              <td><span class="pill <%= u.user_type === 'A' ? 'pill-primary' : 'pill-muted' %>"><i class="bi bi-<%= u.user_type === 'A' ? 'shield-check' : 'person' %>"></i><%= u.user_type === 'A' ? 'Admin' : 'Counter' %></span></td>
+              <td class="d-none d-md-table-cell mono"><%= u.user_code %></td>
+              <td>
+                <% if (u.allow_flag === 'Y') { %><span class="status-dot is-on">Enabled</span><% } else { %><span class="status-dot is-off">Blocked</span><% } %>
+                <% if (u.must_change_pwd === 'Y') { %><div class="list-sub"><i class="bi bi-key"></i> Must set a password</div><% } %>
+              </td>
+              <td class="d-none d-lg-table-cell">
+                <% if (u.online) { %>
+                  <span class="online-chip"><span class="live-dot"></span>Online</span>
+                  <div class="list-sub">Device <%= u.device %> · since <%= dateTimeIst(u.session_started_at) %></div>
+                <% } else { %>
+                  <span class="list-sub"><%= u.last_login ? 'Last sign-in ' + dateTimeIst(u.last_login) : 'Never signed in' %></span>
+                <% } %>
+              </td>
+              <td class="text-end">
+                <div class="dropdown">
+                  <button class="btn-icon btn-icon-sm" type="button" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-label="Actions for <%= u.user_name %>"><i class="bi bi-three-dots"></i></button>
+                  <div class="dropdown-menu dropdown-menu-end shadow-lg user-menu">
+                    <a class="dropdown-item" href="<%= ub %>/edit"><i class="bi bi-pencil me-2"></i>Edit</a>
+                    <a class="dropdown-item" href="<%= ub %>/password"><i class="bi bi-key me-2"></i>Reset password</a>
+                    <% if (u.online) { %>
+                      <form method="post" action="<%= ub %>/force-logout" data-confirm="The device is signed out but can still upload its pending data." data-confirm-title="Sign out <%= u.user_name %>?" data-confirm-button="Sign out">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="dropdown-item" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Sign out device</button>
+                      </form>
+                    <% } %>
+                    <form method="post" action="<%= ub %>/allow"<% if (u.allow_flag === 'Y') { %> data-confirm="They are signed out and cannot sign in until enabled again." data-confirm-title="Block <%= u.user_name %>?" data-confirm-button="Block" data-confirm-tone="danger"<% } %>>
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="allow_flag" value="<%= u.allow_flag === 'Y' ? 'N' : 'Y' %>">
+                      <button class="dropdown-item" type="submit"><i class="bi bi-<%= u.allow_flag === 'Y' ? 'slash-circle' : 'check-circle' %> me-2"></i><%= u.allow_flag === 'Y' ? 'Block' : 'Enable' %></button>
+                    </form>
+                    <div class="dropdown-divider"></div>
+                    <form method="post" action="<%= ub %>/delete" data-confirm="The user is signed out and removed. Their past receipts and bills stay." data-confirm-title="Delete <%= u.user_name %>?" data-confirm-button="Delete" data-confirm-tone="danger">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash3 me-2"></i>Delete</button>
+                    </form>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <%- include('../partials/pager') %>
+  <% } %>
+</div>
+<%- include('../partials/shell-end') %>

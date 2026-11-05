@@ -1,0 +1,48 @@
+<%- include('partials/shell-start') %>
+<div class="page-head">
+  <div>
+    <div class="page-eyebrow">Platform · Android app</div>
+    <h1 class="page-title">App releases</h1>
+    <p class="page-sub">Devices check <code>GET /api/v1/app/version</code> at start-up; a newer mandatory release refuses older versions at sign-in.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary btn-glow" href="/admin/releases/new"><i class="bi bi-rocket-takeoff me-1"></i>Publish release</a>
+  </div>
+</div>
+
+<% if (!rows.length) { %>
+  <div class="card card-soft">
+    <div class="empty-state empty-state-md">
+      <div class="empty-icon"><i class="bi bi-phone"></i></div>
+      <div class="empty-title-sm">No releases published</div>
+      <div class="empty-text small">Publish the first one so devices can find updates.</div>
+      <a class="btn btn-primary btn-sm" href="/admin/releases/new"><i class="bi bi-rocket-takeoff me-1"></i>Publish release</a>
+    </div>
+  </div>
+<% } else { %>
+  <ol class="release-list">
+    <% rows.forEach(function (v) { var latest = latestCode !== null && v.version_code === latestCode; %>
+      <li class="release card card-soft<%= latest ? ' is-latest' : '' %>">
+        <span class="release-badge"><i class="bi bi-<%= latest ? 'stars' : 'box-seam' %>"></i></span>
+        <div class="release-main">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <h2 class="release-title">Version <%= v.version_name %></h2>
+            <span class="code-pill">code <%= v.version_code %></span>
+            <% if (latest) { %><span class="pill pill-success"><i class="bi bi-check-circle"></i>Latest</span><% } %>
+            <% if (v.mandatory_flag === 'Y') { %><span class="pill pill-danger"><i class="bi bi-exclamation-diamond"></i>Mandatory</span><% } else { %><span class="pill pill-muted">Optional</span><% } %>
+          </div>
+          <div class="list-sub mt-1">Published <%= dateTimeIst(v.created_at) %> IST · <a class="mono" href="<%= v.apk_url %>" rel="noopener"><%= v.apk_url %></a></div>
+          <% if (v.release_notes) { %><div class="release-notes"><%= v.release_notes %></div><% } %>
+        </div>
+        <form method="post" action="/admin/releases/<%= v.id %>/withdraw"
+              data-confirm="Devices stop being offered this version<%= v.mandatory_flag === 'Y' ? ', and older versions are no longer forced to update because of it' : '' %>."
+              data-confirm-title="Withdraw version <%= v.version_name %>?" data-confirm-button="Withdraw" data-confirm-tone="danger">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn btn-sm btn-light" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i>Withdraw</button>
+        </form>
+      </li>
+    <% }) %>
+  </ol>
+  <div class="card card-soft"><%- include('partials/pager') %></div>
+<% } %>
+<%- include('partials/shell-end') %>

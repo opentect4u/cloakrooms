@@ -1,0 +1,36 @@
+<%- include('partials/shell-start') %>
+<a class="back-link" href="/admin/releases"><i class="bi bi-arrow-left"></i> App releases</a>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Publish a release</h1>
+    <p class="page-sub">Put the APK online first (an https link, or copy it into this server’s downloads folder).</p>
+  </div>
+</div>
+<div class="row g-4">
+  <div class="col-xl-8">
+    <form class="card card-soft form-card" method="post" action="/admin/releases" data-busy-form novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <%- include('partials/form-errors', { fields: fields }) %>
+      <div class="row g-3">
+        <% fields.forEach(function (f) { %><%- include('partials/field', { f: f }) %><% }) %>
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-light" href="/admin/releases">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <span class="btn-label"><i class="bi bi-rocket-takeoff me-1"></i>Publish</span>
+          <span class="btn-busy"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Publishing…</span>
+        </button>
+      </div>
+    </form>
+  </div>
+  <div class="col-xl-4">
+    <div class="tip-card">
+      <i class="bi bi-shield-exclamation"></i>
+      <div class="small">
+        <div class="fw-semibold mb-1">Mandatory updates</div>
+        <p class="mb-0">Use them only when an old app would bill wrongly or break sync. Counter staff cannot sign in until their phone installs the update, so the APK link must work first.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('partials/shell-end') %>

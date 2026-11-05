@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { loginErrorMessage } from '../../src/admin/auth.routes';
+import { formValues, withoutEmpty, zodFieldErrors } from '../../src/admin/forms';
 import { buildColumnChart, niceCeil } from '../../src/admin/chart';
 import { deltaOf } from '../../src/admin/dashboard.service';
 import { safeNext } from '../../src/admin/render';
@@ -112,5 +114,35 @@ describe('loginErrorMessage', () => {
     expect(loginErrorMessage(ApiError.forbidden('Blocked'))).toBe('Blocked');
     expect(loginErrorMessage(new Error('boom'))).toBeNull();
     expect(loginErrorMessage(new ApiError(500, 'INTERNAL_ERROR' as never, 'x'))).toBeNull();
+  });
+});
+
+describe('form helpers', () => {
+  it('flattens urlencoded bodies (last value wins, csrf dropped)', () => {
+    expect(formValues({ _csrf: 'x', a: ['N', 'Y'], b: 'v', c: 3 })).toEqual({ a: 'Y', b: 'v' });
+    expect(withoutEmpty({ a: '', b: ' ', c: 'x' })).toEqual({ c: 'x' });
+  });
+
+  it('turns zod issues into plain sentences', () => {
+    const schema = z.object({
+      name: z.string(),
+      qty: z.coerce.number().int().min(1).max(10),
+      code: z.string().max(3),
+      kind: z.enum(['A', 'B']),
+      mail: z.email(),
+    });
+    const res = schema.safeParse({ qty: '0', code: 'ABCD', kind: 'C', mail: 'x' });
+    expect(res.success).toBe(false);
+    expect(zodFieldErrors(res.error!)).toEqual({
+      name: 'Required',
+      qty: 'Must be at least 1',
+      code: 'At most 3 characters',
+      kind: 'Choose one of the options',
+      mail: 'Enter a valid email address',
+    });
+    const big = schema.shape.qty.safeParse('11');
+    expect(zodFieldErrors(big.error!)).toEqual({ _form: 'Must be at most 10' });
+    const nan = schema.shape.qty.safeParse('abc');
+    expect(zodFieldErrors(nan.error!)).toEqual({ _form: 'Enter a number' });
   });
 });

@@ -1,0 +1,82 @@
+<%- include('../partials/shell-start') %>
+<% var inCustomer = typeof customer !== 'undefined' && customer; var hasBadges = !!r.badges; %>
+<% if (inCustomer) { %><%- include('../partials/customer-head') %><% } %>
+
+<div class="<%= inCustomer ? 'section-head' : 'page-head' %>">
+  <div>
+    <% if (inCustomer) { %>
+      <h2 class="section-title"><i class="bi bi-<%= r.icon %>"></i><%= r.title %></h2>
+      <p class="section-sub"><%= r.blurb %></p>
+    <% } else { %>
+      <div class="page-eyebrow">Platform · applies to every station</div>
+      <h1 class="page-title"><%= r.title %></h1>
+      <p class="page-sub"><%= r.blurb %></p>
+    <% } %>
+  </div>
+  <div class="section-actions">
+    <% if (searchable) { %>
+      <form method="get" action="<%= listBase %>" role="search" class="input-icon search-sm">
+        <i class="bi bi-search"></i>
+        <input class="form-control" type="search" name="q" value="<%= q %>" placeholder="Search" aria-label="Search <%= r.title %>">
+      </form>
+    <% } %>
+    <a class="btn btn-primary" href="<%= listBase %>/new"><i class="bi bi-plus-lg me-1"></i>Add <%= r.singular %></a>
+  </div>
+</div>
+
+<div class="card card-soft">
+  <% if (!rows.length) { %>
+    <div class="empty-state empty-state-md">
+      <div class="empty-icon"><i class="bi bi-<%= r.icon %>"></i></div>
+      <div class="empty-title-sm"><%= q ? 'Nothing matches “' + q + '”' : r.emptyTitle %></div>
+      <div class="empty-text small"><%= q ? 'Try another search.' : r.emptyText %></div>
+      <a class="btn btn-primary btn-sm" href="<%= listBase %>/new"><i class="bi bi-plus-lg me-1"></i>Add <%= r.singular %></a>
+    </div>
+  <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-modern align-middle mb-0">
+        <thead>
+          <tr>
+            <% r.columns.forEach(function (c) { var al = c.align || (c.kind === 'money' ? 'end' : c.kind === 'yn' ? 'center' : ''); %>
+              <th scope="col" class="<%= al ? 'text-' + al : '' %><%= c.hideBelow ? ' d-none d-' + c.hideBelow + '-table-cell' : '' %>"><%= c.label %></th>
+            <% }) %>
+            <% if (hasBadges) { %><th scope="col">Status</th><% } %>
+            <th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.forEach(function (row) { %>
+            <tr>
+              <% row.cells.forEach(function (cell, i) { %>
+                <td class="<%= cell.align ? 'text-' + cell.align : '' %><%= cell.hideBelow ? ' d-none d-' + cell.hideBelow + '-table-cell' : '' %>">
+                  <% if (cell.kind === 'yn') { %>
+                    <span class="yn <%= cell.yes ? 'is-yes' : 'is-no' %>"><i class="bi bi-<%= cell.yes ? 'check-lg' : 'dash' %>"></i><span class="visually-hidden"><%= cell.text %></span></span>
+                  <% } else if (i === 0) { %>
+                    <a class="cell-link" href="<%= listBase %>/<%= row.id %>/edit"><%= cell.text %></a>
+                    <% if (row.hint) { %><div class="list-sub"><%= row.hint %></div><% } %>
+                  <% } else { %>
+                    <span class="<%= cell.kind === 'strong' ? 'fw-semibold' : '' %><%= cell.kind === 'money' ? ' tabular' : '' %>"><%= cell.text %></span>
+                  <% } %>
+                </td>
+              <% }) %>
+              <% if (hasBadges) { %>
+                <td><% row.badges.forEach(function (b) { %><span class="pill pill-<%= b.tone %>"><% if (b.icon) { %><i class="bi bi-<%= b.icon %>"></i><% } %><%= b.label %></span> <% }) %></td>
+              <% } %>
+              <td class="text-end text-nowrap">
+                <a class="btn-icon btn-icon-sm" href="<%= listBase %>/<%= row.id %>/edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                <form class="d-inline" method="post" action="<%= listBase %>/<%= row.id %>/delete"
+                      data-confirm="<%= r.deleteWarning || 'This cannot be undone from the panel.' %>"
+                      data-confirm-title="Remove this <%= r.singular %>?" data-confirm-button="Remove" data-confirm-tone="danger">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn-icon btn-icon-sm btn-icon-danger" type="submit" aria-label="Remove"><i class="bi bi-trash3"></i></button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <%- include('../partials/pager') %>
+  <% } %>
+</div>
+<%- include('../partials/shell-end') %>

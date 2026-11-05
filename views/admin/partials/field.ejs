@@ -1,0 +1,61 @@
+<%
+  var v = values[f.name] !== undefined && values[f.name] !== null ? String(values[f.name]) : '';
+  var err = errors[f.name];
+  var id = 'f-' + f.name;
+  var described = [];
+  if (f.help) described.push(id + '-help');
+  if (err) described.push(id + '-err');
+  var aria = (described.length ? ' aria-describedby="' + described.join(' ') + '"' : '') + (err ? ' aria-invalid="true"' : '');
+  var invalid = err ? ' is-invalid' : '';
+  var req = f.required ? ' required' : '';
+%>
+<div class="<%= f.col || 'col-12' %>">
+<% if (f.type === 'switch') { %>
+  <div class="switch-field<%= invalid %>">
+    <input type="hidden" name="<%= f.name %>" value="N">
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" role="switch" id="<%= id %>" name="<%= f.name %>" value="Y"<%= v === 'Y' ? ' checked' : '' %><%- aria %>>
+      <label class="form-check-label" for="<%= id %>"><%= f.label %></label>
+    </div>
+    <% if (f.help) { %><div class="form-text" id="<%= id %>-help"><%= f.help %></div><% } %>
+  </div>
+<% } else { %>
+  <label class="form-label" for="<%= id %>"><%= f.label %><% if (f.required) { %> <span class="req" aria-hidden="true">*</span><% } %></label>
+  <% if (f.type === 'textarea') { %>
+    <textarea class="form-control<%= invalid %>" id="<%= id %>" name="<%= f.name %>" rows="3"<%- f.maxlength ? ' maxlength="' + f.maxlength + '"' : '' %><%- f.placeholder ? ' placeholder="e.g. ' + f.placeholder + '"' : '' %><%= req %><%- aria %>><%= v %></textarea>
+  <% } else if (f.type === 'select') { %>
+    <select class="form-select<%= invalid %>" id="<%= id %>" name="<%= f.name %>"<%= req %><%- aria %>>
+      <% if (f.emptyOption || !v) { %><option value=""><%= f.emptyOption || '— Choose —' %></option><% } %>
+      <% (f.options || []).forEach(function (o) { %>
+        <option value="<%= o[0] %>"<%= String(o[0]) === v ? ' selected' : '' %>><%= o[1] %></option>
+      <% }) %>
+    </select>
+  <% } else { %>
+    <%
+      var type = { money: 'text', number: 'number', date: 'date', time: 'time', email: 'email', password: 'password' }[f.type] || 'text';
+      var extra = '';
+      if (f.type === 'money') extra += ' inputmode="decimal" pattern="\\d{1,8}(\\.\\d{1,2})?"';
+      if (f.min !== undefined) extra += ' min="' + f.min + '"';
+      if (f.max !== undefined) extra += ' max="' + f.max + '"';
+      if (f.maxlength) extra += ' maxlength="' + f.maxlength + '"';
+      if (f.placeholder) extra += ' placeholder="e.g. ' + f.placeholder + '"';
+      if (f.autocomplete) extra += ' autocomplete="' + f.autocomplete + '"';
+      if (f.datalist && f.datalist.length) extra += ' list="' + id + '-list"';
+      var grouped = f.prefix || f.suffix || f.type === 'password';
+    %>
+    <div class="<%= grouped ? 'input-group' : (f.icon ? 'input-icon' : '') %><%= grouped && err ? ' has-validation' : '' %>">
+      <% if (f.icon && !grouped) { %><i class="bi bi-<%= f.icon %>"></i><% } %>
+      <% if (f.prefix) { %><span class="input-group-text"><%= f.prefix %></span><% } %>
+      <input class="form-control<%= invalid %>" type="<%= type %>" id="<%= id %>" name="<%= f.name %>" value="<%= v %>"<%- extra %><%= req %><%- aria %>>
+      <% if (f.suffix) { %><span class="input-group-text"><%= f.suffix %></span><% } %>
+      <% if (f.datalist && f.datalist.length) { %><datalist id="<%= id %>-list"><% f.datalist.forEach(function (o) { %><option value="<%= o %>"></option><% }) %></datalist><% } %>
+      <% if (f.type === 'password') { %>
+        <button class="btn btn-light" type="button" data-toggle-password="<%= id %>" aria-label="Show password"><i class="bi bi-eye"></i></button>
+        <button class="btn btn-light" type="button" data-generate-password="<%= id %>"><i class="bi bi-magic me-1"></i>Generate</button>
+      <% } %>
+    </div>
+  <% } %>
+  <% if (err) { %><div class="field-error" id="<%= id %>-err"><i class="bi bi-exclamation-circle"></i> <%= err %></div><% } %>
+  <% if (f.help) { %><div class="form-text" id="<%= id %>-help"><%= f.help %></div><% } %>
+<% } %>
+</div>

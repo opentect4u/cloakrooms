@@ -6,6 +6,21 @@
   </div>
 </div>
 <div class="chart-tooltip" id="chart-tooltip" role="status" aria-live="polite" hidden></div>
+<div class="modal fade" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content confirm-content">
+      <div class="modal-body">
+        <span class="confirm-icon" data-confirm-icon><i class="bi bi-question-lg"></i></span>
+        <h2 class="confirm-title" id="confirm-title">Are you sure?</h2>
+        <p class="confirm-text" data-confirm-text></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" data-confirm-ok>Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="/admin/assets/vendor/bootstrap/js/bootstrap.bundle.min.js?v=<%= assetV %>"></script>
 <script src="/admin/assets/js/admin.js?v=<%= assetV %>"></script>
 </body>

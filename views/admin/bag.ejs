@@ -1,0 +1,82 @@
+<%- include('partials/shell-start') %>
+<% var r = receipt; var out = bag.out_flag === 'Y'; %>
+<a class="back-link" href="/admin/bags"><i class="bi bi-arrow-left"></i> Bag search</a>
+<div class="page-head">
+  <div>
+    <div class="page-eyebrow"><a href="/admin/customers/<%= bag.customer_id %>"><%= customerName %></a></div>
+    <h1 class="page-title mono-title"><%= bag.receipt_no %></h1>
+    <p class="page-sub"><%= bag.pasn_name %> · <%= bag.luggage_qty %> <%= Number(bag.luggage_qty) === 1 ? 'bag' : 'bags' %> · <%= out ? 'Checked out' : 'In store' %></p>
+  </div>
+  <div class="page-actions">
+    <% if (out) { %><span class="pill pill-muted pill-lg"><i class="bi bi-box-arrow-up"></i>Checked out</span><% } else { %><span class="pill pill-success pill-lg"><i class="bi bi-suitcase2"></i>In store</span><% } %>
+  </div>
+</div>
+
+<div class="row g-3 g-xl-4">
+  <div class="col-lg-7">
+    <section class="card card-soft h-100">
+      <div class="card-head"><h2 class="card-title">Journey</h2></div>
+      <ol class="timeline">
+        <li class="tl-item is-done">
+          <span class="tl-dot"><i class="bi bi-box-arrow-in-down"></i></span>
+          <div>
+            <div class="fw-semibold">Checked in</div>
+            <div class="list-sub"><%= dateTimeIst(bag.date_time_in) %> IST · by <%= userName(bag.user_id_in) %><%= shiftName(bag.shift_id_in) ? ' (' + shiftName(bag.shift_id_in) + ')' : '' %><%= bag.device_id_in ? ' · device ' + bag.device_id_in : '' %></div>
+          </div>
+        </li>
+        <li class="tl-item<%= out ? ' is-done' : '' %>">
+          <span class="tl-dot"><i class="bi bi-box-arrow-up"></i></span>
+          <div>
+            <div class="fw-semibold">Checked out</div>
+            <div class="list-sub"><%= out ? dateTimeIst(bag.date_time_out) + ' IST · by ' + userName(bag.user_id_out) + (shiftName(bag.shift_id_out) ? ' (' + shiftName(bag.shift_id_out) + ')' : '') + (bag.device_id_out ? ' · device ' + bag.device_id_out : '') : 'Not yet' %></div>
+          </div>
+        </li>
+        <li class="tl-item<%= r ? ' is-done' : '' %>">
+          <span class="tl-dot"><i class="bi bi-receipt"></i></span>
+          <div>
+            <div class="fw-semibold">Billed</div>
+            <div class="list-sub"><%= r ? r.bill_no + ' · ' + date(r.bill_dt) + ' · ' + inr(r.net_amt) + ' by ' + (r.pay_mode === 'U' ? 'UPI' : 'cash') + (r.bill_printed === 'N' ? ' · not printed' : '') : (out ? 'Bill not synced yet' : 'Not yet') %></div>
+          </div>
+        </li>
+      </ol>
+      <dl class="detail-grid">
+        <div><dt>Passenger</dt><dd><%= bag.pasn_name %></dd></div>
+        <div><dt>Mobile</dt><dd class="mono"><%= bag.pasn_mob_no || '—' %></dd></div>
+        <div><dt>PNR</dt><dd class="mono"><%= bag.pnr_no || '—' %></dd></div>
+        <div><dt>ID proof</dt><dd><%= proofName || '—' %><% if (bag.id_number) { %> <span class="mono">· <%= bag.id_number %></span><% } %></dd></div>
+        <div><dt>Receipt date</dt><dd><%= date(bag.receipt_dt) %></dd></div>
+        <div><dt>Synced</dt><dd><%= dateTimeIst(bag.created_at) %> IST</dd></div>
+        <div class="span-all"><dt>Transaction id</dt><dd class="mono small"><%= bag.trans_id %></dd></div>
+      </dl>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="card card-soft h-100">
+      <div class="card-head"><h2 class="card-title">Bill</h2><% if (r) { %><span class="count-badge mono"><%= r.bill_no %></span><% } %></div>
+      <% if (!r) { %>
+        <div class="empty-state">
+          <div class="empty-icon"><i class="bi bi-receipt"></i></div>
+          <div class="empty-title-sm"><%= out ? 'Bill not on the server yet' : 'No bill yet' %></div>
+          <div class="empty-text small"><%= out ? 'The device that checked it out has not synced the bill.' : 'A bill is made at check-out.' %></div>
+        </div>
+      <% } else { %>
+        <dl class="bill-lines">
+          <div><dt><%= r.luggage_qty %> × <%= r.days_charged %> <%= Number(r.days_charged) === 1 ? 'block' : 'blocks' %> (<%= r.block_hours %> h · <%= inr(r.first_block_rate, true) %> then <%= inr(r.next_block_rate, true) %>)</dt><dd><%= inr(r.base_amt) %></dd></div>
+          <% if (Number(r.penal_amt)) { %><div><dt>Penalty</dt><dd><%= inr(r.penal_amt) %></dd></div><% } %>
+          <div class="is-sub"><dt>Taxable value</dt><dd><%= inr(r.taxable_amt) %></dd></div>
+          <% if (Number(r.igst)) { %>
+            <div class="is-sub"><dt>IGST <%= Number(r.gst_pct) %>%</dt><dd><%= inr(r.igst) %></dd></div>
+          <% } else { %>
+            <div class="is-sub"><dt>CGST <%= Number(r.gst_pct) / 2 %>%</dt><dd><%= inr(r.cgst) %></dd></div>
+            <div class="is-sub"><dt>SGST <%= Number(r.gst_pct) / 2 %>%</dt><dd><%= inr(r.sgst) %></dd></div>
+          <% } %>
+          <div class="is-total"><dt>Total paid · <%= r.pay_mode === 'U' ? 'UPI' : 'Cash' %></dt><dd><%= inr(r.net_amt) %></dd></div>
+        </dl>
+        <div class="px-4 pb-4 list-sub">
+          <%= r.upi_ref ? 'UPI ref ' + r.upi_ref + ' · ' : '' %>GSTIN <%= r.gst_no || '—' %> · <%= r.bill_printed === 'N' ? 'not printed' : 'printed' %> · by <%= userName(r.user_id) %>
+        </div>
+      <% } %>
+    </section>
+  </div>
+</div>
+<%- include('partials/shell-end') %>

@@ -1,0 +1,116 @@
+<%- include('../partials/shell-start') %>
+<%- include('../partials/customer-head') %>
+<% var reg = s.latest_registration; %>
+
+<% if (subscription.tone === 'danger') { %>
+  <div class="callout callout-danger mb-4">
+    <i class="bi bi-shield-x"></i>
+    <div class="flex-grow-1">
+      <div class="fw-semibold"><%= subscription.label === 'Expired' ? 'Subscription expired' : 'No subscription yet' %></div>
+      <div class="small">This station’s users cannot sign in until a registration covers today.</div>
+    </div>
+    <a class="btn btn-sm btn-danger" href="<%= base %>/registrations/new"><i class="bi bi-plus-lg me-1"></i>Add subscription</a>
+  </div>
+<% } else if (subscription.tone === 'warning') { %>
+  <div class="callout callout-warning mb-4">
+    <i class="bi bi-hourglass-split"></i>
+    <div class="flex-grow-1">
+      <div class="fw-semibold">Renewal due: <%= subscription.label %></div>
+      <div class="small">Add the next registration before <%= date(customer.renewal_dt) %> to avoid an interruption.</div>
+    </div>
+    <a class="btn btn-sm btn-light" href="<%= base %>/registrations/new">Renew</a>
+  </div>
+<% } %>
+
+<div class="row g-3 g-xl-4 mb-4 stagger">
+  <div class="col-6 col-xl-3">
+    <a class="stat stat-link" href="<%= base %>/users">
+      <div class="stat-top"><span class="stat-label">Users enabled</span><span class="stat-icon"><i class="bi bi-people"></i></span></div>
+      <div class="stat-value"><%= s.users.allowed %><span class="stat-of"> / <%= customer.user_limit %></span></div>
+      <div class="stat-foot"><span><%= plural(s.users.admins, 'admin') %> · <%= plural(s.users.operators, 'counter user') %></span></div>
+    </a>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat">
+      <div class="stat-top"><span class="stat-label">Online now</span><span class="stat-icon tone-green"><i class="bi bi-phone-vibrate"></i></span></div>
+      <div class="stat-value"><%= s.users.active_sessions %></div>
+      <div class="stat-foot"><span class="live-dot<%= s.users.active_sessions ? '' : ' is-off' %>"></span><span>signed-in devices</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat">
+      <div class="stat-top"><span class="stat-label">Bags in store</span><span class="stat-icon tone-amber"><i class="bi bi-suitcase2"></i></span></div>
+      <div class="stat-value"><%= num(s.luggage.in_store) %></div>
+      <div class="stat-foot"><span><%= num(s.luggage.total) %> check-ins in total</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <a class="stat stat-link" href="<%= base %>/payments">
+      <div class="stat-top"><span class="stat-label">Paid to Synergic</span><span class="stat-icon tone-teal"><i class="bi bi-wallet2"></i></span></div>
+      <div class="stat-value stat-value-sm"><%= inr(s.payments.total_net, true) %></div>
+      <div class="stat-foot"><span><%= plural(s.payments.count, 'payment') %><%= s.payments.last_payment_dt ? ' · last ' + date(s.payments.last_payment_dt) : '' %></span></div>
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 g-xl-4">
+  <div class="col-lg-7">
+    <div class="card card-soft h-100">
+      <div class="card-head">
+        <div><h2 class="card-title">Cloak room details</h2><div class="card-sub">Printed on receipts and used for UPI payments</div></div>
+        <a class="btn btn-light btn-sm" href="<%= base %>/edit"><i class="bi bi-pencil me-1"></i>Edit</a>
+      </div>
+      <dl class="detail-grid">
+        <div><dt>Address</dt><dd><%= customer.customer_addr %><%= customer.pin_code ? ' – ' + customer.pin_code : '' %></dd></div>
+        <div><dt>State</dt><dd><%= customer.state || '—' %></dd></div>
+        <div><dt>Mobile</dt><dd><%= customer.mobile_no %></dd></div>
+        <div><dt>Email</dt><dd><%= customer.email || '—' %></dd></div>
+        <div><dt>GSTIN</dt><dd class="mono"><%= customer.gst_no || '—' %></dd></div>
+        <div><dt>UPI ID</dt><dd class="mono"><%= customer.upi_id || '—' %></dd></div>
+        <div><dt>Customer since</dt><dd><%= customer.created_at ? dateTimeIst(customer.created_at) : '—' %></dd></div>
+        <div><dt>Remarks</dt><dd><%= customer.remarks || '—' %></dd></div>
+      </dl>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-soft h-100">
+      <div class="card-head">
+        <div><h2 class="card-title">Subscription</h2><div class="card-sub">Latest registration</div></div>
+        <a class="btn btn-light btn-sm" href="<%= base %>/registrations">Manage</a>
+      </div>
+      <% if (!reg) { %>
+        <div class="empty-state">
+          <div class="empty-icon is-danger"><i class="bi bi-patch-exclamation"></i></div>
+          <div class="empty-title-sm">No registration</div>
+          <div class="empty-text small">Add one to let this station sign in.</div>
+          <a class="btn btn-primary btn-sm" href="<%= base %>/registrations/new"><i class="bi bi-plus-lg me-1"></i>Add subscription</a>
+        </div>
+      <% } else { %>
+        <%
+          var start = Date.parse(reg.start_date + 'T00:00:00Z'), end = Date.parse(reg.end_date + 'T00:00:00Z');
+          var nowIst = Date.now() + 330 * 60000;
+          var pct = end > start ? Math.max(0, Math.min(100, Math.round(((nowIst - start) / (end - start)) * 100))) : 100;
+        %>
+        <div class="sub-card">
+          <div class="d-flex justify-content-between align-items-baseline gap-2">
+            <span class="mono fw-semibold"><%= reg.reg_no %></span>
+            <span class="list-sub"><%= plural(reg.user_count, 'user') %></span>
+          </div>
+          <div class="sub-dates"><span><%= date(reg.start_date) %></span><i class="bi bi-arrow-right"></i><span><%= date(reg.end_date) %></span></div>
+          <svg class="meter meter-lg" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect class="meter-track" width="100" height="8" rx="4"/><rect class="meter-fill<%= subscription.tone === 'warning' ? ' is-warn' : subscription.tone === 'danger' ? ' is-full' : '' %>" width="<%= Math.max(pct, 2) %>" height="8" rx="4"/></svg>
+          <div class="list-sub mt-2"><%= pct %>% of the period used · <%= subscription.label %></div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="quick-grid mt-4">
+  <% tabs.filter(function (t) { return t.key !== 'overview'; }).forEach(function (t) { %>
+    <a class="quick-card" href="<%= base + t.path %>"><span class="quick-icon"><i class="bi bi-<%= t.icon %>"></i></span><span><%= t.label %></span><i class="bi bi-chevron-right ms-auto"></i></a>
+  <% }) %>
+  <a class="quick-card" href="/admin/reports?customer_id=<%= cid %>"><span class="quick-icon tone-teal"><i class="bi bi-bar-chart-line"></i></span><span>Reports</span><i class="bi bi-chevron-right ms-auto"></i></a>
+  <a class="quick-card" href="/admin/bags?customer_id=<%= cid %>"><span class="quick-icon tone-amber"><i class="bi bi-search"></i></span><span>Bag search</span><i class="bi bi-chevron-right ms-auto"></i></a>
+  <a class="quick-card" href="/admin/exceptions?customer_id=<%= cid %>"><span class="quick-icon"><i class="bi bi-exclamation-triangle"></i></span><span>Sync exceptions</span><i class="bi bi-chevron-right ms-auto"></i></a>
+</div>
+<%- include('../partials/shell-end') %>

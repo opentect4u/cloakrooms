@@ -1,0 +1,129 @@
+<%- include('../partials/shell-start') %>
+<%- include('../partials/customer-head') %>
+<% var hfBase = base + '/header-footer'; %>
+
+<div class="section-head">
+  <div>
+    <h2 class="section-title"><i class="bi bi-receipt"></i>Receipt layout</h2>
+    <p class="section-sub">Logo and text lines printed on check-in receipts, bills and reports. The preview uses this station’s <%= paper %> mm paper.</p>
+  </div>
+  <div class="section-actions">
+    <a class="btn btn-primary" href="<%= hfBase %>/new"><i class="bi bi-plus-lg me-1"></i>Add line</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <% [['Header lines', 'H', headers, 'Printed at the top, under the logo'], ['Footer lines', 'F', footers, 'Printed at the bottom']].forEach(function (sec) { %>
+      <section class="card card-soft mb-4">
+        <div class="card-head">
+          <div><h3 class="card-title"><%= sec[0] %></h3><div class="card-sub"><%= sec[3] %></div></div>
+          <span class="count-badge"><%= sec[2].length %></span>
+        </div>
+        <% if (!sec[2].length) { %>
+          <p class="px-4 pb-3 text-body-secondary small mb-0">No <%= sec[0].toLowerCase() %> yet. <a href="<%= hfBase %>/new">Add one</a>.</p>
+        <% } else { %>
+          <ul class="line-list">
+            <% sec[2].forEach(function (l) { %>
+              <li class="line-row">
+                <span class="line-order"><%= l.line_order %></span>
+                <div class="line-main">
+                  <a class="cell-link" href="<%= hfBase %>/<%= l.id %>/edit"><%= l.narration %></a>
+                  <div class="line-flags">
+                    <span class="flag<%= l.in_flag === 'Y' ? ' is-on' : '' %>"><i class="bi bi-<%= l.in_flag === 'Y' ? 'check' : 'x' %>"></i>Check-in</span>
+                    <span class="flag<%= l.out_flag === 'Y' ? ' is-on' : '' %>"><i class="bi bi-<%= l.out_flag === 'Y' ? 'check' : 'x' %>"></i>Bill</span>
+                    <span class="flag<%= l.report_flag === 'Y' ? ' is-on' : '' %>"><i class="bi bi-<%= l.report_flag === 'Y' ? 'check' : 'x' %>"></i>Reports</span>
+                  </div>
+                </div>
+                <a class="btn-icon btn-icon-sm" href="<%= hfBase %>/<%= l.id %>/edit" aria-label="Edit line"><i class="bi bi-pencil"></i></a>
+                <form method="post" action="<%= hfBase %>/<%= l.id %>/delete" data-confirm="The line is no longer printed." data-confirm-title="Remove this line?" data-confirm-button="Remove" data-confirm-tone="danger">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn-icon btn-icon-sm btn-icon-danger" type="submit" aria-label="Remove line"><i class="bi bi-trash3"></i></button>
+                </form>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </section>
+    <% }) %>
+
+    <section class="card card-soft">
+      <div class="card-head">
+        <div><h3 class="card-title">Logo</h3><div class="card-sub">Monochrome PNG, up to <%= maxKb %> KB. Printers handle black-and-white best.</div></div>
+      </div>
+      <div class="logo-box">
+        <div class="logo-preview<%= logo ? '' : ' is-empty' %>">
+          <% if (logo && logo.image) { %>
+            <img src="data:image/png;base64,<%= logo.image %>" alt="Current logo">
+          <% } else { %>
+            <i class="bi bi-image"></i><span>No logo</span>
+          <% } %>
+        </div>
+        <div class="flex-grow-1">
+          <form method="post" action="<%= hfBase %>/logo" enctype="multipart/form-data" class="upload-form" data-busy-form>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label class="dropzone" for="logo-file">
+              <i class="bi bi-cloud-arrow-up"></i>
+              <span data-file-name>Choose a PNG file</span>
+              <input class="visually-hidden" type="file" id="logo-file" name="logo" accept="image/png" required data-file-input>
+            </label>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-primary btn-sm" type="submit"><span class="btn-label"><i class="bi bi-upload me-1"></i><%= logo ? 'Replace logo' : 'Upload logo' %></span><span class="btn-busy"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Uploading…</span></button>
+            </div>
+          </form>
+          <% if (logo) { %>
+            <form method="post" action="<%= hfBase %>/logo/delete" class="mt-2" data-confirm="Receipts print without a logo." data-confirm-title="Remove the logo?" data-confirm-button="Remove" data-confirm-tone="danger">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-link link-danger btn-sm p-0" type="submit"><i class="bi bi-trash3 me-1"></i>Remove logo (<%= logoKb %> KB)</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="preview-sticky">
+      <ul class="nav nav-pills preview-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pv-in" type="button" role="tab" aria-controls="pv-in" aria-selected="true"><i class="bi bi-box-arrow-in-down me-1"></i>Check-in receipt</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#pv-out" type="button" role="tab" aria-controls="pv-out" aria-selected="false"><i class="bi bi-receipt-cutoff me-1"></i>Bill</button></li>
+      </ul>
+      <div class="tab-content">
+        <% ['in', 'out'].forEach(function (kind) { var p = preview[kind]; %>
+          <div class="tab-pane fade<%= kind === 'in' ? ' show active' : '' %>" id="pv-<%= kind %>" role="tabpanel">
+            <div class="paper paper-<%= paper %>" aria-label="Preview of the printed <%= kind === 'in' ? 'check-in receipt' : 'bill' %>">
+              <% if (p.logo && logo && logo.image) { %><img class="paper-logo" src="data:image/png;base64,<%= logo.image %>" alt=""><% } %>
+              <% p.header.forEach(function (t, i) { %><div class="paper-line<%= i === 0 ? ' is-title' : '' %>"><%= t %></div><% }) %>
+              <% if (!p.header.length) { %><div class="paper-line paper-ghost">(no header lines)</div><% } %>
+              <div class="paper-rule"></div>
+              <% if (kind === 'in') { %>
+                <div class="paper-center fw-bold">LUGGAGE RECEIPT</div>
+                <div class="paper-kv"><span>Receipt</span><span>U03-00125</span></div>
+                <div class="paper-kv"><span>In</span><span>05/11/26 10:15</span></div>
+                <div class="paper-kv"><span>Name</span><span>Ravi Kumar</span></div>
+                <div class="paper-kv"><span>Bags</span><span>2</span></div>
+                <div class="paper-qr" aria-hidden="true"><% for (var q = 0; q < 49; q++) { %><i class="<%= [0,1,2,7,9,14,15,16,4,5,6,11,13,18,19,20,28,29,30,35,37,42,43,44,24,26,32,38,40,46,48].indexOf(q) >= 0 ? 'on' : '' %>"></i><% } %></div>
+              <% } else { %>
+                <div class="paper-center fw-bold">BILL</div>
+                <div class="paper-kv"><span>Bill</span><span>U03-00098</span></div>
+                <div class="paper-kv"><span>In / Out</span><span>10:15 → 11:40 +1d</span></div>
+                <div class="paper-kv"><span>Bags × days</span><span>2 × 2</span></div>
+                <div class="paper-rule"></div>
+                <div class="paper-kv"><span>Taxable</span><span>118.64</span></div>
+                <div class="paper-kv"><span>CGST 9%</span><span>10.68</span></div>
+                <div class="paper-kv"><span>SGST 9%</span><span>10.68</span></div>
+                <div class="paper-kv fw-bold"><span>TOTAL ₹</span><span>140.00</span></div>
+                <% if (customer.gst_no) { %><div class="paper-center small-print">GSTIN <%= customer.gst_no %></div><% } %>
+              <% } %>
+              <div class="paper-rule"></div>
+              <% p.footer.forEach(function (t) { %><div class="paper-line"><%= t %></div><% }) %>
+              <% if (!p.footer.length) { %><div class="paper-line paper-ghost">(no footer lines)</div><% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+      <p class="small text-body-tertiary mt-3 text-center">Sample data. The app prints the real receipt and bill numbers, times and amounts.</p>
+    </div>
+  </div>
+</div>
+<%- include('../partials/shell-end') %>

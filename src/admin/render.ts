@@ -3,32 +3,30 @@ import { fetchOne } from '../core/db/dml';
 import { ctxOf } from '../core/middleware/requireRole';
 import { clearFlash } from './flash';
 
-/** Sidebar entries; `soon` items are shown disabled until their step of Phase 12 ships. */
+/** Sidebar entries (an item with `soon: true` is shown disabled). */
 export const NAV = [
   { section: 'Overview' },
   { key: 'dashboard', label: 'Dashboard', icon: 'grid-1x2', href: '/admin' },
   { section: 'Stations' },
-  { key: 'customers', label: 'Customers', icon: 'buildings', href: '/admin/customers', soon: true },
-  { key: 'bags', label: 'Bag search', icon: 'search', href: '/admin/bags', soon: true },
-  { key: 'reports', label: 'Reports', icon: 'bar-chart-line', href: '/admin/reports', soon: true },
+  { key: 'customers', label: 'Customers', icon: 'buildings', href: '/admin/customers' },
+  { key: 'bags', label: 'Bag search', icon: 'search', href: '/admin/bags' },
+  { key: 'reports', label: 'Reports', icon: 'bar-chart-line', href: '/admin/reports' },
   {
     key: 'exceptions',
     label: 'Sync exceptions',
     icon: 'exclamation-triangle',
     href: '/admin/exceptions',
-    soon: true,
   },
   { section: 'Platform' },
-  { key: 'gst', label: 'GST rates', icon: 'percent', href: '/admin/gst', soon: true },
+  { key: 'gst', label: 'GST rates', icon: 'percent', href: '/admin/gst' },
   {
     key: 'id-proofs',
     label: 'ID proofs',
     icon: 'person-vcard',
     href: '/admin/id-proofs',
-    soon: true,
   },
-  { key: 'releases', label: 'App releases', icon: 'phone', href: '/admin/releases', soon: true },
-  { key: 'admins', label: 'Super admins', icon: 'shield-lock', href: '/admin/admins', soon: true },
+  { key: 'releases', label: 'App releases', icon: 'phone', href: '/admin/releases' },
+  { key: 'admins', label: 'Super admins', icon: 'shield-lock', href: '/admin/admins' },
 ] as const;
 
 /** Loads the signed-in admin's display name for the top bar (after panelAuth). */

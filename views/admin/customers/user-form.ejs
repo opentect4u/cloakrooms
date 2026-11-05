@@ -1,0 +1,37 @@
+<%- include('../partials/shell-start') %>
+<%- include('../partials/customer-head') %>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <form class="card card-soft form-card" method="post" action="<%= action %>" data-busy-form novalidate autocomplete="off">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-card-head">
+        <a class="back-link mb-2" href="<%= cancel %>"><i class="bi bi-arrow-left"></i> Users</a>
+        <h2 class="card-title"><i class="bi bi-person<%= mode === 'create' ? '-plus' : '' %> me-2 text-primary"></i><%= mode === 'create' ? 'Add user' : 'Edit ' + user.user_name %></h2>
+        <p class="card-sub mb-0"><%= mode === 'create' ? 'The user signs in on the Cloak Room app with the login id and this temporary password.' : 'Login id: ' + user.user_id %></p>
+      </div>
+      <%- include('../partials/form-errors', { fields: fields }) %>
+      <div class="row g-3">
+        <% fields.forEach(function (f) { %><%- include('../partials/field', { f: f }) %><% }) %>
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-light" href="<%= cancel %>">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <span class="btn-label"><i class="bi bi-check2 me-1"></i><%= mode === 'create' ? 'Create user' : 'Save changes' %></span>
+          <span class="btn-busy"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving…</span>
+        </button>
+      </div>
+    </form>
+  </div>
+  <div class="col-xl-4">
+    <div class="tip-card">
+      <i class="bi bi-person-badge"></i>
+      <div class="small">
+        <div class="fw-semibold mb-1">Roles</div>
+        <p class="mb-2"><strong>Station admin</strong>: users, tariff, shifts, receipt layout, settings and reports in the app.</p>
+        <p class="mb-0"><strong>Counter user</strong>: check-in and check-out; reports only if “Counter users can open reports” is on.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/shell-end') %>

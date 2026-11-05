@@ -1,0 +1,78 @@
+<%- include('partials/shell-start') %>
+<div class="page-head">
+  <div>
+    <div class="page-eyebrow">Platform · Synergic team</div>
+    <h1 class="page-title">Super admins</h1>
+    <p class="page-sub">People who manage every station. Each account can be signed in on one device at a time: this panel or the app.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary btn-glow" href="/admin/admins/new"><i class="bi bi-person-plus me-1"></i>Add super admin</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="/admin/admins" role="search">
+  <div class="input-icon filter-search">
+    <i class="bi bi-search"></i>
+    <input class="form-control" type="search" name="q" value="<%= q %>" placeholder="Search name or login id" aria-label="Search super admins">
+  </div>
+</form>
+
+<div class="card card-soft">
+  <div class="table-responsive">
+    <table class="table table-modern align-middle mb-0">
+      <thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col" class="d-none d-md-table-cell">Session</th><th scope="col" class="text-end"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>
+        <% rows.forEach(function (u) { var self = u.id === selfId; %>
+          <tr class="<%= u.allow_flag === 'N' ? 'is-muted' : '' %>">
+            <td>
+              <span class="cell-main">
+                <span class="avatar"><%= initials(u.user_name) %></span>
+                <span>
+                  <span class="list-title d-block"><%= u.user_name %><% if (self) { %> <span class="pill pill-primary ms-1">You</span><% } %></span>
+                  <span class="list-sub mono"><%= u.user_id %></span>
+                </span>
+              </span>
+            </td>
+            <td>
+              <% if (u.allow_flag === 'Y') { %><span class="status-dot is-on">Enabled</span><% } else { %><span class="status-dot is-off">Blocked</span><% } %>
+              <% if (u.must_change_pwd === 'Y') { %><div class="list-sub"><i class="bi bi-key"></i> Must set a password</div><% } %>
+            </td>
+            <td class="d-none d-md-table-cell">
+              <% if (u.online) { %>
+                <span class="online-chip"><span class="live-dot"></span><%= u.onPanel ? 'On the panel' : 'On the app' %></span>
+                <div class="list-sub"><%= u.onPanel ? '' : 'Device ' + u.device + ' · ' %>since <%= dateTimeIst(u.session_started_at) %></div>
+              <% } else { %>
+                <span class="list-sub"><%= u.last_login ? 'Last sign-in ' + dateTimeIst(u.last_login) : 'Never signed in' %></span>
+              <% } %>
+            </td>
+            <td class="text-end">
+              <% if (self) { %>
+                <a class="btn btn-sm btn-light" href="/admin/change-password"><i class="bi bi-key me-1"></i>My password</a>
+              <% } else { %>
+                <div class="dropdown">
+                  <button class="btn-icon btn-icon-sm" type="button" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-label="Actions for <%= u.user_name %>"><i class="bi bi-three-dots"></i></button>
+                  <div class="dropdown-menu dropdown-menu-end shadow-lg user-menu">
+                    <a class="dropdown-item" href="/admin/admins/<%= u.id %>/edit"><i class="bi bi-pencil me-2"></i>Edit name</a>
+                    <a class="dropdown-item" href="/admin/admins/<%= u.id %>/password"><i class="bi bi-key me-2"></i>Reset password</a>
+                    <form method="post" action="/admin/admins/<%= u.id %>/allow"<% if (u.allow_flag === 'Y') { %> data-confirm="They are signed out and cannot sign in until enabled again." data-confirm-title="Block <%= u.user_name %>?" data-confirm-button="Block" data-confirm-tone="danger"<% } %>>
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <input type="hidden" name="allow_flag" value="<%= u.allow_flag === 'Y' ? 'N' : 'Y' %>">
+                      <button class="dropdown-item" type="submit"><i class="bi bi-<%= u.allow_flag === 'Y' ? 'slash-circle' : 'check-circle' %> me-2"></i><%= u.allow_flag === 'Y' ? 'Block' : 'Enable' %></button>
+                    </form>
+                    <div class="dropdown-divider"></div>
+                    <form method="post" action="/admin/admins/<%= u.id %>/delete" data-confirm="Their account is removed and any session ends." data-confirm-title="Delete <%= u.user_name %>?" data-confirm-button="Delete" data-confirm-tone="danger">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash3 me-2"></i>Delete</button>
+                    </form>
+                  </div>
+                </div>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <%- include('partials/pager') %>
+</div>
+<%- include('partials/shell-end') %>

@@ -1,0 +1,17 @@
+<%
+  var shown = {};
+  (fields || []).forEach(function (f) { shown[f.name] = true; });
+  var other = Object.keys(errors || {}).filter(function (k) { return !shown[k] && k !== '_form'; });
+  var hasFieldErrors = Object.keys(errors || {}).some(function (k) { return shown[k]; });
+%>
+<% if (formError || other.length || hasFieldErrors) { %>
+  <div class="alert alert-danger form-alert" role="alert">
+    <i class="bi bi-exclamation-octagon"></i>
+    <div>
+      <div class="fw-semibold"><%= formError || (other.length ? 'Please fix the following' : 'Please check the highlighted fields') %></div>
+      <% if (other.length) { %>
+        <ul class="mb-0 ps-3 small"><% other.forEach(function (k) { %><li><%= k.replace(/_/g, ' ') %>: <%= errors[k] %></li><% }) %></ul>
+      <% } %>
+    </div>
+  </div>
+<% } %>

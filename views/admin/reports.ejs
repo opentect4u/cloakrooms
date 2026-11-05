@@ -1,0 +1,150 @@
+<%- include('partials/shell-start') %>
+<%
+  function qs(extra) {
+    var p = new URLSearchParams();
+    if (cid) p.set('customer_id', String(cid));
+    if (values.from) p.set('from', values.from);
+    if (values.to) p.set('to', values.to);
+    Object.keys(extra).forEach(function (k) { if (extra[k]) p.set(k, extra[k]); });
+    return '/admin/reports?' + p.toString();
+  }
+  var customerName = cid ? (customers.find(function (c) { return Number(c[0]) === cid; }) || [])[1] : '';
+%>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Reports</h1>
+    <p class="page-sub">The same reports station admins see in the app, for any customer. Dates are Indian dates, both inclusive.</p>
+  </div>
+</div>
+
+<div class="report-layout">
+  <nav class="report-nav card card-soft" aria-label="Reports">
+    <% reports.forEach(function (r) { %>
+      <a class="report-link<%= r.key === def.key ? ' is-active' : '' %>" href="<%= qs({ report: r.key }) %>"<%- r.key === def.key ? ' aria-current="page"' : '' %>>
+        <span class="report-icon"><i class="bi bi-<%= r.icon %>"></i></span>
+        <span><span class="d-block fw-semibold"><%= r.title %></span><span class="report-desc"><%= r.description %></span></span>
+      </a>
+    <% }) %>
+  </nav>
+
+  <div class="report-main">
+    <form class="card card-soft report-filters" method="get" action="/admin/reports">
+      <input type="hidden" name="report" value="<%= def.key %>">
+      <div class="filter-grid">
+        <div class="fg-wide">
+          <label class="form-label" for="r-customer">Customer</label>
+          <select class="form-select<%= errors.customer_id ? ' is-invalid' : '' %>" id="r-customer" name="customer_id" required data-autosubmit-field>
+            <option value="">— Choose customer —</option>
+            <% customers.forEach(function (c) { %><option value="<%= c[0] %>"<%= Number(c[0]) === cid ? ' selected' : '' %>><%= c[1] %></option><% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="r-from"><%= def.query === 'store' ? 'Checked in from' : 'From' %></label>
+          <input class="form-control<%= errors.from ? ' is-invalid' : '' %>" type="date" id="r-from" name="from" value="<%= values.from || '' %>"<%= def.query === 'range' ? ' required' : '' %>>
+        </div>
+        <div>
+          <label class="form-label" for="r-to">To</label>
+          <input class="form-control<%= errors.to ? ' is-invalid' : '' %>" type="date" id="r-to" name="to" value="<%= values.to || '' %>"<%= def.query === 'range' ? ' required' : '' %>>
+        </div>
+        <% if (cid && def.filters.indexOf('user') >= 0) { %>
+          <div>
+            <label class="form-label" for="r-user">User</label>
+            <select class="form-select" id="r-user" name="user_id">
+              <option value="">All users</option>
+              <% userOptions.forEach(function (o) { %><option value="<%= o[0] %>"<%= values.user_id === o[0] ? ' selected' : '' %>><%= o[1] %></option><% }) %>
+            </select>
+          </div>
+        <% } %>
+        <% if (cid && def.filters.indexOf('shift') >= 0) { %>
+          <div>
+            <label class="form-label" for="r-shift">Shift</label>
+            <select class="form-select" id="r-shift" name="shift_id">
+              <option value="">All shifts</option>
+              <% shiftOptions.forEach(function (o) { %><option value="<%= o[0] %>"<%= values.shift_id === o[0] ? ' selected' : '' %>><%= o[1] %></option><% }) %>
+            </select>
+          </div>
+        <% } %>
+        <% if (cid && def.filters.indexOf('payMode') >= 0) { %>
+          <div>
+            <label class="form-label" for="r-pay">Paid by</label>
+            <select class="form-select" id="r-pay" name="pay_mode">
+              <option value="">Cash and UPI</option>
+              <option value="C"<%= values.pay_mode === 'C' ? ' selected' : '' %>>Cash</option>
+              <option value="U"<%= values.pay_mode === 'U' ? ' selected' : '' %>>UPI</option>
+            </select>
+          </div>
+        <% } %>
+        <div class="fg-action">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-play-fill me-1"></i>Run report</button>
+        </div>
+      </div>
+      <div class="range-chips">
+        <% var today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+           function minus(n) { return new Date(Date.parse(today + 'T00:00:00Z') - n * 86400000).toISOString().slice(0, 10); }
+           var monthStart = today.slice(0, 8) + '01';
+           [['Today', today, today], ['Yesterday', minus(1), minus(1)], ['Last 7 days', minus(6), today], ['Last 30 days', minus(29), today], ['This month', monthStart, today]].forEach(function (c) { %>
+          <a class="range-chip<%= values.from === c[1] && values.to === c[2] ? ' is-active' : '' %>" href="<%= (function () { var p = new URLSearchParams(); p.set('report', def.key); if (cid) p.set('customer_id', String(cid)); p.set('from', c[1]); p.set('to', c[2]); return '/admin/reports?' + p.toString(); })() %>"><%= c[0] %></a>
+        <% }) %>
+      </div>
+      <% var errKeys = Object.keys(errors); if (errKeys.length) { %>
+        <div class="alert alert-danger form-alert mt-3 mb-0" role="alert"><i class="bi bi-exclamation-octagon"></i>
+          <div><% errKeys.forEach(function (k) { %><div><strong><%= k === 'to' ? 'Date range' : k.replace(/_/g, ' ') %>:</strong> <%= errors[k] %></div><% }) %></div>
+        </div>
+      <% } %>
+    </form>
+
+    <% if (!cid) { %>
+      <div class="card card-soft">
+        <div class="empty-state empty-state-md">
+          <div class="empty-icon"><i class="bi bi-<%= def.icon %>"></i></div>
+          <div class="empty-title-sm">Choose a customer</div>
+          <div class="empty-text small">Reports are per cloak room. Pick one above to see the <%= def.title.toLowerCase() %>.</div>
+        </div>
+      </div>
+    <% } else if (result) { %>
+      <div class="report-title">
+        <h2 class="section-title"><i class="bi bi-<%= def.icon %>"></i><%= def.title %></h2>
+        <span class="text-body-secondary small"><%= customerName %> · <%= values.from ? date(values.from) : 'all dates' %><%= values.to ? ' – ' + date(values.to) : '' %></span>
+      </div>
+      <div class="totals-row">
+        <% result.totals.forEach(function (t, i) { %>
+          <div class="total-tile<%= i === result.totals.length - 1 ? ' is-main' : '' %>"><span class="total-label"><%= t.label %></span><span class="total-value"><%= t.text %></span></div>
+        <% }) %>
+      </div>
+      <div class="card card-soft">
+        <% if (!result.rows.length) { %>
+          <div class="empty-state empty-state-md">
+            <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+            <div class="empty-title-sm">Nothing in this period</div>
+            <div class="empty-text small">Try a wider date range or other filters.</div>
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+              <thead><tr>
+                <% def.columns.forEach(function (c) { var end = c.kind === 'money' || c.kind === 'int'; %>
+                  <th scope="col" class="<%= end ? 'text-end' : '' %><%= c.hideBelow ? ' d-none d-' + c.hideBelow + '-table-cell' : '' %>"><%= c.label %></th>
+                <% }) %>
+              </tr></thead>
+              <tbody>
+                <% result.rows.forEach(function (cells) { %>
+                  <tr>
+                    <% cells.forEach(function (cell, i) { var c = def.columns[i]; %>
+                      <td class="<%= cell.align ? 'text-end tabular' : '' %><%= c.hideBelow ? ' d-none d-' + c.hideBelow + '-table-cell' : '' %>">
+                        <% if (cell.tone) { %><span class="pill pill-<%= cell.tone %>"><%= cell.text %></span>
+                        <% } else { %><span class="<%= c.kind === 'strong' ? 'fw-semibold' : c.kind === 'code' ? 'mono fw-semibold text-nowrap' : (c.kind === 'istTime' || c.kind === 'date' || c.kind === 'duration') ? 'text-nowrap' : '' %>"><%= cell.text %></span><% } %>
+                        <% if (cell.sub) { %><div class="list-sub<%= c.kind === 'code' ? ' mono text-nowrap' : '' %>"><%= cell.sub %></div><% } %>
+                      </td>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <%- include('partials/pager', { pager: result.pager }) %>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</div>
+<%- include('partials/shell-end') %>

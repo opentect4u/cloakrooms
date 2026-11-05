@@ -1,0 +1,66 @@
+<%- include('../partials/shell-start') %>
+<% if (mode === 'edit') { %>
+  <%- include('../partials/customer-head') %>
+<% } else { %>
+  <a class="back-link" href="/admin/customers"><i class="bi bi-arrow-left"></i> All customers</a>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">New customer</h1>
+      <p class="page-sub">The default settings and the standard tariff are added automatically.</p>
+    </div>
+  </div>
+<% } %>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <form class="card card-soft form-card" method="post" action="<%= action %>" data-busy-form novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-card-head">
+        <h2 class="card-title"><%= mode === 'create' ? 'Cloak room details' : 'Edit details' %></h2>
+        <p class="card-sub mb-0">Fields marked * are required.</p>
+      </div>
+      <%- include('../partials/form-errors', { fields: fields }) %>
+      <div class="row g-3">
+        <% fields.forEach(function (f) { %><%- include('../partials/field', { f: f }) %><% }) %>
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-light" href="<%= mode === 'create' ? '/admin/customers' : base %>">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <span class="btn-label"><i class="bi bi-check2 me-1"></i><%= mode === 'create' ? 'Create customer' : 'Save changes' %></span>
+          <span class="btn-busy"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Saving…</span>
+        </button>
+      </div>
+    </form>
+
+    <% if (mode === 'edit') { %>
+      <section class="danger-zone" id="danger" aria-labelledby="danger-title">
+        <div>
+          <h2 class="danger-title" id="danger-title"><i class="bi bi-exclamation-octagon"></i> Delete this customer</h2>
+          <p class="mb-0 small">The customer and its users can no longer sign in. Data is kept (soft delete) but disappears from the panel and the app.</p>
+        </div>
+        <form method="post" action="<%= base %>/delete" class="danger-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <label class="form-label small" for="confirm_name">Type <strong><%= customer.customer_name %></strong> to confirm</label>
+          <div class="d-flex gap-2 flex-wrap">
+            <input class="form-control" id="confirm_name" name="confirm_name" autocomplete="off" data-confirm-match="<%= customer.customer_name %>">
+            <button class="btn btn-danger" type="submit" data-confirm-target disabled><i class="bi bi-trash3 me-1"></i>Delete</button>
+          </div>
+        </form>
+      </section>
+    <% } %>
+  </div>
+  <div class="col-xl-4">
+    <div class="tip-card">
+      <i class="bi bi-info-circle"></i>
+      <div class="small">
+        <div class="fw-semibold mb-1">What happens next</div>
+        <ul class="mb-0 ps-3">
+          <li>Add a <strong>subscription</strong>: without one the station’s users cannot sign in.</li>
+          <li>Create the station <strong>admin</strong> and counter users.</li>
+          <li>Check the <strong>tariff</strong>, <strong>shifts</strong> and <strong>receipt layout</strong>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/shell-end') %>

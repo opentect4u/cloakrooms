@@ -1,0 +1,115 @@
+<%- include('partials/shell-start') %>
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Sync exceptions</h1>
+    <p class="page-sub">Rows a device pushed that the server could not take as they were. Devices are never blocked by them; review and mark them when handled.</p>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="/admin/exceptions" data-autosubmit>
+  <select class="form-select filter-wide" name="customer_id" aria-label="Customer">
+    <option value="">All customers (summary)</option>
+    <% customers.forEach(function (c) { %><option value="<%= c[0] %>"<%= Number(c[0]) === cid ? ' selected' : '' %>><%= c[1] %></option><% }) %>
+  </select>
+  <% if (cid) { %>
+    <select class="form-select" name="resolved" aria-label="Status">
+      <option value="N"<%= q.resolved === 'N' ? ' selected' : '' %>>Open</option>
+      <option value="Y"<%= q.resolved === 'Y' ? ' selected' : '' %>>Reviewed</option>
+      <option value=""<%= q.resolved === '' ? ' selected' : '' %>>All</option>
+    </select>
+    <select class="form-select" name="table_name" aria-label="Kind">
+      <option value="">Check-ins and bills</option>
+      <option value="td_luggage_in_out"<%= q.table_name === 'td_luggage_in_out' ? ' selected' : '' %>>Check-ins</option>
+      <option value="td_receipt"<%= q.table_name === 'td_receipt' ? ' selected' : '' %>>Bills</option>
+    </select>
+    <input class="form-control filter-date" type="date" name="from" value="<%= q.from || '' %>" aria-label="From">
+    <input class="form-control filter-date" type="date" name="to" value="<%= q.to || '' %>" aria-label="To">
+  <% } %>
+  <button class="btn btn-light autosave-btn" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button>
+</form>
+
+<% if (!cid) { %>
+  <div class="card card-soft">
+    <% if (!summary.length) { %>
+      <div class="empty-state empty-state-md">
+        <div class="empty-icon is-success"><i class="bi bi-check2-circle"></i></div>
+        <div class="empty-title-sm">No exceptions anywhere</div>
+        <div class="empty-text small">Every row pushed by every device matched the server.</div>
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-modern align-middle mb-0">
+          <thead><tr><th scope="col">Customer</th><th scope="col" class="text-end">Open</th><th scope="col" class="text-end d-none d-sm-table-cell">All time</th><th scope="col" class="d-none d-md-table-cell">Latest</th><th scope="col"><span class="visually-hidden">Open</span></th></tr></thead>
+          <tbody>
+            <% summary.forEach(function (s) { %>
+              <tr>
+                <td><a class="cell-main" href="/admin/exceptions?customer_id=<%= s.customer_id %>"><span class="avatar avatar-soft"><%= initials(s.customer_name) %></span><span class="list-title"><%= s.customer_name %></span></a></td>
+                <td class="text-end"><% if (Number(s.open)) { %><span class="pill pill-warning"><%= num(s.open) %> open</span><% } else { %><span class="pill pill-success"><i class="bi bi-check2"></i>Clear</span><% } %></td>
+                <td class="text-end d-none d-sm-table-cell tabular"><%= num(s.total) %></td>
+                <td class="d-none d-md-table-cell list-sub"><%= dateTimeIst(s.latest) %> IST</td>
+                <td class="text-end"><a class="btn-icon btn-icon-sm" href="/admin/exceptions?customer_id=<%= s.customer_id %>" aria-label="Review <%= s.customer_name %>"><i class="bi bi-chevron-right"></i></a></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } else { %>
+  <% if (Object.keys(errors).length) { %>
+    <div class="alert alert-danger form-alert" role="alert"><i class="bi bi-exclamation-octagon"></i><div><% Object.keys(errors).forEach(function (k) { %><div><%= errors[k] %></div><% }) %></div></div>
+  <% } %>
+  <div class="report-title">
+    <h2 class="section-title"><i class="bi bi-exclamation-triangle"></i><%= customerName %></h2>
+    <span class="text-body-secondary small"><%= num(totals.exceptions || 0) %> matching · <%= num(totals.unresolved || 0) %> open · <a href="/admin/customers/<%= cid %>">Open customer</a></span>
+  </div>
+  <% if (!rows.length) { %>
+    <div class="card card-soft">
+      <div class="empty-state empty-state-md">
+        <div class="empty-icon is-success"><i class="bi bi-check2-circle"></i></div>
+        <div class="empty-title-sm"><%= q.resolved === 'N' ? 'Nothing to review' : 'No exceptions match' %></div>
+        <div class="empty-text small"><%= q.resolved === 'N' ? 'All of this customer’s exceptions have been reviewed.' : 'Try other filters.' %></div>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="exception-list">
+      <% rows.forEach(function (e) { %>
+        <article class="exception card card-soft<%= e.resolved_flag === 'Y' ? ' is-resolved' : '' %>">
+          <div class="exception-head">
+            <span class="exception-icon<%= e.code === 'AMOUNT_MISMATCH' ? ' is-money' : '' %>"><i class="bi bi-<%= e.table_name === 'td_receipt' ? 'receipt' : 'suitcase2' %>"></i></span>
+            <div class="exception-main">
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="code-pill"><%= e.code %></span>
+                <span class="list-sub"><%= e.table_name === 'td_receipt' ? 'Bill' : 'Check-in' %> · <%= e.when %> IST · <%= e.user_name || 'Unknown user' %><%= e.device_id ? ' · device ' + e.device_id : '' %></span>
+              </div>
+              <div class="exception-help"><%= help[e.code] || 'The server flagged this row.' %></div>
+              <% if (e.detail) { %><div class="exception-detail"><%= e.detail %></div><% } %>
+              <div class="list-sub mono mt-1">trans_id <a href="/admin/bags/<%= e.trans_id %>"><%= e.trans_id %></a></div>
+            </div>
+            <div class="exception-actions">
+              <% if (e.resolved_flag === 'Y') { %>
+                <span class="pill pill-success"><i class="bi bi-check2"></i>Reviewed</span>
+                <div class="list-sub mt-1">by <%= e.resolved_by %><%= e.resolved_at ? ', ' + dateTimeIst(e.resolved_at) : '' %></div>
+              <% } else { %>
+                <form method="post" action="/admin/exceptions/<%= e.id %>/resolve">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="customer_id" value="<%= cid %>">
+                  <input type="hidden" name="back" value="<%= back %>">
+                  <button class="btn btn-sm btn-light" type="submit"><i class="bi bi-check2-square me-1"></i>Mark reviewed</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+          <% if (e.payloadText) { %>
+            <details class="payload">
+              <summary><i class="bi bi-code-slash"></i> What the device sent</summary>
+              <pre><%= e.payloadText %></pre>
+            </details>
+          <% } %>
+        </article>
+      <% }) %>
+    </div>
+    <div class="card card-soft mt-3"><%- include('partials/pager') %></div>
+  <% } %>
+<% } %>
+<%- include('partials/shell-end') %>

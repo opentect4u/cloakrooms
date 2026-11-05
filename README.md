@@ -132,6 +132,7 @@ rules, validation and audit columns are shared.
 - **Security**: own CSP (`'self'` only, no inline script or style), no-store pages, sign-in rate
   limit. Bootstrap, Bootstrap Icons and the Plus Jakarta Sans font are served from `node_modules`
   (no CDN), so the panel also works on an offline LAN.
+- **Pages**: dashboard · customers (overview, users, tariff, shifts, shift roster, receipt layout with logo and live preview, settings, subscriptions, payments) · reports · sync exceptions · bag search · GST rates · ID proofs · app releases · super admins.
 - **Files**: `src/admin/` (routes, session, CSRF, dashboard service), `views/admin/` (EJS),
   `public/admin/` (CSS, JS, images). The Docker runtime image copies `views/` and `public/`.
 - Disable with `ADMIN_PANEL_ENABLED=false`.

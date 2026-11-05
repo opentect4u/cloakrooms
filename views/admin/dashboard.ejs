@@ -157,7 +157,7 @@
             <li class="list-row">
               <span class="avatar avatar-soft"><%= initials(r.customer_name) %></span>
               <div class="list-main">
-                <div class="list-title"><%= r.customer_name %></div>
+                <a class="list-title d-block cell-link" href="/admin/customers/<%= r.customer_id %>/registrations"><%= r.customer_name %></a>
                 <div class="list-sub"><%= r.renewal_dt ? 'Renews ' + date(r.renewal_dt) : 'No registration yet' %><%= r.state ? ' · ' + r.state : '' %></div>
               </div>
               <% if (r.status === 'expired') { %>
@@ -197,7 +197,7 @@
               <span class="rank rank-<%= i + 1 %>"><%= i + 1 %></span>
               <div class="list-main">
                 <div class="d-flex justify-content-between gap-2">
-                  <span class="list-title"><%= s.customer_name %></span>
+                  <a class="list-title cell-link" href="/admin/customers/<%= s.customer_id %>"><%= s.customer_name %></a>
                   <span class="fw-semibold text-nowrap"><%= inr(s.net, true) %></span>
                 </div>
                 <svg class="share-bar" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
@@ -233,7 +233,7 @@
             <li class="list-row">
               <span class="avatar avatar-warning"><i class="bi bi-exclamation-triangle"></i></span>
               <div class="list-main">
-                <div class="list-title"><%= e.customer_name %></div>
+                <a class="list-title d-block cell-link" href="/admin/customers/<%= e.customer_id %>"><%= e.customer_name %></a>
                 <div class="list-sub">Latest <%= dateTimeIst(e.latest) %> IST</div>
               </div>
               <span class="pill pill-warning"><%= plural(e.open, 'open', 'open') %></span>

@@ -1,0 +1,120 @@
+<%- include('../partials/shell-start') %>
+<%- include('../partials/customer-head') %>
+<% var setBase = base + '/settings'; var groupIcons = { General: 'gear', Billing: 'receipt-cutoff', Printing: 'printer', Reports: 'bar-chart' }; %>
+
+<div class="section-head">
+  <div>
+    <h2 class="section-title"><i class="bi bi-sliders"></i>Settings</h2>
+    <p class="section-sub">Customer-wide values, sent to every device of this station at sign-in and sync. Changes apply from the next sync.</p>
+  </div>
+</div>
+
+<div class="row g-3 g-xl-4">
+  <% groups.forEach(function (g) { %>
+    <div class="col-xl-6">
+      <section class="card card-soft h-100" aria-labelledby="g-<%= g.group %>">
+        <div class="card-head">
+          <h3 class="card-title" id="g-<%= g.group %>"><i class="bi bi-<%= groupIcons[g.group] %> me-2 text-primary"></i><%= g.group %></h3>
+        </div>
+        <ul class="setting-list">
+          <% g.items.forEach(function (it) { var input = it.meta.input; var auto = input.kind === 'yn' || input.kind === 'select'; %>
+            <li class="setting-row<%= focus === it.name ? ' is-saved' : '' %>" id="<%= it.name %>">
+              <span class="setting-icon"><i class="bi bi-<%= it.meta.icon %>"></i></span>
+              <div class="setting-main">
+                <div class="setting-label"><%= it.meta.label %></div>
+                <div class="setting-help"><%= it.meta.help %></div>
+              </div>
+              <form class="setting-form" method="post" action="<%= setBase %>/<%= it.name %>"<%- auto ? ' data-autosubmit' : '' %>>
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <% if (input.kind === 'yn') { %>
+                  <div class="seg" role="radiogroup" aria-label="<%= it.meta.label %>">
+                    <input class="btn-check" type="radio" name="setting_value" id="<%= it.name %>-Y" value="Y"<%= it.value === 'Y' ? ' checked' : '' %>>
+                    <label class="seg-btn" for="<%= it.name %>-Y">On</label>
+                    <input class="btn-check" type="radio" name="setting_value" id="<%= it.name %>-N" value="N"<%= it.value === 'N' ? ' checked' : '' %>>
+                    <label class="seg-btn" for="<%= it.name %>-N">Off</label>
+                  </div>
+                <% } else if (input.kind === 'select') { %>
+                  <select class="form-select form-select-sm" name="setting_value" aria-label="<%= it.meta.label %>">
+                    <% if (!it.isSet) { %><option value="">Not set</option><% } %>
+                    <% input.options.forEach(function (o) { %><option value="<%= o[0] %>"<%= it.value === o[0] ? ' selected' : '' %>><%= o[1] %></option><% }) %>
+                  </select>
+                <% } else if (input.kind === 'int') { %>
+                  <div class="input-group input-group-sm">
+                    <input class="form-control" type="number" name="setting_value" value="<%= it.value %>" min="<%= input.min %>" max="<%= input.max %>" aria-label="<%= it.meta.label %>" required>
+                    <% if (input.suffix) { %><span class="input-group-text"><%= input.suffix %></span><% } %>
+                  </div>
+                <% } else { %>
+                  <div class="input-group input-group-sm">
+                    <input class="form-control" type="password" name="setting_value" placeholder="<%= it.isSet ? '•••••••• (set)' : 'Not set' %>" minlength="4" maxlength="64" autocomplete="new-password" aria-label="<%= it.meta.label %>">
+                  </div>
+                <% } %>
+                <button class="btn btn-sm btn-primary<%= auto ? ' autosave-btn' : '' %>" type="submit">Save</button>
+              </form>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    </div>
+  <% }) %>
+</div>
+
+<section class="card card-soft mt-4" id="overrides" aria-labelledby="overrides-title">
+  <div class="card-head">
+    <div>
+      <h3 class="card-title" id="overrides-title"><i class="bi bi-person-gear me-2 text-primary"></i>Per-user overrides</h3>
+      <div class="card-sub">A value here replaces the customer-wide one for that user only.</div>
+    </div>
+  </div>
+  <% if (overrides.length) { %>
+    <div class="table-responsive">
+      <table class="table table-modern align-middle mb-0">
+        <thead><tr><th scope="col">User</th><th scope="col">Setting</th><th scope="col">Value</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+          <% overrides.forEach(function (o) { %>
+            <tr>
+              <td class="fw-semibold"><%= o.user %></td>
+              <td><%= o.label %></td>
+              <td><span class="pill pill-primary"><%= o.text %></span></td>
+              <td class="text-end">
+                <form method="post" action="<%= setBase %>/overrides/<%= o.id %>/delete" data-confirm="The customer-wide value applies to this user again." data-confirm-title="Remove this override?" data-confirm-button="Remove" data-confirm-tone="danger">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn-icon btn-icon-sm btn-icon-danger" type="submit" aria-label="Remove override"><i class="bi bi-trash3"></i></button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <p class="px-4 text-body-secondary small mb-2">No overrides. Every user follows the customer-wide settings.</p>
+  <% } %>
+  <form class="override-form" method="post" action="<%= setBase %>/overrides" data-busy-form>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small" for="ov-user">User</label>
+        <select class="form-select" id="ov-user" name="user_id" required>
+          <option value="">— Choose user —</option>
+          <% userOptions.forEach(function (o) { %><option value="<%= o[0] %>"><%= o[1] %></option><% }) %>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small" for="ov-name">Setting</label>
+        <select class="form-select" id="ov-name" name="setting_name" required>
+          <option value="">— Choose setting —</option>
+          <% settingOptions.forEach(function (o) { %><option value="<%= o[0] %>"><%= o[1] %></option><% }) %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small" for="ov-value">Value</label>
+        <input class="form-control" id="ov-value" name="setting_value" placeholder="Y, N, 30…" required>
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-primary" type="submit"><span class="btn-label"><i class="bi bi-plus-lg me-1"></i>Add</span><span class="btn-busy"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></span></button>
+      </div>
+    </div>
+    <div class="form-text">Values: Y / N for on/off settings; D, M or Y for number restart; C or U for payment mode; 58 or 80 for paper width; minutes or days as numbers.</div>
+  </form>
+</section>
+<%- include('../partials/shell-end') %>

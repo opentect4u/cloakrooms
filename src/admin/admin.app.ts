@@ -16,6 +16,13 @@ import { isProd } from '../config/env';
 import { ApiError } from '../core/http/ApiError';
 import { mapMysqlError } from '../core/middleware/errorHandler';
 import { authPages, loginErrorMessage } from './auth.routes';
+import { adminsRoutes } from './admins.routes';
+import { bagsRoutes } from './bags.routes';
+import { customersRoutes } from './customers.routes';
+import { exceptionsRoutes } from './exceptions.routes';
+import { releasesRoutes } from './releases.routes';
+import { reportsRoutes } from './reports.routes';
+import { globalResourceRoutes } from './resource.routes';
 import { clearAuthCookies } from './cookies';
 import { isCsrfError, issueCsrf } from './csrf';
 import { dashboard } from './dashboard.service';
@@ -84,6 +91,15 @@ function adminRouter(): Router {
       });
     }),
   );
+
+  const secure = [panelAuth(), loadMe];
+  router.use('/customers', ...secure, customersRoutes());
+  router.use('/reports', ...secure, reportsRoutes());
+  router.use('/exceptions', ...secure, exceptionsRoutes());
+  router.use('/bags', ...secure, bagsRoutes());
+  router.use('/releases', ...secure, releasesRoutes());
+  router.use('/admins', ...secure, adminsRoutes());
+  router.use(...secure, globalResourceRoutes());
 
   router.use(panelAuth(), loadMe, (_req, res) => {
     page(res, 'admin/error', { title: 'Not found', status: 404, message: 'Page not found.' }, 404);

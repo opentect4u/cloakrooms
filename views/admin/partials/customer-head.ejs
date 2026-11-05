@@ -1,0 +1,32 @@
+<div class="cust-head">
+  <a class="back-link" href="/admin/customers"><i class="bi bi-arrow-left"></i> All customers</a>
+  <div class="cust-hero">
+    <span class="avatar avatar-xl"><%= initials(customer.customer_name) %></span>
+    <div class="cust-hero-main">
+      <h1 class="cust-title"><%= customer.customer_name %></h1>
+      <div class="cust-meta">
+        <% if (customer.state) { %><span><i class="bi bi-geo-alt"></i><%= customer.state %></span><% } %>
+        <span><i class="bi bi-hash"></i>ID <%= customer.customer_id %></span>
+        <% if (customer.active_flag === 'Y') { %>
+          <span class="pill pill-success"><i class="bi bi-check-circle"></i>Active</span>
+        <% } else { %>
+          <span class="pill pill-danger"><i class="bi bi-slash-circle"></i>Inactive</span>
+        <% } %>
+        <span class="pill pill-<%= subscription.tone === 'success' ? 'primary' : subscription.tone %>">
+          <i class="bi bi-<%= subscription.tone === 'success' ? 'calendar-check' : subscription.tone === 'warning' ? 'hourglass-split' : 'calendar-x' %>"></i>
+          <%= subscription.label %><%= customer.renewal_dt ? ' · renews ' + date(customer.renewal_dt) : '' %>
+        </span>
+      </div>
+    </div>
+    <div class="cust-actions">
+      <a class="btn btn-light" href="<%= base %>/edit"><i class="bi bi-pencil-square me-1"></i>Edit details</a>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Customer sections">
+    <% tabs.forEach(function (t) { %>
+      <a class="tab<%= tab === t.key ? ' is-active' : '' %>" href="<%= base + t.path %>"<%- tab === t.key ? ' aria-current="page"' : '' %>>
+        <i class="bi bi-<%= t.icon %>"></i><span><%= t.label %></span>
+      </a>
+    <% }) %>
+  </nav>
+</div>
