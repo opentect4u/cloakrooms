@@ -338,7 +338,8 @@ describe('seeds', () => {
     expect(proofs.filter((p) => p.m === 'Y').map((p) => p.n)).toEqual(['Aadhaar Card']);
 
     const [gst] = await conn.query<RowDataPacket[]>(
-      'SELECT cgst_pct, sgst_pct, igst_pct, effective_from FROM md_gst',
+      // Seeded rows only: masters.test.ts adds GST rows concurrently.
+      `SELECT cgst_pct, sgst_pct, igst_pct, effective_from FROM md_gst WHERE created_by = 'system'`,
     );
     expect(gst).toEqual([
       { cgst_pct: '9.00', sgst_pct: '9.00', igst_pct: '0.00', effective_from: '2017-07-01' },
