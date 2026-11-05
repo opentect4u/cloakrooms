@@ -1,0 +1,10 @@
+<% if (typeof flash !== 'undefined' && flash) { %>
+  <% var flashIcon = { success: 'check-circle-fill', danger: 'x-octagon-fill', warning: 'exclamation-triangle-fill', info: 'info-circle-fill' }[flash.type] || 'info-circle-fill'; %>
+  <div class="toast-stack" aria-live="polite">
+    <div class="app-toast app-toast-<%= flash.type %>" role="status" data-autohide>
+      <i class="bi bi-<%= flashIcon %>"></i>
+      <span><%= flash.message %></span>
+      <button type="button" class="btn-close btn-close-sm" data-dismiss-toast aria-label="Dismiss"></button>
+    </div>
+  </div>
+<% } %>

@@ -1,0 +1,247 @@
+<%- include('partials/shell-start') %>
+<%
+  var c = d.collection;
+  var attention = [];
+  if (d.customers.expired) attention.push({ icon: 'calendar-x', tone: 'danger', text: plural(d.customers.expired, 'subscription') + ' expired' });
+  if (d.customers.expiring) attention.push({ icon: 'hourglass-split', tone: 'warning', text: plural(d.customers.expiring, 'renewal') + ' due in 30 days' });
+  if (d.exceptions.open) attention.push({ icon: 'exclamation-triangle', tone: 'warning', text: plural(d.exceptions.open, 'sync exception') + ' to review' });
+%>
+<div class="page-head">
+  <div>
+    <div class="page-eyebrow"><%= longToday() %></div>
+    <h1 class="page-title"><%= greeting() %>, <%= me.name.split(' ')[0] %> <span class="wave" aria-hidden="true">👋</span></h1>
+    <p class="page-sub">Here’s what’s happening across your cloak rooms today.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-light" href="/admin"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
+  </div>
+</div>
+
+<% if (attention.length) { %>
+  <div class="attention" role="note">
+    <span class="attention-label"><i class="bi bi-bell"></i> Needs attention</span>
+    <% attention.forEach(function (a) { %>
+      <span class="pill pill-<%= a.tone %>"><i class="bi bi-<%= a.icon %>"></i><%= a.text %></span>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="row g-3 g-xl-4 mb-4 stagger">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat stat-primary">
+      <div class="stat-top">
+        <span class="stat-label">Today’s collection</span>
+        <span class="stat-icon"><i class="bi bi-currency-rupee"></i></span>
+      </div>
+      <div class="stat-value"><%= inr(c.today) %></div>
+      <div class="stat-foot">
+        <% if (c.delta) { %>
+          <span class="delta delta-<%= c.delta.dir %>">
+            <i class="bi bi-arrow-<%= c.delta.dir === 'up' ? 'up-right' : c.delta.dir === 'down' ? 'down-right' : 'right' %>"></i><%= c.delta.pct %>%
+          </span>
+          <span>vs yesterday</span>
+        <% } else { %>
+          <span><%= plural(c.todayBills, 'bill') %> today</span>
+        <% } %>
+      </div>
+      <div class="stat-split">
+        <span><i class="bi bi-cash"></i> Cash <%= inr(c.todayCash, true) %></span>
+        <span><i class="bi bi-qr-code"></i> UPI <%= inr(c.todayUpi, true) %></span>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat">
+      <div class="stat-top">
+        <span class="stat-label">Bags in store</span>
+        <span class="stat-icon tone-amber"><i class="bi bi-suitcase2"></i></span>
+      </div>
+      <div class="stat-value"><%= num(d.bags.bags) %></div>
+      <div class="stat-foot"><span>on <%= plural(d.bags.receipts, 'receipt') %>, all stations</span></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat">
+      <div class="stat-top">
+        <span class="stat-label">Active customers</span>
+        <span class="stat-icon tone-teal"><i class="bi bi-buildings"></i></span>
+      </div>
+      <div class="stat-value"><%= num(d.customers.active) %><span class="stat-of"> / <%= num(d.customers.total) %></span></div>
+      <div class="stat-foot">
+        <% if (d.customers.inactive) { %><span><%= plural(d.customers.inactive, 'station') %> inactive</span>
+        <% } else { %><span>All stations active</span><% } %>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat">
+      <div class="stat-top">
+        <span class="stat-label">Online now</span>
+        <span class="stat-icon tone-green"><i class="bi bi-phone-vibrate"></i></span>
+      </div>
+      <div class="stat-value"><%= num(d.sessions.active) %></div>
+      <div class="stat-foot">
+        <span class="live-dot<%= d.sessions.active ? '' : ' is-off' %>"></span>
+        <span>devices at <%= plural(d.sessions.stations, 'station') %> · <%= plural(d.users.total, 'user') %> enabled</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 g-xl-4 mb-4">
+  <div class="col-xl-8">
+    <div class="card card-soft h-100">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Collection</h2>
+          <div class="card-sub">Last <%= c.trendDays %> days, all stations · <span class="fw-semibold text-body"><%= d.formatted.trendTotal %></span></div>
+        </div>
+        <span class="legend-note"><span class="swatch"></span>Net billed (₹, GST included)</span>
+      </div>
+      <div class="chart" data-chart>
+        <svg class="chart-svg" viewBox="0 0 <%= d.chart.width %> <%= d.chart.height %>" role="img"
+             aria-label="Column chart of net collection for the last <%= c.trendDays %> days; a table follows below.">
+          <% d.chart.ticks.forEach(function (t) { %>
+            <line class="chart-grid" x1="<%= d.chart.plotLeft %>" x2="<%= d.chart.plotRight %>" y1="<%= t.y %>" y2="<%= t.y %>"/>
+            <text class="chart-axis" x="<%= d.chart.plotLeft - 10 %>" y="<%= t.y + 4 %>" text-anchor="end"><%= t.label %></text>
+          <% }) %>
+          <% d.chart.columns.forEach(function (col, i) { %>
+            <% if (col.path) { %><path class="chart-bar<%= i === d.chart.columns.length - 1 ? ' is-today' : '' %>" d="<%= col.path %>"/><% } %>
+            <% if (col.showValue) { %><text class="chart-value" x="<%= col.cx %>" y="<%= col.valueY %>" text-anchor="middle"><%= col.valueShort %></text><% } %>
+            <text class="chart-axis<%= i === d.chart.columns.length - 1 ? ' is-today' : '' %>" x="<%= col.cx %>" y="<%= d.chart.baseline + 20 %>" text-anchor="middle"><%= i === d.chart.columns.length - 1 ? 'Today' : col.label %></text>
+            <rect class="chart-hit" x="<%= col.hit.x %>" y="<%= col.hit.y %>" width="<%= col.hit.w %>" height="<%= col.hit.h %>"
+                  tabindex="0" data-tip-title="<%= col.title %>" data-tip-value="<%= col.valueText %>" data-tip-detail="<%= col.detail %>"
+                  aria-label="<%= col.title %>: <%= col.valueText %>, <%= col.detail %>"/>
+          <% }) %>
+          <line class="chart-baseline" x1="<%= d.chart.plotLeft %>" x2="<%= d.chart.plotRight %>" y1="<%= d.chart.baseline + 0.5 %>" y2="<%= d.chart.baseline + 0.5 %>"/>
+        </svg>
+        <% if (d.chart.empty) { %>
+          <div class="chart-empty"><i class="bi bi-receipt"></i><span>No bills in the last <%= c.trendDays %> days yet.</span></div>
+        <% } %>
+      </div>
+      <details class="table-toggle">
+        <summary><i class="bi bi-table"></i> View as table</summary>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Day</th><th class="text-end">Bills</th><th class="text-end">Bags</th><th class="text-end">Cash</th><th class="text-end">UPI</th><th class="text-end">Net</th></tr></thead>
+            <tbody>
+              <% d.chartRows.slice().reverse().forEach(function (r) { %>
+                <tr><td><%= date(r.day) %></td><td class="text-end"><%= num(r.bills) %></td><td class="text-end"><%= num(r.bags) %></td>
+                  <td class="text-end"><%= inr(r.cash) %></td><td class="text-end"><%= inr(r.upi) %></td><td class="text-end fw-semibold"><%= inr(r.net) %></td></tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card card-soft h-100">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Renewals</h2>
+          <div class="card-sub">Expired or due within 30 days</div>
+        </div>
+        <span class="count-badge"><%= d.renewals.length %></span>
+      </div>
+      <% if (!d.renewals.length) { %>
+        <div class="empty-state">
+          <div class="empty-icon is-success"><i class="bi bi-calendar-check"></i></div>
+          <div class="empty-title-sm">All subscriptions are current</div>
+          <div class="empty-text small">Nothing expires in the next 30 days.</div>
+        </div>
+      <% } else { %>
+        <ul class="list-rows">
+          <% d.renewals.forEach(function (r) { %>
+            <li class="list-row">
+              <span class="avatar avatar-soft"><%= initials(r.customer_name) %></span>
+              <div class="list-main">
+                <div class="list-title"><%= r.customer_name %></div>
+                <div class="list-sub"><%= r.renewal_dt ? 'Renews ' + date(r.renewal_dt) : 'No registration yet' %><%= r.state ? ' · ' + r.state : '' %></div>
+              </div>
+              <% if (r.status === 'expired') { %>
+                <span class="pill pill-danger"><i class="bi bi-x-circle"></i><%= r.daysLeft === null ? 'Not active' : 'Expired' %></span>
+              <% } else if (r.status === 'soon') { %>
+                <span class="pill pill-warning"><i class="bi bi-hourglass-split"></i><%= r.daysLeft === 0 ? 'Today' : plural(r.daysLeft, 'day') %></span>
+              <% } else { %>
+                <span class="pill pill-primary"><i class="bi bi-calendar-event"></i><%= plural(r.daysLeft, 'day') %></span>
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 g-xl-4">
+  <div class="col-xl-7">
+    <div class="card card-soft h-100">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Top stations</h2>
+          <div class="card-sub">By net collection, last 30 days</div>
+        </div>
+      </div>
+      <% if (!d.topStations.length) { %>
+        <div class="empty-state">
+          <div class="empty-icon"><i class="bi bi-trophy"></i></div>
+          <div class="empty-title-sm">No billing yet</div>
+          <div class="empty-text small">Stations appear here once their devices sync bills.</div>
+        </div>
+      <% } else { %>
+        <ul class="list-rows">
+          <% d.topStations.forEach(function (s, i) { %>
+            <li class="list-row">
+              <span class="rank rank-<%= i + 1 %>"><%= i + 1 %></span>
+              <div class="list-main">
+                <div class="d-flex justify-content-between gap-2">
+                  <span class="list-title"><%= s.customer_name %></span>
+                  <span class="fw-semibold text-nowrap"><%= inr(s.net, true) %></span>
+                </div>
+                <svg class="share-bar" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+                  <rect class="share-track" width="100" height="6" rx="3"/>
+                  <rect class="share-fill" width="<%= Math.max(2, s.share) %>" height="6" rx="3"/>
+                </svg>
+                <div class="list-sub"><%= plural(s.bills, 'bill') %> · <%= plural(s.bags, 'bag') %><%= s.state ? ' · ' + s.state : '' %></div>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card card-soft h-100">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Sync exceptions</h2>
+          <div class="card-sub">Rows the server flagged for review</div>
+        </div>
+        <span class="count-badge<%= d.exceptions.open ? ' is-warning' : '' %>"><%= num(d.exceptions.open) %> open</span>
+      </div>
+      <% if (!d.exceptions.open) { %>
+        <div class="empty-state">
+          <div class="empty-icon is-success"><i class="bi bi-check2-circle"></i></div>
+          <div class="empty-title-sm">All clear</div>
+          <div class="empty-text small">Every pushed bill matched the server’s calculation.</div>
+        </div>
+      <% } else { %>
+        <ul class="list-rows">
+          <% d.exceptions.byCustomer.forEach(function (e) { %>
+            <li class="list-row">
+              <span class="avatar avatar-warning"><i class="bi bi-exclamation-triangle"></i></span>
+              <div class="list-main">
+                <div class="list-title"><%= e.customer_name %></div>
+                <div class="list-sub">Latest <%= dateTimeIst(e.latest) %> IST</div>
+              </div>
+              <span class="pill pill-warning"><%= plural(e.open, 'open', 'open') %></span>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('partials/shell-end') %>

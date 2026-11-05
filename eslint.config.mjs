@@ -35,5 +35,10 @@ export default tseslint.config(
     files: ['scripts/**', 'tests/**'],
     rules: { 'no-console': 'off' },
   },
+  {
+    // Admin panel browser scripts: plain ES5-style scripts, no bundler.
+    files: ['public/**/*.js'],
+    languageOptions: { sourceType: 'script', globals: { ...globals.browser } },
+  },
   prettier,
 );

@@ -58,6 +58,11 @@ const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((v) => v === 'true'),
+    /** Super admin web panel at /admin. */
+    ADMIN_PANEL_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
     /** Folder served at /downloads (APK files). Relative paths resolve from the working dir. */
     DOWNLOADS_DIR: z.string().min(1).default('downloads'),
   })

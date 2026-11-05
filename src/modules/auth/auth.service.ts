@@ -146,7 +146,14 @@ async function assertAppVersionAllowed(versionCode: number | undefined) {
   }
 }
 
-export async function login(input: LoginInput) {
+export interface LoginOptions {
+  /** Only these user types may log in here (admin panel: S); checked before a session exists. */
+  userTypes?: readonly UserType[];
+  /** Message for a user type outside `userTypes`. */
+  wrongTypeMessage?: string;
+}
+
+export async function login(input: LoginInput, opts: LoginOptions = {}) {
   await assertAppVersionAllowed(input.version_code);
   const user = await fetchOne<UserRow>(
     'md_user',
@@ -166,6 +173,10 @@ export async function login(input: LoginInput) {
 
   if (user.allow_flag !== 'Y')
     throw ApiError.forbidden('User is blocked; contact your administrator');
+  // After the password check, so a wrong password never reveals the user type.
+  if (opts.userTypes && !opts.userTypes.includes(user.user_type)) {
+    throw ApiError.forbidden(opts.wrongTypeMessage ?? 'Not allowed to sign in here');
+  }
 
   let customer: CustomerRow | null = null;
   if (user.user_type !== 'S') {

@@ -70,6 +70,7 @@ Validated at boot with zod — the process exits on any invalid value. See [`.en
 | `SHUTDOWN_TIMEOUT_MS` | `15000` | graceful-shutdown drain time |
 | `DOWNLOADS_DIR` | `downloads` | APKs served at `/downloads/*.apk` |
 | `API_DOCS_ENABLED` | `true` | Swagger UI + spec at `/api/docs` |
+| `ADMIN_PANEL_ENABLED` | `true` | Super admin web panel at `/admin` |
 | `RATE_LIMIT_MULTIPLIER` | `1` | load testing only; must be 1 in production |
 
 ## Architecture
@@ -115,6 +116,25 @@ tests/unit · tests/integration       deploy/ (nginx, PM2, compose, backups)
 - The tenant (`customer_id`) comes from the token only; a super admin passes it explicitly.
 - `password_hash` / token hashes are never selected unless a caller names them; never returned.
 - Every non-public route requires a valid session (route audit test fails otherwise).
+
+## Super admin web panel
+
+Server-rendered EJS at `/admin` for Synergic super admins (`user_type = 'S'`). It calls the same
+services as the API (`crudService`, `users.service`, `reports.service`, the DML layer), so tenant
+rules, validation and audit columns are shared.
+
+- **Sign-in**: same JWTs and `td_user_session` row as the API, carried in httpOnly
+  `SameSite=Strict` cookies limited to `/admin`; silent refresh; CSRF token in every form.
+  Station staff are refused before a session is created.
+- **One session per user**: panel sessions use `device_id = admin-panel`, so signing in again from
+  the panel replaces the old panel session, while an app session of the same user blocks it
+  (`409 SESSION_ACTIVE` shown on the form).
+- **Security**: own CSP (`'self'` only, no inline script or style), no-store pages, sign-in rate
+  limit. Bootstrap, Bootstrap Icons and the Plus Jakarta Sans font are served from `node_modules`
+  (no CDN), so the panel also works on an offline LAN.
+- **Files**: `src/admin/` (routes, session, CSRF, dashboard service), `views/admin/` (EJS),
+  `public/admin/` (CSS, JS, images). The Docker runtime image copies `views/` and `public/`.
+- Disable with `ADMIN_PANEL_ENABLED=false`.
 
 ## Sync contract (summary)
 

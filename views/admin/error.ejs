@@ -1,0 +1,28 @@
+<% if (typeof me !== 'undefined' && me && me.name) { %>
+  <%- include('partials/shell-start') %>
+<% } else { %>
+  <%- include('partials/head') %>
+  <body class="admin-body"><main class="content content-bare" id="main">
+<% } %>
+<div class="empty-state empty-state-lg">
+  <div class="empty-icon <%= status >= 500 ? 'is-danger' : '' %>">
+    <i class="bi bi-<%= status === 404 ? 'signpost-split' : status === 403 ? 'shield-lock' : status >= 500 ? 'cloud-slash' : 'exclamation-circle' %>"></i>
+  </div>
+  <div class="empty-code"><%= status %></div>
+  <h1 class="empty-title"><%= status === 404 ? 'We couldn’t find that page' : status === 403 ? 'Not allowed' : 'Something went wrong' %></h1>
+  <p class="empty-text"><%= message %></p>
+  <div class="d-flex gap-2 justify-content-center">
+    <a class="btn btn-primary" href="/admin"><i class="bi bi-house me-1"></i>Back to dashboard</a>
+  </div>
+  <% if (typeof requestId !== 'undefined' && requestId) { %>
+    <div class="small text-body-tertiary mt-3">Reference: <code><%= requestId %></code></div>
+  <% } %>
+  <% if (typeof details !== 'undefined' && details) { %>
+    <pre class="error-details"><%= details %></pre>
+  <% } %>
+</div>
+<% if (typeof me !== 'undefined' && me && me.name) { %>
+  <%- include('partials/shell-end') %>
+<% } else { %>
+  </main></body></html>
+<% } %>

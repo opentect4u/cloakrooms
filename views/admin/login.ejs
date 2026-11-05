@@ -1,0 +1,85 @@
+<%- include('partials/head') %>
+<body class="auth-body">
+<div class="auth">
+  <section class="auth-hero" aria-hidden="true">
+    <div class="auth-hero-copy">
+      <div class="hero-kicker"><span class="pulse-dot"></span> Live across every station</div>
+      <h2 class="hero-title">Every bag. Every counter. <span>One calm view.</span></h2>
+      <p class="hero-sub">Check-ins, bills and sync from all your cloak rooms, in one place.</p>
+    </div>
+    <div class="scene-wrap">
+      <%- include('partials/login-scene') %>
+      <div class="float-chip chip-in"><i class="bi bi-box-arrow-in-down"></i> Checked in · 3 bags</div>
+      <div class="float-chip chip-bill"><i class="bi bi-receipt"></i> Bill U03-00125 · ₹70.00</div>
+      <div class="float-chip chip-sync"><i class="bi bi-arrow-repeat"></i> Synced just now</div>
+    </div>
+  </section>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <%- include('partials/brand') %>
+        <div>
+          <div class="brand-name">Cloak Room</div>
+          <div class="brand-sub">Synergic super admin</div>
+        </div>
+      </div>
+
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Sign in to manage stations, subscriptions and reports.</p>
+
+      <% if (typeof flash !== 'undefined' && flash) { %>
+        <div class="alert alert-<%= flash.type %> auth-alert" role="status"><i class="bi bi-info-circle"></i><span><%= flash.message %></span></div>
+      <% } %>
+      <% if (reason === 'expired' || reason === 'ended') { %>
+        <div class="alert alert-warning auth-alert" role="status">
+          <i class="bi bi-clock-history"></i>
+          <span><%= reason === 'expired' ? 'Your session timed out. Please sign in again.' : 'Your session has ended. Please sign in again.' %></span>
+        </div>
+      <% } %>
+      <% if (error) { %>
+        <div class="alert alert-danger auth-alert shake" role="alert"><i class="bi bi-exclamation-octagon"></i><span><%= error %></span></div>
+      <% } %>
+
+      <form method="post" action="/admin/login" class="auth-form" data-busy-form novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <% if (next) { %><input type="hidden" name="next" value="<%= next %>"><% } %>
+
+        <label class="form-label" for="user_id">User id</label>
+        <div class="input-icon">
+          <i class="bi bi-person"></i>
+          <input class="form-control form-control-lg" id="user_id" name="user_id" value="<%= userId %>"
+                 autocomplete="username" autocapitalize="none" spellcheck="false" required <%= userId ? '' : 'autofocus' %>>
+        </div>
+
+        <label class="form-label mt-3" for="password">Password</label>
+        <div class="input-icon">
+          <i class="bi bi-lock"></i>
+          <input class="form-control form-control-lg" id="password" name="password" type="password"
+                 autocomplete="current-password" required <%= userId ? 'autofocus' : '' %>>
+          <button class="input-action" type="button" data-toggle-password="password" aria-label="Show password">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+        <div class="caps-hint" data-caps-hint="password" hidden><i class="bi bi-capslock"></i> Caps Lock is on</div>
+
+        <button class="btn btn-primary btn-lg w-100 mt-4 btn-glow" type="submit">
+          <span class="btn-label">Sign in <i class="bi bi-arrow-right ms-1"></i></span>
+          <span class="btn-busy"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Signing in…</span>
+        </button>
+      </form>
+
+      <div class="auth-note">
+        <i class="bi bi-shield-lock"></i>
+        <span>One active session per account. Signing in here ends your earlier panel session; log out of the app first if you use it.</span>
+      </div>
+    </div>
+    <footer class="auth-foot">
+      <span>© Synergic Softek</span>
+      <button class="btn-link-plain" type="button" data-theme-toggle><i class="bi bi-circle-half"></i> Theme</button>
+    </footer>
+  </section>
+</div>
+<script src="/admin/assets/js/admin.js?v=<%= assetV %>"></script>
+</body>
+</html>

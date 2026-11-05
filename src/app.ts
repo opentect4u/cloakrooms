@@ -11,6 +11,7 @@ import { errorHandler } from './core/middleware/errorHandler';
 import { notFound } from './core/middleware/notFound';
 import { floodLimiter } from './core/middleware/rateLimit';
 import { requestId } from './core/middleware/requestId';
+import { mountAdmin } from './admin/admin.app';
 import { docsRouter } from './docs/docs.routes';
 import { downloadsRouter } from './modules/app-version/downloads';
 import { apiRoutes } from './routes';
@@ -69,6 +70,8 @@ export function createApp() {
     next();
   });
   app.use(API_PREFIX, apiRoutes);
+  // Super admin web panel (server-rendered, cookie session, own CSP and error pages).
+  if (env.ADMIN_PANEL_ENABLED) mountAdmin(app);
 
   app.use(notFound);
   app.use(errorHandler);

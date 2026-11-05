@@ -24,6 +24,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+# Admin panel templates and static assets (served from disk, not compiled).
+COPY views ./views
+COPY public ./public
 RUN mkdir -p downloads && chown -R node:node /app
 USER node
 EXPOSE 4000
