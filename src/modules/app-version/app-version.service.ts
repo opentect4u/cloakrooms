@@ -1,6 +1,7 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import { SYSTEM_CONTEXT, type RequestContext } from '../../core/context';
-import { fetch, fetchOne, raw, save } from '../../core/db/dml';
+import { fetch, fetchOne, raw, save, softDelete } from '../../core/db/dml';
+import { ApiError } from '../../core/http/ApiError';
 import type { CreateVersionInput } from './app-version.schema';
 
 const COLUMNS = [
@@ -41,4 +42,22 @@ export async function latestVersion(current?: number) {
 export async function createVersion(ctx: RequestContext, input: CreateVersionInput) {
   const { insertId } = await save('md_app_version', { ...input }, { flag: 'I' }, ctx);
   return fetchOne('md_app_version', { id: insertId }, ctx, undefined, { columns: COLUMNS });
+}
+
+/** Live releases, newest first (admin panel). */
+export function listVersions(ctx: RequestContext, page: number, limit: number) {
+  return fetch(
+    'md_app_version',
+    { columns: COLUMNS, orderBy: [{ column: 'version_code', dir: 'desc' }], page, limit },
+    ctx,
+  );
+}
+
+/**
+ * Withdraws a release (soft delete): devices stop being offered it, and a mistakenly mandatory
+ * release stops refusing logins (426) of older versions.
+ */
+export async function withdrawVersion(ctx: RequestContext, id: number) {
+  const affected = await softDelete('md_app_version', { id }, ctx);
+  if (!affected) throw ApiError.notFound('Release not found');
 }
