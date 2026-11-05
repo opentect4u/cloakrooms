@@ -117,6 +117,14 @@ it('generates docs/FRONTEND_API_GUIDE.md', async () => {
     body: { current_password: 'Admin@2026', new_password: 'Admin@2028' },
   });
 
+  // Station admin: own cloak room details (A4).
+  await call('customer_me', 'get', '/customers/me', { token: A });
+  await call('customer_me_update', 'patch', '/customers/me', {
+    token: A,
+    body: { customer_addr: 'Howrah Station, Platform 1, Howrah', gst_no: '19aabcs1234c1z5', upi_id: 'howrah.cloak@oksbi' },
+  });
+  await call('customer_me_empty', 'patch', '/customers/me', { token: A, body: { user_limit: 50 } });
+
   const op1 = await call('user_create', 'post', '/users', {
     token: A,
     body: { user_id: 'howrah.op1', user_name: 'Ravi Kumar', user_code: 'U03', password: 'Counter@123', user_type: 'O' },
@@ -995,6 +1003,38 @@ ${crudBlock({
   samples: { create: 'idproof_create', list: 'idproof_list' },
 })}
 
+### Own cloak room details (A edits, A and O read)
+
+${endpoint({
+  method: 'GET',
+  path: '/api/v1/customers/me',
+  title: 'own cloak room details',
+  auth: 'A, O (S → 403: it has no own customer, use `/customers/:id`)',
+  notes: 'Same shape as `customer` in the login payload (`GET /auth/me` returns the same object). Use it to refresh the Cloak room screen.',
+  samples: ['customer_me'],
+})}
+
+${endpoint({
+  method: 'PATCH',
+  path: '/api/v1/customers/me',
+  title: 'station admin edits own cloak room details',
+  auth: 'A only (O and S → 403)',
+  notes:
+    'Partial update: send the changed fields (at least one). Same rules as the super-admin customer update. `user_limit`, `active_flag`, `renewal_dt`, `remarks` and `customer_id` are licence/platform fields and are silently ignored here (a body with only those → 400). Returns the updated customer: store it as the local `md_customer` row. A new `gst_no` is stamped by the server on bills pushed **after** the change; bills already stored keep theirs. Other devices of the customer get the new values at their next login or `GET /auth/me` / `GET /customers/me` (pull does not carry the customer).',
+  body: [
+    ['customer_name', '1–155 chars'],
+    ['customer_addr', '1–200 chars'],
+    ['state', '≤ 50 chars'],
+    ['pin_code', '6 digits'],
+    ['mobile_no', '7–20 chars of digits, `+`, `-`, space'],
+    ['email', 'email, ≤ 150 chars'],
+    ['gst_no', '15-char GSTIN (upper-cased by the server)'],
+    ['upi_id', '`name@bank` (used for the UPI QR)'],
+  ],
+  samples: ['customer_me_update', 'customer_me_empty'],
+  errors: '400 `VALIDATION_ERROR` (bad field, or nothing to change), 403 `FORBIDDEN` (not a station admin), 403 `PASSWORD_CHANGE_REQUIRED`.',
+})}
+
 ### Super admin only (S): customers, registrations, payments, app releases
 
 ${crudBlock({
@@ -1328,6 +1368,7 @@ ${sample('forbidden', { request: false })}
 | POS home (offline) | local DB; background \`POST /sync/push\` then \`GET /sync/pull\` every \`SYNC_INTERVAL_MIN\` |
 | Check-in | local insert (new \`trans_id\`, next receipt no), print receipt with QR, push later |
 | Check-out (scan QR / search) | local row by \`trans_id\`; if missing and online \`GET /luggage/:trans_id\` or \`GET /luggage?search=\`; compute bill (§7); print; push |
+| Admin: cloak room details | \`GET /customers/me\`, \`PATCH /customers/me\` |
 | Admin: users | \`/users\` (+ allow, reset-password, force-logout) |
 | Admin: masters | \`/rates\`, \`/shifts\`, \`/shift-assignments\`, \`/header-footer\` (+ \`/logo\`), \`/settings\` |
 | Admin: reports | \`/reports/*\`, exceptions + resolve |

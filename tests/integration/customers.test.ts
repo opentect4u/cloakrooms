@@ -2,7 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app';
 import { DEFAULT_SETTINGS } from '../../src/config/defaults';
-import { fetch } from '../../src/core/db/dml';
+import { fetch, fetchOne } from '../../src/core/db/dml';
 import { closeDb, db } from '../../src/core/db/pool';
 import { loadRegistry } from '../../src/core/db/registry';
 import { toIstDate } from '../../src/core/utils/time';
@@ -283,5 +283,110 @@ describe('customer payments', () => {
       .set(sa)
       .send({ base_amt: '1', net_amt: '5' });
     expect(updBad.status).toBe(400);
+  });
+});
+
+describe('own customer (/customers/me, A4)', () => {
+  let ownId: number;
+  let otherId: number;
+  let a: Record<string, string>;
+  let o: Record<string, string>;
+
+  beforeAll(async () => {
+    ownId = await seedCustomer({ userLimit: 5 });
+    otherId = await seedCustomer();
+    a = bearer((await tokensFor(app, await seedUser(ownId, { type: 'A' }), 'me-admin')).access);
+    o = bearer((await tokensFor(app, await seedUser(ownId, { type: 'O' }), 'me-op')).access);
+  });
+
+  it('GET returns the login customer shape to A and O, and is refused to S', async () => {
+    const res = await request(app).get('/api/v1/customers/me').set(a);
+    expect(res.status).toBe(200);
+    expect(res.body.data.customer_id).toBe(ownId);
+    expect(Object.keys(res.body.data).sort()).toEqual(
+      [
+        'customer_id',
+        'customer_name',
+        'customer_addr',
+        'state',
+        'pin_code',
+        'mobile_no',
+        'email',
+        'gst_no',
+        'upi_id',
+        'renewal_dt',
+        'user_limit',
+        'active_flag',
+      ].sort(),
+    );
+    expect((await request(app).get('/api/v1/customers/me').set(o)).status).toBe(200);
+    expect((await request(app).get('/api/v1/customers/me').set(sa)).status).toBe(403);
+  });
+
+  it('station admin updates own contact, GSTIN and UPI details', async () => {
+    const res = await request(app).patch('/api/v1/customers/me').set(a).send({
+      customer_name: 'Howrah Cloak Room',
+      customer_addr: 'Platform 1, Howrah',
+      state: 'West Bengal',
+      pin_code: '711101',
+      mobile_no: '9830098300',
+      email: 'howrah@example.in',
+      gst_no: '19aaaaa1111a1z1',
+      upi_id: 'howrah@okhdfc',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      customer_id: ownId,
+      customer_name: 'Howrah Cloak Room',
+      gst_no: '19AAAAA1111A1Z1',
+      upi_id: 'howrah@okhdfc',
+    });
+    const row = await fetchOne('md_customer', { customer_id: ownId }, superAdmin);
+    expect(row).toMatchObject({ gst_no: '19AAAAA1111A1Z1', sync_flag: 'N' });
+    expect(row?.updated_by).toBeTruthy();
+
+    // Devices refresh it through /auth/me (and the next login).
+    const me = await request(app).get('/api/v1/auth/me').set(a);
+    expect(me.body.data.customer.upi_id).toBe('howrah@okhdfc');
+  });
+
+  it('ignores licence fields and another customer id; empty or invalid bodies → 400', async () => {
+    const res = await request(app).patch('/api/v1/customers/me').set(a).send({
+      customer_id: otherId,
+      user_limit: 999,
+      active_flag: 'N',
+      remarks: 'hack',
+      renewal_dt: '2099-12-31',
+      upi_id: 'station@oksbi',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ customer_id: ownId, user_limit: 5, active_flag: 'Y' });
+    const other = await fetchOne('md_customer', { customer_id: otherId }, superAdmin);
+    expect(other?.upi_id).not.toBe('station@oksbi');
+
+    const onlyLicence = await request(app)
+      .patch('/api/v1/customers/me')
+      .set(a)
+      .send({ user_limit: 999 });
+    expect(onlyLicence.status).toBe(400);
+    expect(onlyLicence.body.code).toBe('VALIDATION_ERROR');
+
+    const bad = await request(app)
+      .patch('/api/v1/customers/me')
+      .set(a)
+      .send({ gst_no: '123', pin_code: '7000', upi_id: 'no-at-sign' });
+    expect(bad.status).toBe(400);
+    expect(bad.body.errors.map((e: { path: string }) => e.path).sort()).toEqual([
+      'gst_no',
+      'pin_code',
+      'upi_id',
+    ]);
+  });
+
+  it('operators and the super admin cannot PATCH /customers/me', async () => {
+    const body = { customer_name: 'Nope' };
+    expect((await request(app).patch('/api/v1/customers/me').set(o).send(body)).status).toBe(403);
+    expect((await request(app).patch('/api/v1/customers/me').set(sa).send(body)).status).toBe(403);
+    expect((await request(app).patch('/api/v1/customers/me').send(body)).status).toBe(401);
   });
 });

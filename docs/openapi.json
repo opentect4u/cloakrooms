@@ -8502,6 +8502,239 @@
         }
       }
     },
+    "/api/v1/customers/me": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Own cloak room details",
+        "description": "The caller’s own customer, same shape as `customer` in the login payload. S has no own customer (403) and uses `/customers/:id`.\n\n**Roles:** A, O",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomerPublic"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message",
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED / TOKEN_EXPIRED / SESSION_ENDED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (or another tenant’s record)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Station admin edits own cloak room details",
+        "description": "Partial update of `customer_name, customer_addr, state, pin_code, mobile_no, email, gst_no, upi_id` (same rules as the super-admin customer update; at least one field). `user_limit`, `active_flag`, `renewal_dt` and `remarks` stay super-admin only and are ignored here. A new `gst_no` is stamped on bills pushed after the change; stored bills keep theirs. Returns the updated customer.\n\n**Roles:** A",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customer_name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 155
+                  },
+                  "customer_addr": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "state": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "pin_code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  },
+                  "mobile_no": {
+                    "type": "string",
+                    "pattern": "^[0-9+\\- ]{7,20}$"
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "format": "email"
+                  },
+                  "gst_no": {
+                    "type": "string",
+                    "pattern": "^\\d{2}[A-Z0-9]{13}$"
+                  },
+                  "upi_id": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "pattern": "^[\\w.-]{2,}@[A-Za-z]{2,64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomerPublic"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message",
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR / BAD_REQUEST / INVALID_JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED / TOKEN_EXPIRED / SESSION_ENDED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND (or another tenant’s record)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/customers/{id}/summary": {
       "get": {
         "tags": [

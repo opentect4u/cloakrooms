@@ -18,6 +18,7 @@ import {
 import { toIstDate, toUtcString } from '../../core/utils/time';
 import { latestVersion } from '../app-version/app-version.service';
 import { getCurrentCounters } from '../counters/counters.service';
+import { CUSTOMER_PUBLIC_COLUMNS } from '../customers/customers.schema';
 import { loadMasters, loadSettings } from '../masters/masters.service';
 import type { ChangePasswordInput, LoginInput } from './auth.schema';
 import {
@@ -59,20 +60,6 @@ const USER_PUBLIC = [
   'user_type',
   'allow_flag',
   'must_change_pwd',
-];
-const CUSTOMER_PUBLIC = [
-  'customer_id',
-  'customer_name',
-  'customer_addr',
-  'state',
-  'pin_code',
-  'mobile_no',
-  'email',
-  'gst_no',
-  'upi_id',
-  'renewal_dt',
-  'user_limit',
-  'active_flag',
 ];
 
 const INVALID_LOGIN = 'Invalid user id or password';
@@ -128,7 +115,7 @@ function issueTokens(user: Pick<UserRow, 'id' | 'customer_id' | 'user_type'>, se
 
 async function getCustomer(customerId: number, conn?: Executor) {
   return fetchOne<CustomerRow>('md_customer', { customer_id: customerId }, SYSTEM_CONTEXT, conn, {
-    columns: CUSTOMER_PUBLIC,
+    columns: CUSTOMER_PUBLIC_COLUMNS,
   });
 }
 

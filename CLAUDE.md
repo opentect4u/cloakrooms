@@ -182,7 +182,7 @@ Seeds: super admin (`user_type='S'`, password from env), ID proofs (Aadhaar[mask
 - Any user of the same customer can check out a bag checked in by another user.
 - `md_customer.renewal_dt` is the column name everywhere.
 - Server is authoritative for masters; devices never create master rows.
-- **2026-11-03 (frontend requests A1–A8, B):** server supports grace minutes, GST-exclusive pricing, penalty without GST, and `GST_FLAG = N` = 0 % GST (Phase 11). Of the 20 new device settings only **shift login** is enforced by the server; the rest are stored/validated/synced only. Station admins (A) may edit their own customer via `/customers/me` (Phase 11). Bills get `gst_no` stamped by the server. No forced-login / session-takeover feature (A7 dropped). Login refuses an app `version_code` older than a live mandatory release (426).
+- **2026-11-03 (frontend requests A1–A8, B):** server supports grace minutes, GST-exclusive pricing, penalty without GST, and `GST_FLAG = N` = 0 % GST (Phase 11). Of the 20 new device settings only **shift login** is enforced by the server; the rest are stored/validated/synced only. Station admins (A) may edit their own customer via `/customers/me` (built early, 2026-11-05). Bills get `gst_no` stamped by the server. No forced-login / session-takeover feature (A7 dropped). Login refuses an app `version_code` older than a live mandatory release (426).
 
 ## 14. Open points (do not block; leave `TODO(open-point)` comments)
 
@@ -197,7 +197,7 @@ Summary-report fields · POS printer models (frontend) · Aadhaar legal confirma
 
 ## 16. Progress (update as you go)
 
-- [x] Phase 0 Bootstrap · [x] 1 DB & migrations · [x] 2 Core layer · [x] 3 Auth & sessions · [x] 4 Masters · [x] 5 Domain & numbering · [x] 6 Sync · [x] 7 Reports & app version · [x] 8 Hardening & tests · [x] 9 Docs & deploy · [x] 10 Frontend requests I (password change, users list, QR check-out, bill GSTIN, version gate) · [ ] 11 Frontend requests II (settings keys, billing modes, shift login, /customers/me)
+- [x] Phase 0 Bootstrap · [x] 1 DB & migrations · [x] 2 Core layer · [x] 3 Auth & sessions · [x] 4 Masters · [x] 5 Domain & numbering · [x] 6 Sync · [x] 7 Reports & app version · [x] 8 Hardening & tests · [x] 9 Docs & deploy · [x] 10 Frontend requests I (password change, users list, QR check-out, bill GSTIN, version gate) · [ ] 11 Frontend requests II (settings keys, billing modes, shift login; `/customers/me` done early)
 
 ### Phase notes
 - **Phase 0 (2026-11-02):** Express app + cluster server, zod env (fail-fast), envelope/ApiError, requestId, pino-http (redaction), helmet, CORS allow-list, compression, hpp, 1 MB JSON, IP rate limit (300/min), `GET /api/v1/health`. ESLint bans `DELETE FROM`/`TRUNCATE`/`DROP TABLE` literals; `scripts/check-no-delete.mjs` greps src/scripts/db (runs in `npm run lint`).
@@ -270,3 +270,4 @@ Summary-report fields · POS printer models (frontend) · Aadhaar legal confirma
   - **A8** QR check-out before the check-in synced: luggage rows may omit `device_id_in` (only when `out_flag = 'Y'`), `shift_id_in`, `id_proof_id` + `id_number` (pair: both or neither, on any row — `ID_PROOF_REQUIRED` is device-side). `checkinFillPatch` fills exactly those four check-in fields once while NULL; all other check-in fields stay write-once. QR payload (frontend, v1): `{v,t,r,d,c,u,i,b,n,m,p}` = version, trans_id, receipt_no, receipt_dt, customer_id, user_id_in, date_time_in, luggage_qty, pasn_name, pasn_mob_no, pnr_no.
   - **B** Login body `version_code` (int, optional): newer live `mandatory_flag = 'Y'` release → 426 `UPDATE_REQUIRED` `{current, latest}` (checked before the password). Omitted (web) → no check.
   - New error codes `PASSWORD_CHANGE_REQUIRED` (403), `UPDATE_REQUIRED` (426). Guide scenario now changes passwords after first logins and shows the QR check-out flow.
+- **A4 early (2026-11-05, ahead of Phase 11):** `GET /customers/me` (A, O) and `PATCH /customers/me` (A) in `modules/customers` (routes registered **before** the crudFactory `/:id` routes). Response = `CUSTOMER_PUBLIC_COLUMNS` (`customers.schema.ts`, shared with the login `customer`). Writable: `customer_name, customer_addr, state, pin_code, mobile_no, email, gst_no, upi_id` (`customerSelfUpdate`, same rules as the S update, ≥ 1 field); licence fields `user_limit, active_flag, renewal_dt, remarks` stripped. S → 403 (no own customer). Pull does not carry the customer; devices refresh via login, `/auth/me` or `/customers/me`. New `gst_no` applies to bills pushed afterwards (A6 stamping).

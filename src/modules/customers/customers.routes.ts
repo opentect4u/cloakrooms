@@ -8,6 +8,8 @@ import { validate } from '../../core/middleware/validate';
 import { positiveId } from '../../core/validation/fragments';
 import {
   customerCreate,
+  customerSelfUpdate,
+  type CustomerSelfUpdate,
   customerUpdate,
   paymentCreate,
   paymentUpdate,
@@ -19,7 +21,9 @@ import {
   assertDateRange,
   checkPayment,
   customerSummary,
+  getOwnCustomer,
   syncRenewalDate,
+  updateOwnCustomer,
 } from './customers.service';
 
 const SUPER_ONLY = { read: ['S'], write: ['S'] } as const;
@@ -30,8 +34,30 @@ const PARENT = {
   pk: 'customer_id',
 } as const;
 
-/** Super admin only: tenants, their registrations (subscriptions) and payments to Synergic. */
+/**
+ * Tenants, their registrations (subscriptions) and payments to Synergic: super admin only —
+ * except `/me`, the caller's own customer (read A/O, write A; BACKEND_API_REQUESTS A4).
+ */
 export const customersRoutes = Router();
+
+// Before the crudFactory routes, whose `/:id` would otherwise catch "me".
+customersRoutes.get(
+  '/me',
+  requireRole('A', 'O'),
+  asyncHandler(async (req: Request, res: Response) => {
+    sendSuccess(req, res, await getOwnCustomer(ctxOf(req)));
+  }),
+);
+
+customersRoutes.patch(
+  '/me',
+  requireRole('A'),
+  validate({ body: customerSelfUpdate }),
+  asyncHandler(async (req: Request, res: Response) => {
+    const data = await updateOwnCustomer(ctxOf(req), req.body as CustomerSelfUpdate);
+    sendSuccess(req, res, data, { message: 'Customer updated' });
+  }),
+);
 
 customersRoutes.get(
   '/:id/summary',

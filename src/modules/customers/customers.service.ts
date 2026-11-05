@@ -1,11 +1,20 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import { DEFAULT_RATE, DEFAULT_SETTINGS } from '../../config/defaults';
 import type { RequestContext } from '../../core/context';
-import { fetch, fetchOne, raw, save, type Executor, type Row } from '../../core/db/dml';
+import {
+  fetch,
+  fetchOne,
+  raw,
+  save,
+  withTransaction,
+  type Executor,
+  type Row,
+} from '../../core/db/dml';
 import { ApiError } from '../../core/http/ApiError';
 import { fromPaise, toPaise } from '../../core/utils/money';
 import { toIstDate } from '../../core/utils/time';
 import { assertTenantRef } from '../masters/refs';
+import { CUSTOMER_PUBLIC_COLUMNS, type CustomerSelfUpdate } from './customers.schema';
 
 /** New customer: default settings template + default tariff (same transaction as the insert). */
 export async function applyCustomerDefaults(
@@ -146,4 +155,41 @@ export async function customerSummary(customerId: number, ctx: RequestContext) {
     },
     luggage: { total: Number(luggage?.total), in_store: Number(luggage?.in_store) },
   };
+}
+
+/** The token's own customer; S has none (it uses /customers/:id instead). */
+function ownCustomerId(ctx: RequestContext): number {
+  if (ctx.userType === 'S' || ctx.customerId === null) {
+    throw ApiError.forbidden('Only customer users have an own customer; use /customers/:id');
+  }
+  return ctx.customerId;
+}
+
+/** GET /customers/me — same shape as `customer` in the login payload. */
+export async function getOwnCustomer(ctx: RequestContext, conn?: Executor) {
+  const row = await fetchOne('md_customer', { customer_id: ownCustomerId(ctx) }, ctx, conn, {
+    columns: CUSTOMER_PUBLIC_COLUMNS,
+  });
+  if (!row) throw ApiError.notFound('Customer not found');
+  return row;
+}
+
+/**
+ * PATCH /customers/me (station admin, BACKEND_API_REQUESTS A4). Only the fields of
+ * `customerSelfUpdate` reach here; the DML layer also pins the row to the token's customer.
+ * A new gst_no is stamped on bills pushed from now on — stored bills keep theirs.
+ */
+export async function updateOwnCustomer(ctx: RequestContext, data: CustomerSelfUpdate) {
+  const customerId = ownCustomerId(ctx);
+  return withTransaction(async (conn) => {
+    const { affectedRows } = await save(
+      'md_customer',
+      data,
+      { flag: 'U', where: { customer_id: customerId } },
+      ctx,
+      conn,
+    );
+    if (affectedRows === 0) throw ApiError.notFound('Customer not found');
+    return getOwnCustomer(ctx, conn);
+  });
 }

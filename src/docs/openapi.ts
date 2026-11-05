@@ -18,6 +18,7 @@ import {
   paymentsCrud,
   registrationsCrud,
 } from '../modules/customers/customers.routes';
+import { customerSelfUpdate } from '../modules/customers/customers.schema';
 import { gstCrud } from '../modules/gst/gst.routes';
 import { headerFooterCrud } from '../modules/header-footer/header-footer.routes';
 import { logoFields } from '../modules/header-footer/header-footer.schema';
@@ -189,6 +190,29 @@ export function buildOpenApiDocument() {
   crud('/settings', settingsCrud, S.settingRow, 'Settings', masterRoles);
   crud('/gst', gstCrud, S.gstRow, 'GST', { read: 'S, A, O', write: 'S' });
   crud('/id-proofs', idProofsCrud, S.idProofRow, 'ID proofs', { read: 'S, A, O', write: 'S' });
+
+  // ---------------------------------------------------------------- own customer (A, O)
+  op({
+    method: 'get',
+    path: '/customers/me',
+    tag: 'Customers',
+    summary: 'Own cloak room details',
+    roles: 'A, O',
+    data: S.customerPublic,
+    errors: [401, 403, 404, 429],
+    description: 'The caller’s own customer, same shape as `customer` in the login payload. S has no own customer (403) and uses `/customers/:id`.',
+  });
+  op({
+    method: 'patch',
+    path: '/customers/me',
+    tag: 'Customers',
+    summary: 'Station admin edits own cloak room details',
+    roles: 'A',
+    body: customerSelfUpdate,
+    data: S.customerPublic,
+    errors: [400, 401, 403, 404, 429],
+    description: 'Partial update of `customer_name, customer_addr, state, pin_code, mobile_no, email, gst_no, upi_id` (same rules as the super-admin customer update; at least one field). `user_limit`, `active_flag`, `renewal_dt` and `remarks` stay super-admin only and are ignored here. A new `gst_no` is stamped on bills pushed after the change; stored bills keep theirs. Returns the updated customer.',
+  });
 
   // ---------------------------------------------------------------- customers (S)
   const superOnly = { read: 'S', write: 'S' };

@@ -41,6 +41,46 @@ export const customerCreate = z.object({
 });
 export const customerUpdate = z.object(customerFields).partial();
 
+/** md_customer columns a customer user may see (login `customer`, GET /customers/me). */
+export const CUSTOMER_PUBLIC_COLUMNS = [
+  'customer_id',
+  'customer_name',
+  'customer_addr',
+  'state',
+  'pin_code',
+  'mobile_no',
+  'email',
+  'gst_no',
+  'upi_id',
+  'renewal_dt',
+  'user_limit',
+  'active_flag',
+] as const;
+
+/**
+ * PATCH /customers/me (station admin, BACKEND_API_REQUESTS A4): the station's own contact,
+ * GSTIN and UPI details. Licence fields (user_limit, active_flag, renewal_dt) and remarks stay
+ * super-admin only; unknown keys are stripped like everywhere else.
+ */
+export const customerSelfUpdate = z
+  .object(customerFields)
+  .pick({
+    customer_name: true,
+    customer_addr: true,
+    state: true,
+    pin_code: true,
+    mobile_no: true,
+    email: true,
+    gst_no: true,
+    upi_id: true,
+  })
+  .partial()
+  .refine((body) => Object.keys(body).length > 0, {
+    message:
+      'Send at least one of customer_name, customer_addr, state, pin_code, mobile_no, email, gst_no, upi_id',
+  });
+export type CustomerSelfUpdate = z.infer<typeof customerSelfUpdate>;
+
 export const registrationFields = {
   reg_no: z.string().trim().min(1).max(30),
   start_date: dateOnly,

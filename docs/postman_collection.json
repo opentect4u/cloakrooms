@@ -1803,6 +1803,58 @@
       "name": "Customers",
       "item": [
         {
+          "name": "Own cloak room details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Station admin edits own cloak room details",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/customers/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"customer_name\",\n  \"customer_addr\": \"customer_addr\",\n  \"state\": \"state\",\n  \"pin_code\": \"pin_code\",\n  \"mobile_no\": \"mobile_no\",\n  \"email\": \"email\",\n  \"gst_no\": \"gst_no\",\n  \"upi_id\": \"upi_id\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Customer summary",
           "request": {
             "method": "GET",
