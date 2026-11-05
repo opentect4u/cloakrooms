@@ -1,6 +1,6 @@
 import cluster from 'node:cluster';
 import { createServer } from 'node:http';
-import { availableParallelism } from 'node:os';
+import { availableParallelism, networkInterfaces } from 'node:os';
 import { createApp } from './app';
 import { HTTP_TIMEOUTS } from './config/constants';
 import { env, isProd } from './config/env';
@@ -14,6 +14,18 @@ const SHUTDOWN_MSG = 'shutdown';
 function workerCount(): number {
   if (env.CLUSTER_WORKERS > 0) return env.CLUSTER_WORKERS;
   return isProd ? availableParallelism() : 1;
+}
+
+/** URLs other machines can use; on a wildcard bind that is every non-internal IPv4 address. */
+function listenUrls(): string[] {
+  const wildcard = env.HOST === '0.0.0.0' || env.HOST === '::';
+  const hosts = wildcard
+    ? Object.values(networkInterfaces())
+        .flat()
+        .filter((i) => i && i.family === 'IPv4' && !i.internal)
+        .map((i) => i!.address)
+    : [env.HOST];
+  return hosts.map((h) => `http://${h}:${env.PORT}`);
 }
 
 const DB_BOOT_ATTEMPTS = 5;
@@ -45,8 +57,11 @@ async function startWorker(): Promise<void> {
   server.headersTimeout = HTTP_TIMEOUTS.headersMs;
   server.requestTimeout = HTTP_TIMEOUTS.requestMs;
 
-  server.listen(env.PORT, () => {
-    logger.info({ port: env.PORT, env: env.NODE_ENV }, 'server listening');
+  server.listen(env.PORT, env.HOST, () => {
+    logger.info(
+      { host: env.HOST, port: env.PORT, env: env.NODE_ENV, urls: listenUrls() },
+      'server listening',
+    );
   });
 
   let shuttingDown = false;

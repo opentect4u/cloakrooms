@@ -11,6 +11,8 @@ const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+    /** Bind address: 0.0.0.0 = every network interface (LAN), 127.0.0.1 = this machine only. */
+    HOST: z.string().min(1).default('0.0.0.0'),
 
     DB_HOST: z.string().min(1).default('localhost'),
     DB_PORT: z.coerce.number().int().min(1).max(65535).default(3306),

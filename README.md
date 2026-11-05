@@ -55,6 +55,7 @@ Validated at boot with zod — the process exits on any invalid value. See [`.en
 |---|---|---|
 | `NODE_ENV` | `development` | `production` enforces non-default secrets/admin password |
 | `PORT` | `4000` | |
+| `HOST` | `0.0.0.0` | Bind address. `0.0.0.0` = reachable from the LAN by this machine's IP; `127.0.0.1` = local only |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | localhost / 3306 / root / '' / cloak_room_billing | |
 | `DB_POOL_LIMIT` | `20` | **per worker**; workers × pool < MySQL `max_connections` |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | — | required, ≥ 32 chars, different |

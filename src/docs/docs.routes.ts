@@ -21,6 +21,8 @@ export function docsRouter(): Router {
           'script-src': ["'self'", "'unsafe-inline'"],
           'style-src': ["'self'", "'unsafe-inline'"],
           'img-src': ["'self'", 'data:'],
+          // Over plain http on a LAN IP this would rewrite the UI's own JS/CSS to https → blank page.
+          'upgrade-insecure-requests': null,
         },
       },
     }),
