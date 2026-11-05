@@ -37,15 +37,17 @@ export const luggageRow = z
     receipt_no: z.string().trim().min(1).max(20),
     receipt_dt: dateOnly,
     user_id_in: positiveId,
-    device_id_in: z.string().trim().min(1).max(100),
+    /** Required on a check-in row; a QR check-out row (out_flag Y) may not know it. */
+    device_id_in: nullable(z.string().trim().min(1).max(100)),
     shift_id_in: nullable(positiveId),
     date_time_in: utcDateTime,
     pasn_name: z.string().trim().min(1).max(200),
     pasn_mob_no: z.string().trim().min(1).max(15),
     pnr_no: z.string().trim().max(20).default(''),
     luggage_qty: z.coerce.number().int().min(1).max(999),
-    id_proof_id: positiveId,
-    id_number: z.string().trim().min(1).max(50),
+    /** Both or neither (ID proof is not in the QR; ID_PROOF_REQUIRED is enforced on the device). */
+    id_proof_id: nullable(positiveId),
+    id_number: nullable(z.string().trim().min(1).max(50)),
     user_id_out: nullable(positiveId),
     device_id_out: nullable(z.string().trim().min(1).max(100)),
     shift_id_out: nullable(positiveId),
@@ -53,6 +55,20 @@ export const luggageRow = z
     out_flag: ynEnum.default('N'),
   })
   .superRefine((r, ctx) => {
+    if (r.out_flag === 'N' && r.device_id_in === null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['device_id_in'],
+        message: 'required on a check-in row',
+      });
+    }
+    if ((r.id_proof_id === null) !== (r.id_number === null)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [r.id_proof_id === null ? 'id_proof_id' : 'id_number'],
+        message: 'id_proof_id and id_number go together',
+      });
+    }
     const outComplete =
       r.user_id_out !== null && r.device_id_out !== null && r.date_time_out !== null;
     if (r.out_flag === 'Y' && !outComplete) {

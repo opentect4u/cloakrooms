@@ -96,6 +96,22 @@ describe('rates', () => {
     expect(list.body.data.every((r: { customer_id: number }) => r.customer_id === otherCid)).toBe(
       true,
     );
+
+    const missing = await request(app)
+      .post('/api/v1/rates')
+      .set(superAuth)
+      .send({ ...rate, effective_from: '2026-06-02' });
+    expect(missing.status).toBe(400);
+    expect(missing.body.errors[0].path).toBe('customer_id');
+
+    // customer_id is not an update field: a row can't be moved to another tenant.
+    const moved = await request(app)
+      .patch(`/api/v1/rates/${res.body.data.rate_id}`)
+      .set(superAuth)
+      .send({ next_block_rate: 25, customer_id: cid });
+    expect(moved.status).toBe(200);
+    expect(moved.body.data.customer_id).toBe(otherCid);
+    expect(moved.body.data.next_block_rate).toBe('25.00');
   });
 });
 

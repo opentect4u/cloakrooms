@@ -62,6 +62,7 @@ export const userPublic = z.object({
   user_code: z.string().nullable(),
   user_type: z.enum(['S', 'A', 'O']),
   allow_flag: yn,
+  must_change_pwd: yn.describe('Y → only change-password, logout and me work until it is changed'),
 }).openapi('UserPublic');
 
 export const userRow = userPublic.extend({
@@ -195,6 +196,17 @@ export const idProofRow = z.object({
   ...audit,
 }).openapi('IdProofRow');
 
+export const userBrief = z.object({
+  id,
+  customer_id: id,
+  user_code: z.string().nullable(),
+  user_name: z.string(),
+  user_type: z.enum(['A', 'O']),
+  allow_flag: yn,
+  is_deleted: yn,
+  updated_at: utcN,
+}).describe('Users of the customer (deleted ones included) to show names on rows from other counters').openapi('UserBrief');
+
 export const mastersSnapshot = z.object({
   id_proofs: z.array(idProofRow),
   gst: z.array(gstRow),
@@ -202,6 +214,7 @@ export const mastersSnapshot = z.object({
   shifts: z.array(shiftRow),
   shift_assignments: z.array(shiftAssignmentRow),
   header_footer: z.array(headerFooterRow),
+  users: z.array(userBrief),
 }).openapi('MastersSnapshot');
 
 export const counters = z.object({
@@ -253,15 +266,15 @@ export const luggageRow = z.object({
   receipt_no: z.string(),
   receipt_dt: day,
   user_id_in: id,
-  device_id_in: z.string(),
+  device_id_in: z.string().nullable().describe('null while only a QR check-out has synced'),
   shift_id_in: id.nullable(),
   date_time_in: utc,
   pasn_name: z.string(),
   pasn_mob_no: z.string(),
   pnr_no: z.string(),
   luggage_qty: id,
-  id_proof_id: id,
-  id_number: z.string().describe('Masked (`XXXXXXXX1234`) when the ID proof has mask_flag Y'),
+  id_proof_id: id.nullable().describe('null while only a QR check-out has synced, or no ID was taken'),
+  id_number: z.string().nullable().describe('Masked (`XXXXXXXX1234`) when the ID proof has mask_flag Y'),
   user_id_out: id.nullable(),
   device_id_out: z.string().nullable(),
   shift_id_out: id.nullable(),
@@ -292,6 +305,7 @@ export const receiptRow = z.object({
   sgst: money,
   igst: money,
   gst_flag: yn,
+  gst_no: z.string().nullable().describe('Customer GSTIN stamped by the server when the bill was stored'),
   pay_mode: z.enum(['C', 'U']),
   upi_ref: z.string().nullable(),
   bill_printed: yn,
@@ -358,9 +372,9 @@ const luggageReportBase = {
   pasn_mob_no: z.string(),
   pnr_no: z.string(),
   luggage_qty: id,
-  id_proof_id: id,
+  id_proof_id: id.nullable(),
   id_proof_name: z.string().nullable(),
-  id_number: z.string(),
+  id_number: z.string().nullable(),
   out_flag: yn,
 };
 

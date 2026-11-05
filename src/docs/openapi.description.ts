@@ -28,7 +28,10 @@ SQLite and synchronises with this API. All paths below are under \`/api/v1\` exc
    device may still call **only** \`POST /sync/push\` and \`POST /auth/logout\`: push pending rows,
    then log out.
 5. Other login errors: \`401\` wrong credentials, \`403 FORBIDDEN\` blocked user / inactive customer,
-   \`403 SUBSCRIPTION_EXPIRED\`, \`409 USER_LIMIT_REACHED\`.
+   \`403 SUBSCRIPTION_EXPIRED\`, \`409 USER_LIMIT_REACHED\`, \`426 UPDATE_REQUIRED\` (the sent
+   \`version_code\` is older than a live mandatory release; \`errors.latest\` has the APK).
+6. \`user.must_change_pwd = Y\` (new user / admin reset): every call except \`POST /auth/change-password\`,
+   logout and me → \`403 PASSWORD_CHANGE_REQUIRED\` until the password is changed.
 
 ## Sync push — \`POST /sync/push\`
 Body \`{ luggage: [...], receipts: [...] }\` (≤ 5000 each, ≤ 5 MB). Luggage is processed first, then
@@ -46,6 +49,11 @@ check-in fields are write-once; check-out fields (\`user_id_out, device_id_out, 
 date_time_out\`) only fill empty values; \`out_flag\` never goes back from Y. A bag checked in on device 1
 and out on device 2 always ends as one row, whatever the push order. A *different* second check-out →
 \`DUPLICATE_CHECKOUT\`. ID numbers of proofs with \`mask_flag = Y\` are stored as \`XXXXXXXX\` + last 4.
+A check-out made from the receipt QR before the check-in synced may omit \`device_id_in\`,
+\`shift_id_in\`, \`id_proof_id\`, \`id_number\` (the QR doesn't carry them); the later check-in push fills
+them once. \`id_proof_id\` / \`id_number\` are optional on any row but go together.
+
+**Bills** carry \`gst_no\` = the customer's GSTIN, stamped by the server when stored (not sent by devices).
 
 **Receipts:** one bill per \`trans_id\`, stored once. The server recomputes every bill; a difference
 keeps the bill and logs \`AMOUNT_MISMATCH\` (with the expected values) for the admin.

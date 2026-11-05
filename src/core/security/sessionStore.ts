@@ -19,6 +19,7 @@ export interface SessionInfo {
   device_id: string;
   login_id: string;
   user_type: UserType;
+  must_change_pwd: 'Y' | 'N';
 }
 
 const CACHE_TTL_MS = 30_000;
@@ -27,7 +28,7 @@ const cache = new LruCache<string, SessionInfo>(50_000, CACHE_TTL_MS);
 async function loadSession(sessionId: string, conn?: Executor): Promise<SessionInfo | null> {
   const rows = await raw<(SessionInfo & RowDataPacket)[]>(
     `SELECT s.session_id, s.user_id, s.status, s.token_hash, s.customer_id, s.device_id,
-            u.user_id AS login_id, u.user_type
+            u.user_id AS login_id, u.user_type, u.must_change_pwd
        FROM td_user_session s
        JOIN md_user u ON u.id = s.user_id
       WHERE s.session_id = ?`,

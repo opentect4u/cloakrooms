@@ -82,6 +82,23 @@ describe('app version', () => {
       mandatory: false,
     });
   });
+
+  it('login refuses a versionCode older than a mandatory release', async () => {
+    // v10 (mandatory) and v11 (optional) are published by the previous test.
+    const op = await seedUser(await seedCustomer());
+    const loginWith = (version_code?: number, device_id = 'v-op') =>
+      request(app)
+        .post('/api/v1/auth/login')
+        .send({ user_id: op.user_id, password: op.password, device_id, version_code });
+
+    const old = await loginWith(9);
+    expect(old.status).toBe(426);
+    expect(old.body.code).toBe('UPDATE_REQUIRED');
+    expect(old.body.errors).toMatchObject({ current: 9, latest: { version_code: 11 } });
+
+    expect((await loginWith(10)).status).toBe(200); // only an optional update is newer
+    expect((await loginWith(undefined)).status).toBe(200); // web clients send no version_code
+  });
 });
 
 describe('/downloads', () => {

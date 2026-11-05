@@ -5,12 +5,19 @@ import { getSession } from '../security/sessionStore';
 
 const ended = (message: string) => new ApiError(401, 'SESSION_ENDED', message);
 
+export interface SessionGuardOptions {
+  /** Let a force-logged-out (F) session through. */
+  allowForced?: boolean;
+  /** Let a user who must change the password through (change-password, logout, me). */
+  allowPasswordChange?: boolean;
+}
+
 /**
  * Checks that the token's session is still the user's live session (status A — or F when
  * `allowForced`) and that this exact token is the session's current one (rotation invalidates the
  * previous access token). Identity and tenant come from the DB row, never from the request.
  */
-export function sessionGuard(opts: { allowForced?: boolean } = {}): RequestHandler {
+export function sessionGuard(opts: SessionGuardOptions = {}): RequestHandler {
   return asyncHandler(async (req, _res, next) => {
     if (!req.token) throw ApiError.unauthorized();
     const { claims, hash } = req.token;
@@ -25,6 +32,15 @@ export function sessionGuard(opts: { allowForced?: boolean } = {}): RequestHandl
     if (session.status === 'L') throw ended('Logged out');
     if (session.status === 'F' && !opts.allowForced) {
       throw ended('Logged out by admin; sync pending data and log out');
+    }
+    // Only the new (A) session is held back: an F session from before an admin reset must still
+    // be able to push its pending data and log out.
+    if (session.status === 'A' && session.must_change_pwd === 'Y' && !opts.allowPasswordChange) {
+      throw new ApiError(
+        403,
+        'PASSWORD_CHANGE_REQUIRED',
+        'Change your password first (POST /api/v1/auth/change-password)',
+      );
     }
 
     req.auth = {

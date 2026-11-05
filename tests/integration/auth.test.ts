@@ -86,7 +86,20 @@ describe('POST /auth/login', () => {
       user_code: expect.any(String),
       user_type: 'O',
       allow_flag: 'Y',
+      must_change_pwd: 'N',
     });
+    expect(d.masters.users).toEqual([
+      {
+        id: user.id,
+        customer_id: cid,
+        user_code: expect.any(String),
+        user_name: expect.any(String),
+        user_type: 'O',
+        allow_flag: 'Y',
+        is_deleted: 'N',
+        updated_at: expect.any(String),
+      },
+    ]);
     expect(d.customer).toMatchObject({ customer_id: cid, renewal_dt: '2099-12-31' });
     expect(d.masters.id_proofs.length).toBeGreaterThanOrEqual(6);
     expect(d.masters.gst).toHaveLength(1);
@@ -404,5 +417,70 @@ describe('force logout', () => {
     expect((await request(app).get('/api/v1/auth/me').set(bearer(elsewhere.access))).status).toBe(
       200,
     );
+  });
+});
+
+describe('must_change_pwd and POST /auth/change-password', () => {
+  it('forces a password change after admin create / reset, without blocking a forced push', async () => {
+    const cid = await seedCustomer({ userLimit: 10 });
+    const admin = await seedUser(cid, { type: 'A' });
+    const adminT = await tokensFor(app, admin, 'pwd-admin');
+    const created = await request(app)
+      .post('/api/v1/users')
+      .set(bearer(adminT.access))
+      .send({
+        user_id: `pwd_${Date.now()}`,
+        user_name: 'New Op',
+        user_code: 'P01',
+        password: 'First@1234',
+        user_type: 'O',
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.data.must_change_pwd).toBe('Y');
+    const op = { ...created.body.data, password: 'First@1234' };
+
+    const first = await loginAs(app, op, 'pwd-dev-1');
+    expect(first.status).toBe(200);
+    expect(first.body.data.user.must_change_pwd).toBe('Y');
+    const t = first.body.data.accessToken as string;
+
+    const blocked = await request(app).get('/api/v1/sync/pull').set(bearer(t));
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.code).toBe('PASSWORD_CHANGE_REQUIRED');
+    expect((await pushEmpty(t)).status).toBe(403);
+    expect((await request(app).get('/api/v1/auth/me').set(bearer(t))).status).toBe(200);
+
+    const change = (body: Record<string, string>) =>
+      request(app).post('/api/v1/auth/change-password').set(bearer(t)).send(body);
+    const wrong = await change({ current_password: 'Nope@1234', new_password: 'Second@1234' });
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.errors[0].path).toBe('current_password');
+    expect(
+      (await change({ current_password: 'First@1234', new_password: 'First@1234' })).status,
+    ).toBe(400);
+    expect((await change({ current_password: 'First@1234', new_password: 'short' })).status).toBe(
+      400,
+    );
+    const ok = await change({ current_password: 'First@1234', new_password: 'Second@1234' });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data).toEqual({ must_change_pwd: 'N' });
+
+    // Same token keeps working; the new password is the one that logs in.
+    expect((await request(app).get('/api/v1/sync/pull').set(bearer(t))).status).toBe(200);
+    expect((await request(app).post('/api/v1/auth/logout').set(bearer(t))).status).toBe(200);
+    expect((await loginAs(app, op, 'pwd-dev-1')).status).toBe(401);
+    const second = await loginAs(app, { ...op, password: 'Second@1234' }, 'pwd-dev-1');
+    expect(second.body.data.user.must_change_pwd).toBe('N');
+    const t2 = second.body.data.accessToken as string;
+
+    // Admin reset: the old (now F) session may still push its data, the next login must change.
+    const reset = await request(app)
+      .post(`/api/v1/users/${op.id}/reset-password`)
+      .set(bearer(adminT.access))
+      .send({ password: 'Third@1234' });
+    expect(reset.status).toBe(200);
+    expect((await pushEmpty(t2)).status).toBe(200);
+    const third = await loginAs(app, { ...op, password: 'Third@1234' }, 'pwd-dev-2');
+    expect(third.body.data.user.must_change_pwd).toBe('Y');
   });
 });

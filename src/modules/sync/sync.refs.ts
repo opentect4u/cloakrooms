@@ -24,6 +24,8 @@ export interface PushRefs {
   idProofs: Map<number, { mask: boolean }>;
   rates: RateRow[];
   gst: GstRow[];
+  /** md_customer.gst_no now — stamped on every bill stored by this push. */
+  customerGstNo: string | null;
   setting(userId: number, name: string): string | undefined;
   resetModeFor(userId: number): ResetMode;
   gstTypeFor(userId: number): GstType;
@@ -31,7 +33,7 @@ export interface PushRefs {
 
 export async function loadPushRefs(ctx: RequestContext): Promise<PushRefs> {
   const all = { includeDeleted: true };
-  const [users, shifts, idProofs, rates, gst, settings] = await Promise.all([
+  const [users, shifts, idProofs, rates, gst, settings, customer] = await Promise.all([
     fetch('md_user', { ...all, columns: ['id', 'user_type', 'user_code'] }, ctx),
     fetch('md_shift', { ...all, columns: ['shift_id'] }, ctx),
     fetch('md_id_proof', { ...all, columns: ['id_proof_id', 'mask_flag'] }, ctx),
@@ -42,6 +44,7 @@ export async function loadPushRefs(ctx: RequestContext): Promise<PushRefs> {
     ),
     fetch('md_gst', { columns: ['effective_from', 'cgst_pct', 'sgst_pct', 'igst_pct'] }, ctx),
     fetch('md_setting', { columns: ['user_id', 'setting_name', 'setting_value'] }, ctx),
+    fetch('md_customer', { columns: ['gst_no'], includeDeleted: true }, ctx),
   ]);
 
   const customerWide = new Map<string, string>();
@@ -67,6 +70,7 @@ export async function loadPushRefs(ctx: RequestContext): Promise<PushRefs> {
     ),
     rates: rates.rows as unknown as RateRow[],
     gst: gst.rows as unknown as GstRow[],
+    customerGstNo: (customer.rows[0]?.gst_no as string | null | undefined) || null,
     setting,
     resetModeFor: (userId) => {
       const v = setting(userId, 'RECEIPT_RESET');

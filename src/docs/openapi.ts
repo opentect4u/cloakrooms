@@ -12,7 +12,7 @@ import { z, type ZodObject, type ZodType } from 'zod';
 import { API_PREFIX, APP_VERSION } from '../config/constants';
 import { crudRequestSchemas, type CrudConfig } from '../core/crud/crudFactory';
 import { createVersionBody, versionQuery } from '../modules/app-version/app-version.schema';
-import { loginBody, refreshBody } from '../modules/auth/auth.schema';
+import { changePasswordBody, loginBody, refreshBody } from '../modules/auth/auth.schema';
 import {
   customersCrud,
   paymentsCrud,
@@ -76,6 +76,7 @@ const ERROR_TEXT: Record<number, string> = {
   404: 'NOT_FOUND (or another tenant’s record)',
   409: 'CONFLICT (duplicate unique value)',
   413: 'PAYLOAD_TOO_LARGE',
+  426: 'UPDATE_REQUIRED (a newer mandatory app release exists)',
   429: 'RATE_LIMITED',
 };
 
@@ -150,9 +151,10 @@ export function buildOpenApiDocument() {
   op({ method: 'get', path: '/ready', tag: 'Health', summary: 'Readiness (DB reachable, schema loaded)', public: true, data: S.readyData, errors: [503] });
 
   // ---------------------------------------------------------------- auth
-  op({ method: 'post', path: '/auth/login', tag: 'Auth', summary: 'Log in on a device', public: true, body: loginBody, data: S.loginData, errors: [400, 401, 403, 409, 429], description: 'One active session per user. Same `device_id` again replaces the old session; another device → 409 SESSION_ACTIVE. Rate limit: 10/min per IP + user_id.' });
+  op({ method: 'post', path: '/auth/login', tag: 'Auth', summary: 'Log in on a device', public: true, body: loginBody, data: S.loginData, errors: [400, 401, 403, 409, 426, 429], description: 'One active session per user. Same `device_id` again replaces the old session; another device → 409 SESSION_ACTIVE. Android sends its `version_code`: when a newer live release has mandatory_flag Y → 426 UPDATE_REQUIRED (`details.latest` has the APK URL). When `user.must_change_pwd` is Y, every call except change-password, logout and me returns 403 PASSWORD_CHANGE_REQUIRED. Rate limit: 10/min per IP + user_id.' });
   op({ method: 'post', path: '/auth/refresh', tag: 'Auth', summary: 'Rotate access + refresh tokens', public: true, body: refreshBody, data: S.refreshData, errors: [400, 401, 403, 429], description: 'Both tokens are replaced. Presenting an already-used refresh token revokes the session (401 TOKEN_REUSED).' });
   op({ method: 'post', path: '/auth/logout', tag: 'Auth', summary: 'Log out (allowed for force-logged-out sessions)', roles: 'any', errors: [401, 429] });
+  op({ method: 'post', path: '/auth/change-password', tag: 'Auth', summary: 'Change own password (clears must_change_pwd)', roles: 'any', body: changePasswordBody, data: z.object({ must_change_pwd: z.literal('N') }), errors: [400, 401, 429], description: 'Wrong `current_password` → 400 VALIDATION_ERROR. The current session stays valid. Rate limit: 10/min per user.' });
   op({ method: 'get', path: '/auth/me', tag: 'Auth', summary: 'Current user, customer and session', roles: 'any', data: S.meData, errors: [401, 429] });
 
   // ---------------------------------------------------------------- users

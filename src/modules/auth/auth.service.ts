@@ -16,9 +16,10 @@ import {
   verifyRefreshToken,
 } from '../../core/security/tokens';
 import { toIstDate, toUtcString } from '../../core/utils/time';
+import { latestVersion } from '../app-version/app-version.service';
 import { getCurrentCounters } from '../counters/counters.service';
 import { loadMasters, loadSettings } from '../masters/masters.service';
-import type { LoginInput } from './auth.schema';
+import type { ChangePasswordInput, LoginInput } from './auth.schema';
 import {
   activeSessionsOfUser,
   countActiveSessionsOfCustomer,
@@ -35,6 +36,7 @@ interface UserRow {
   user_code: string | null;
   user_type: UserType;
   allow_flag: 'Y' | 'N';
+  must_change_pwd: 'Y' | 'N';
   password_hash?: string;
   [k: string]: unknown;
 }
@@ -56,6 +58,7 @@ const USER_PUBLIC = [
   'user_code',
   'user_type',
   'allow_flag',
+  'must_change_pwd',
 ];
 const CUSTOMER_PUBLIC = [
   'customer_id',
@@ -144,7 +147,20 @@ async function sessionPayload(user: UserRow, customer: CustomerRow | null) {
   };
 }
 
+/** 426 when the device runs a versionCode older than a live mandatory release. */
+async function assertAppVersionAllowed(versionCode: number | undefined) {
+  if (versionCode === undefined) return;
+  const v = await latestVersion(versionCode);
+  if (v.mandatory) {
+    throw new ApiError(426, 'UPDATE_REQUIRED', 'This app version is no longer supported; update', {
+      current: versionCode,
+      latest: v.latest,
+    });
+  }
+}
+
 export async function login(input: LoginInput) {
+  await assertAppVersionAllowed(input.version_code);
   const user = await fetchOne<UserRow>(
     'md_user',
     { user_id: input.user_id },
@@ -318,6 +334,25 @@ export async function logout(ctx: RequestContext) {
   const sessionId = ctx.sessionId;
   const ended = await withTransaction((conn) => logoutSession(sessionId, ctx.loginId, conn));
   invalidateSession(sessionId, ...ended);
+}
+
+/** Own password change; also clears must_change_pwd. The current session stays valid. */
+export async function changePassword(ctx: RequestContext, input: ChangePasswordInput) {
+  const user = await fetchOne<UserRow>('md_user', { id: ctx.userId }, ctx, undefined, {
+    columns: ['id', 'password_hash'],
+  });
+  if (!user?.password_hash) throw ApiError.unauthorized();
+  if (!(await verifyPassword(user.password_hash, input.current_password))) {
+    throw ApiError.validation([{ path: 'current_password', message: 'is wrong' }]);
+  }
+  const passwordHash = await hashPassword(input.new_password);
+  await save(
+    'md_user',
+    { password_hash: passwordHash, must_change_pwd: 'N' },
+    { flag: 'U', where: { id: ctx.userId } },
+    ctx,
+  );
+  if (ctx.sessionId) invalidateSession(ctx.sessionId);
 }
 
 export async function me(ctx: RequestContext) {

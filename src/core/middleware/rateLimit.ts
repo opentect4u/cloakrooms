@@ -71,6 +71,8 @@ export const limiters = {
   login: createRateLimiter({ name: 'login', limit: RATE_LIMITS.login, keyGenerator: loginKey }),
   // Unauthenticated, so per IP; generous because a station NAT carries many devices.
   refresh: createRateLimiter({ name: 'refresh', limit: RATE_LIMITS.refresh, keyGenerator: ipKey }),
+  /** Change password: per user, as strict as login (guessing the current password). */
+  password: createRateLimiter({ name: 'password', limit: RATE_LIMITS.login }),
   general: createRateLimiter({ name: 'general', limit: RATE_LIMITS.general }),
   sync: createRateLimiter({ name: 'sync', limit: RATE_LIMITS.sync }),
   reports: createRateLimiter({ name: 'reports', limit: RATE_LIMITS.reports }),

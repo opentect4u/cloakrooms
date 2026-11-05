@@ -5,6 +5,9 @@
  *  - existing → row locked; check-in fields are write-once (ignored), check-out fields are
  *    fill-only, out_flag never goes back from Y; updated_at moves only on an effective change,
  *    so an identical re-push is a no-op;
+ *  - QR check-out first (Case 1): a device that checked a bag out from its QR code does not know
+ *    the check-in device, shift or ID proof, so its row may arrive with those NULL. They are the
+ *    only check-in fields that are fill-only: the later check-in push fills them once;
  *  - a different check-out for an already checked-out bag → DUPLICATE_CHECKOUT exception.
  *
  * Plain INSERT instead of the §5 `ON DUPLICATE KEY UPDATE`: ODKU also fires on the secondary
@@ -24,6 +27,8 @@ import type { CounterCollector } from './counters.collector';
 
 const TABLE = 'td_luggage_in_out';
 const OUT_FIELDS = ['user_id_out', 'device_id_out', 'shift_id_out', 'date_time_out'] as const;
+/** Check-in fields missing from a QR check-out row: filled once, while still NULL. */
+const IN_FILL_FIELDS = ['device_id_in', 'shift_id_in'] as const;
 
 type Existing = Row & { trans_id: string; customer_id: number; is_deleted: 'Y' | 'N' };
 
@@ -58,6 +63,25 @@ export function checkoutPatch(
   return { patch };
 }
 
+/** Check-in details the stored row lacks (QR check-out pushed first) and this push brings. */
+export function checkinFillPatch(existing: Row, incoming: LuggageRow, refs: PushRefs): Row {
+  const patch: Row = {};
+  for (const f of IN_FILL_FIELDS) {
+    if (existing[f] === null && incoming[f] !== null) patch[f] = incoming[f];
+  }
+  if (existing.id_proof_id === null && incoming.id_proof_id !== null) {
+    patch.id_proof_id = incoming.id_proof_id;
+    patch.id_number = storedIdNumber(incoming, refs);
+  }
+  return patch;
+}
+
+/** ID number as stored: last 4 only when the proof is masked (Aadhaar). */
+function storedIdNumber(row: LuggageRow, refs: PushRefs): string | null {
+  if (row.id_number === null || row.id_proof_id === null) return row.id_number;
+  return refs.idProofs.get(row.id_proof_id)?.mask ? maskIdNumber(row.id_number) : row.id_number;
+}
+
 export async function mergeLuggageChunk(
   rawRows: Record<string, unknown>[],
   refs: PushRefs,
@@ -82,7 +106,7 @@ export async function mergeLuggageChunk(
     const badRef = checkRefs(refs, {
       users: [row.user_id_in, row.user_id_out],
       shifts: [row.shift_id_in, row.shift_id_out],
-      idProof: row.id_proof_id,
+      idProof: row.id_proof_id ?? undefined,
     });
     if (badRef) {
       results.push(await exception(TABLE, rawRow, 'INVALID_REFERENCE', badRef, ctx, conn));
@@ -112,8 +136,8 @@ async function mergeOne(
   let current = existing.get(row.trans_id);
 
   if (!current) {
-    const { local_version: _lv, ...data } = row;
-    if (refs.idProofs.get(row.id_proof_id)?.mask) data.id_number = maskIdNumber(row.id_number);
+    const { local_version: _lv, ...rest } = row;
+    const data = { ...rest, id_number: storedIdNumber(row, refs) };
     try {
       await save(TABLE, data, { flag: 'I' }, ctx, conn);
     } catch (err) {
@@ -164,15 +188,16 @@ async function mergeOne(
       ),
     });
   }
-  if (Object.keys(outcome.patch).length) {
+  const patch = { ...checkinFillPatch(current, row, refs), ...outcome.patch };
+  if (Object.keys(patch).length) {
     await save(
       TABLE,
-      outcome.patch,
+      patch,
       { flag: 'U', where: { trans_id: row.trans_id, is_deleted: current.is_deleted } },
       ctx,
       conn,
     );
-    existing.set(row.trans_id, { ...current, ...outcome.patch });
+    existing.set(row.trans_id, { ...current, ...patch });
   }
   return accepted(TABLE, rawRow);
 }

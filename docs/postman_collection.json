@@ -106,7 +106,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_id\": \"superadmin\",\n  \"password\": \"ChangeMe@123\",\n  \"device_id\": \"android-device-01\",\n  \"app_version\": \"app_version\"\n}",
+              "raw": "{\n  \"user_id\": \"superadmin\",\n  \"password\": \"ChangeMe@123\",\n  \"device_id\": \"android-device-01\",\n  \"app_version\": \"app_version\",\n  \"version_code\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -179,6 +179,39 @@
                 "auth",
                 "logout"
               ]
+            }
+          }
+        },
+        {
+          "name": "Change own password (clears must_change_pwd)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"current_password\",\n  \"new_password\": \"new_password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },

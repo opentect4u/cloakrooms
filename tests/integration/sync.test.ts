@@ -221,6 +221,75 @@ describe('push: Case 1 (in on device 1, out on device 2 via QR) → one cloud ro
     expect([...statuses(a), ...statuses(b)]).toEqual(['ACCEPTED', 'ACCEPTED']);
     expect(await luggageRow(bag.trans_id)).toMatchObject({ out_flag: 'Y', user_id_out: u2.id });
   });
+
+  it('QR-only check-out (no check-in device / shift / ID proof) first; the check-in push fills them once', async () => {
+    const bag = checkIn({ id_proof_id: aadhaarId, id_number: '123412345678' });
+    // Exactly what device 2 knows from the receipt QR, plus its own check-out.
+    const fromQr = {
+      trans_id: bag.trans_id,
+      local_version: 7,
+      receipt_no: bag.receipt_no,
+      receipt_dt: bag.receipt_dt,
+      user_id_in: bag.user_id_in,
+      date_time_in: bag.date_time_in,
+      luggage_qty: bag.luggage_qty,
+      pasn_name: bag.pasn_name,
+      pasn_mob_no: bag.pasn_mob_no,
+      pnr_no: bag.pnr_no,
+    };
+    await raw("UPDATE md_customer SET gst_no = '19AAAAA0000A1Z5' WHERE customer_id = ?", [cid]);
+    const out = await push(d2, { luggage: [checkOut(fromQr)], receipts: [bill(bag.trans_id)] });
+    expect(statuses(out)).toEqual(['ACCEPTED', 'ACCEPTED']);
+    expect(await luggageRow(bag.trans_id)).toMatchObject({
+      device_id_in: null,
+      shift_id_in: null,
+      id_proof_id: null,
+      id_number: null,
+      out_flag: 'Y',
+      user_id_out: u2.id,
+    });
+    // GSTIN is stamped by the server and does not follow later changes of the customer.
+    await raw("UPDATE md_customer SET gst_no = '19BBBBB1111B1Z5' WHERE customer_id = ?", [cid]);
+    expect(await fetchOne('td_receipt', { trans_id: bag.trans_id }, superAdmin)).toMatchObject({
+      gst_no: '19AAAAA0000A1Z5',
+    });
+    await raw('UPDATE md_customer SET gst_no = NULL WHERE customer_id = ?', [cid]);
+
+    expect(statuses(await push(d1, { luggage: [bag] }))).toEqual(['ACCEPTED']);
+    const filled = await luggageRow(bag.trans_id);
+    expect(filled).toMatchObject({
+      device_id_in: 'd1',
+      shift_id_in: shiftId,
+      id_proof_id: aadhaarId,
+      id_number: 'XXXXXXXX5678',
+      out_flag: 'Y',
+      user_id_out: u2.id,
+      date_time_out: OUT_24H01,
+    });
+
+    // Fill-once: a re-push (even with other values) changes nothing any more.
+    await raw(
+      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 00:00:00' WHERE trans_id = ?",
+      [bag.trans_id],
+    );
+    await push(d1, { luggage: [{ ...bag, device_id_in: 'other', id_proof_id: passportId }] });
+    expect(await luggageRow(bag.trans_id)).toMatchObject({
+      device_id_in: 'd1',
+      id_proof_id: aadhaarId,
+      updated_at: '2026-01-01 00:00:00',
+    });
+    expect(await exceptionsFor(bag.trans_id)).toHaveLength(0);
+  });
+
+  it('a check-in row still needs its device; ID proof and number go together', async () => {
+    const noDevice = checkIn({ device_id_in: null });
+    const halfProof = checkIn({ id_number: null });
+    const noProof = checkIn({ id_proof_id: null, id_number: null });
+    const res = await push(d1, { luggage: [noDevice, halfProof, noProof] });
+    expect(statuses(res)).toEqual(['VALIDATION_ERROR', 'VALIDATION_ERROR', 'ACCEPTED']);
+    expect(res.body.data.results[0].reason).toContain('device_id_in');
+    expect(res.body.data.results[1].reason).toContain('id_proof_id and id_number go together');
+  });
 });
 
 describe('push: Case 2 and idempotency', () => {

@@ -123,7 +123,9 @@ async function mergeOne(
         );
   }
 
-  const { local_version: _lv, ...data } = row;
+  const { local_version: _lv, ...rest } = row;
+  // GSTIN of the customer at the time the bill reaches the server, never the device's value.
+  const data = { ...rest, gst_no: refs.customerGstNo };
   try {
     await save(TABLE, data, { flag: 'I' }, ctx, conn);
   } catch (err) {

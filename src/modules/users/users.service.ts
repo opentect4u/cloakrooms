@@ -29,6 +29,7 @@ const COLUMNS = [
   'user_code',
   'user_type',
   'allow_flag',
+  'must_change_pwd',
   'device_id',
   'session_started_at',
   'last_login',
@@ -128,7 +129,8 @@ export async function createUser(ctx: RequestContext, input: CreateUserInput) {
       await assertSeatAvailable(customerId, conn);
     const { insertId } = await save(
       TABLE,
-      { ...rest, customer_id: customerId, password_hash: passwordHash },
+      // The admin chose this password: the user replaces it at first login.
+      { ...rest, customer_id: customerId, password_hash: passwordHash, must_change_pwd: 'Y' },
       { flag: 'I' },
       ctx,
       conn,
@@ -182,7 +184,13 @@ export async function forceLogout(ctx: RequestContext, id: number) {
 export async function resetPassword(ctx: RequestContext, id: number, password: string) {
   const passwordHash = await hashPassword(password);
   const sessionsEnded = await changeAndForceOut(ctx, id, async (conn) => {
-    await save(TABLE, { password_hash: passwordHash }, { flag: 'U', where: { id } }, ctx, conn);
+    await save(
+      TABLE,
+      { password_hash: passwordHash, must_change_pwd: 'Y' },
+      { flag: 'U', where: { id } },
+      ctx,
+      conn,
+    );
   });
   return { sessions_ended: sessionsEnded };
 }

@@ -4,7 +4,7 @@ import { authenticate } from '../../core/middleware/auth';
 import { limiters } from '../../core/middleware/rateLimit';
 import { validate } from '../../core/middleware/validate';
 import * as controller from './auth.controller';
-import { loginBody, refreshBody } from './auth.schema';
+import { changePasswordBody, loginBody, refreshBody } from './auth.schema';
 
 export const authRoutes = Router();
 
@@ -23,8 +23,20 @@ authRoutes.post(
 // A force-logged-out session may still log out (after its final push).
 authRoutes.post(
   '/logout',
-  authenticate({ allowForced: true }),
+  authenticate({ allowForced: true, allowPasswordChange: true }),
   limiters.general,
   asyncHandler(controller.logout),
 );
-authRoutes.get('/me', authenticate(), limiters.general, asyncHandler(controller.me));
+authRoutes.get(
+  '/me',
+  authenticate({ allowPasswordChange: true }),
+  limiters.general,
+  asyncHandler(controller.me),
+);
+authRoutes.post(
+  '/change-password',
+  authenticate({ allowPasswordChange: true }),
+  limiters.password,
+  validate({ body: changePasswordBody }),
+  asyncHandler(controller.changePassword),
+);

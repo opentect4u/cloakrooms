@@ -13,19 +13,43 @@ export interface MastersSnapshot {
   shifts: Row[];
   shift_assignments: Row[];
   header_footer: Row[];
+  /** The tenant's users, display fields only (names/codes on rows from other counters). */
+  users: Row[];
 }
 
-const GLOBAL_MASTERS = [
+type MasterSpec = readonly [
+  key: keyof MastersSnapshot,
+  table: string,
+  orderBy: readonly OrderBy[],
+  columns?: readonly string[],
+  /** Also on the full snapshot: old rows still reference deleted entries. */
+  withDeleted?: boolean,
+];
+
+const GLOBAL_MASTERS: readonly MasterSpec[] = [
   ['id_proofs', 'md_id_proof', [{ column: 'id_proof_id' }]],
   ['gst', 'md_gst', [{ column: 'effective_from' }]],
-] as const;
+];
 
-const TENANT_MASTERS = [
+/** Sent to devices instead of the full md_user row (no device/session/login details). */
+const USER_COLUMNS = [
+  'id',
+  'customer_id',
+  'user_code',
+  'user_name',
+  'user_type',
+  'allow_flag',
+  'is_deleted',
+  'updated_at',
+];
+
+const TENANT_MASTERS: readonly MasterSpec[] = [
   ['rates', 'md_rate_dtls', [{ column: 'effective_from' }]],
   ['shifts', 'md_shift', [{ column: 'shift_id' }]],
   ['shift_assignments', 'td_assign_shift', [{ column: 'user_id' }, { column: 'effective_from' }]],
   ['header_footer', 'md_header_footer', [{ column: 'line_type' }, { column: 'line_order' }]],
-] as const;
+  ['users', 'md_user', [{ column: 'id' }], USER_COLUMNS, true],
+];
 
 export async function loadMasters(
   ctx: RequestContext,
@@ -33,10 +57,15 @@ export async function loadMasters(
   conn?: Executor,
 ): Promise<MastersSnapshot> {
   const where: Where = opts.since ? { updated_at: { op: '>=', value: opts.since } } : {};
-  const load = async (table: string, orderBy: readonly OrderBy[]) => {
+  const load = async ([, table, orderBy, columns, withDeleted]: MasterSpec) => {
     const { rows } = await fetch(
       table,
-      { where, orderBy, includeDeleted: Boolean(opts.since) },
+      {
+        where,
+        orderBy,
+        includeDeleted: Boolean(opts.since) || Boolean(withDeleted),
+        ...(columns && { columns: [...columns] }),
+      },
       ctx,
       conn,
     );
@@ -50,6 +79,7 @@ export async function loadMasters(
     shifts: [],
     shift_assignments: [],
     header_footer: [],
+    users: [],
   };
   // A super admin has no tenant: without this guard the unscoped reads would return every tenant.
   const tables =
@@ -58,7 +88,7 @@ export async function loadMasters(
       : GLOBAL_MASTERS;
   // Sequential on purpose: the load test showed parallel reads (several pool connections per
   // request) lowering throughput under saturation (docs/load-test-results.md).
-  for (const [key, table, order] of tables) out[key] = await load(table, order);
+  for (const spec of tables) out[spec[0]] = await load(spec);
   return out;
 }
 
