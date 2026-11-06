@@ -1,0 +1,1583 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "3f654f41683b6ef2fa101170f1cbaeb8",
+    "entities": [
+      {
+        "tableName": "md_customer",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`customer_id` INTEGER NOT NULL, `customer_name` TEXT NOT NULL, `customer_addr` TEXT NOT NULL, `pin_code` TEXT NOT NULL, `state` TEXT, `mobile_no` TEXT NOT NULL, `email` TEXT, `renewal_dt` TEXT, `gst_no` TEXT, `upi_id` TEXT, `user_limit` INTEGER NOT NULL DEFAULT 1, `active_flag` TEXT NOT NULL DEFAULT 'Y', `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT, PRIMARY KEY(`customer_id`))",
+        "fields": [
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerName",
+            "columnName": "customer_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerAddr",
+            "columnName": "customer_addr",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinCode",
+            "columnName": "pin_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mobileNo",
+            "columnName": "mobile_no",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "renewalDt",
+            "columnName": "renewal_dt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gstNo",
+            "columnName": "gst_no",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "upiId",
+            "columnName": "upi_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "userLimit",
+            "columnName": "user_limit",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "activeFlag",
+            "columnName": "active_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "customer_id"
+          ]
+        }
+      },
+      {
+        "tableName": "md_user",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER, `user_id` TEXT NOT NULL, `user_name` TEXT NOT NULL, `user_type` TEXT NOT NULL, `allow_flag` TEXT NOT NULL DEFAULT 'Y', `device_id` TEXT, `session_started_at` TEXT, `last_login` TEXT, `user_code` TEXT, `password_hash` TEXT, `must_change_pwd` TEXT NOT NULL DEFAULT 'Y', `failed_attempts` INTEGER NOT NULL DEFAULT 0, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userName",
+            "columnName": "user_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userType",
+            "columnName": "user_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowFlag",
+            "columnName": "allow_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "device_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sessionStartedAt",
+            "columnName": "session_started_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastLogin",
+            "columnName": "last_login",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "userCode",
+            "columnName": "user_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "passwordHash",
+            "columnName": "password_hash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mustChangePwd",
+            "columnName": "must_change_pwd",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "failedAttempts",
+            "columnName": "failed_attempts",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_md_user_user_id",
+            "unique": true,
+            "columnNames": [
+              "user_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_md_user_user_id` ON `${TABLE_NAME}` (`user_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "md_id_proof",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_proof_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_proof_name` TEXT NOT NULL, `mask_flag` TEXT NOT NULL DEFAULT 'N', `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "idProofId",
+            "columnName": "id_proof_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idProofName",
+            "columnName": "id_proof_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maskFlag",
+            "columnName": "mask_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_proof_id"
+          ]
+        }
+      },
+      {
+        "tableName": "md_rate_dtls",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rate_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `block_hours` INTEGER NOT NULL DEFAULT 24, `first_block_rate` REAL NOT NULL, `next_block_rate` REAL NOT NULL, `effective_from` TEXT NOT NULL, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "rateId",
+            "columnName": "rate_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockHours",
+            "columnName": "block_hours",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "24"
+          },
+          {
+            "fieldPath": "firstBlockRate",
+            "columnName": "first_block_rate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextBlockRate",
+            "columnName": "next_block_rate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveFrom",
+            "columnName": "effective_from",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "rate_id"
+          ]
+        }
+      },
+      {
+        "tableName": "md_gst",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gst_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cgst_pct` REAL NOT NULL DEFAULT 0.0, `sgst_pct` REAL NOT NULL DEFAULT 0.0, `igst_pct` REAL NOT NULL DEFAULT 0.0, `effective_from` TEXT NOT NULL DEFAULT '2017-07-01', `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "gstId",
+            "columnName": "gst_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cgstPct",
+            "columnName": "cgst_pct",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "sgstPct",
+            "columnName": "sgst_pct",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "igstPct",
+            "columnName": "igst_pct",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "effectiveFrom",
+            "columnName": "effective_from",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'2017-07-01'"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "gst_id"
+          ]
+        }
+      },
+      {
+        "tableName": "md_header_footer",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `line_type` TEXT NOT NULL, `line_order` INTEGER NOT NULL DEFAULT 0, `narration` TEXT, `image` BLOB, `in_flag` TEXT NOT NULL DEFAULT 'Y', `out_flag` TEXT NOT NULL DEFAULT 'Y', `report_flag` TEXT NOT NULL DEFAULT 'N', `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lineType",
+            "columnName": "line_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lineOrder",
+            "columnName": "line_order",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "narration",
+            "columnName": "narration",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "inFlag",
+            "columnName": "in_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "outFlag",
+            "columnName": "out_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "reportFlag",
+            "columnName": "report_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "md_shift",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`shift_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `shift_name` TEXT NOT NULL, `from_time` TEXT NOT NULL, `to_time` TEXT NOT NULL, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "shiftId",
+            "columnName": "shift_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftName",
+            "columnName": "shift_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromTime",
+            "columnName": "from_time",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toTime",
+            "columnName": "to_time",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "shift_id"
+          ]
+        }
+      },
+      {
+        "tableName": "td_assign_shift",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `user_id` INTEGER NOT NULL, `shift_id` INTEGER NOT NULL, `effective_from` TEXT NOT NULL, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftId",
+            "columnName": "shift_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveFrom",
+            "columnName": "effective_from",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "md_setting",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`setting_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `user_id` INTEGER, `setting_name` TEXT NOT NULL, `setting_value` TEXT NOT NULL, `setting_type` TEXT NOT NULL, `label` TEXT, `data_type` TEXT NOT NULL DEFAULT 'TEXT', `options` TEXT, `min_value` REAL, `max_value` REAL, `depends_on` TEXT, `sort_order` INTEGER NOT NULL DEFAULT 0, `description` TEXT, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "settingId",
+            "columnName": "setting_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "settingName",
+            "columnName": "setting_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settingValue",
+            "columnName": "setting_value",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settingType",
+            "columnName": "setting_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dataType",
+            "columnName": "data_type",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'TEXT'"
+          },
+          {
+            "fieldPath": "options",
+            "columnName": "options",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "minValue",
+            "columnName": "min_value",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "maxValue",
+            "columnName": "max_value",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "dependsOn",
+            "columnName": "depends_on",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sort_order",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "setting_id"
+          ]
+        }
+      },
+      {
+        "tableName": "td_setting_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `customer_id` INTEGER NOT NULL, `setting_name` TEXT NOT NULL, `old_value` TEXT, `new_value` TEXT, `changed_by` TEXT NOT NULL, `changed_at` TEXT NOT NULL, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settingName",
+            "columnName": "setting_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oldValue",
+            "columnName": "old_value",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "newValue",
+            "columnName": "new_value",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "changedBy",
+            "columnName": "changed_by",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changedAt",
+            "columnName": "changed_at",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_td_setting_log_customer_id_changed_at",
+            "unique": false,
+            "columnNames": [
+              "customer_id",
+              "changed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_td_setting_log_customer_id_changed_at` ON `${TABLE_NAME}` (`customer_id`, `changed_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "td_luggage_in_out",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`trans_id` TEXT NOT NULL, `customer_id` INTEGER NOT NULL, `receipt_no` TEXT NOT NULL, `receipt_dt` TEXT NOT NULL, `user_id_in` INTEGER NOT NULL, `device_id_in` TEXT, `shift_id_in` INTEGER, `date_time_in` TEXT NOT NULL, `pasn_name` TEXT NOT NULL, `pasn_mob_no` TEXT NOT NULL, `pnr_no` TEXT NOT NULL, `luggage_qty` INTEGER NOT NULL, `id_proof_id` INTEGER, `id_number` TEXT, `user_id_out` INTEGER, `device_id_out` TEXT, `shift_id_out` INTEGER, `date_time_out` TEXT, `out_flag` TEXT NOT NULL DEFAULT 'N', `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT, PRIMARY KEY(`trans_id`))",
+        "fields": [
+          {
+            "fieldPath": "transId",
+            "columnName": "trans_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receiptNo",
+            "columnName": "receipt_no",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receiptDt",
+            "columnName": "receipt_dt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userIdIn",
+            "columnName": "user_id_in",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceIdIn",
+            "columnName": "device_id_in",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shiftIdIn",
+            "columnName": "shift_id_in",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dateTimeIn",
+            "columnName": "date_time_in",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pasnName",
+            "columnName": "pasn_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pasnMobNo",
+            "columnName": "pasn_mob_no",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pnrNo",
+            "columnName": "pnr_no",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "luggageQty",
+            "columnName": "luggage_qty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idProofId",
+            "columnName": "id_proof_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "idNumber",
+            "columnName": "id_number",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "userIdOut",
+            "columnName": "user_id_out",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deviceIdOut",
+            "columnName": "device_id_out",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shiftIdOut",
+            "columnName": "shift_id_out",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dateTimeOut",
+            "columnName": "date_time_out",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "outFlag",
+            "columnName": "out_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "trans_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_td_luggage_in_out_customer_id_receipt_no_receipt_dt",
+            "unique": true,
+            "columnNames": [
+              "customer_id",
+              "receipt_no",
+              "receipt_dt"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_td_luggage_in_out_customer_id_receipt_no_receipt_dt` ON `${TABLE_NAME}` (`customer_id`, `receipt_no`, `receipt_dt`)"
+          },
+          {
+            "name": "index_td_luggage_in_out_customer_id_date_time_in",
+            "unique": false,
+            "columnNames": [
+              "customer_id",
+              "date_time_in"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_td_luggage_in_out_customer_id_date_time_in` ON `${TABLE_NAME}` (`customer_id`, `date_time_in`)"
+          },
+          {
+            "name": "index_td_luggage_in_out_customer_id_pasn_mob_no",
+            "unique": false,
+            "columnNames": [
+              "customer_id",
+              "pasn_mob_no"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_td_luggage_in_out_customer_id_pasn_mob_no` ON `${TABLE_NAME}` (`customer_id`, `pasn_mob_no`)"
+          },
+          {
+            "name": "index_td_luggage_in_out_customer_id_pnr_no",
+            "unique": false,
+            "columnNames": [
+              "customer_id",
+              "pnr_no"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_td_luggage_in_out_customer_id_pnr_no` ON `${TABLE_NAME}` (`customer_id`, `pnr_no`)"
+          }
+        ]
+      },
+      {
+        "tableName": "td_receipt",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`trans_id` TEXT NOT NULL, `customer_id` INTEGER NOT NULL, `bill_no` TEXT NOT NULL, `bill_dt` TEXT NOT NULL, `user_id` INTEGER NOT NULL, `device_id` TEXT NOT NULL, `shift_id` INTEGER, `luggage_qty` INTEGER NOT NULL, `days_charged` INTEGER NOT NULL, `first_block_rate` REAL NOT NULL DEFAULT 0.0, `next_block_rate` REAL NOT NULL DEFAULT 0.0, `block_hours` INTEGER NOT NULL DEFAULT 0, `base_amt` REAL NOT NULL DEFAULT 0.0, `penal_amt` REAL NOT NULL DEFAULT 0.0, `net_amt` REAL NOT NULL DEFAULT 0.0, `taxable_amt` REAL NOT NULL DEFAULT 0.0, `gst_pct` REAL NOT NULL DEFAULT 0.0, `cgst` REAL NOT NULL DEFAULT 0.0, `sgst` REAL NOT NULL DEFAULT 0.0, `igst` REAL NOT NULL DEFAULT 0.0, `gst_flag` TEXT NOT NULL DEFAULT 'N', `grace_minutes` INTEGER NOT NULL DEFAULT 0, `gst_inclusive` TEXT NOT NULL DEFAULT 'Y', `penalty_gst_flag` TEXT NOT NULL DEFAULT 'Y', `pay_mode` TEXT NOT NULL DEFAULT 'C', `upi_ref` TEXT, `bill_printed` TEXT NOT NULL DEFAULT 'Y', `gst_no` TEXT, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT, PRIMARY KEY(`trans_id`))",
+        "fields": [
+          {
+            "fieldPath": "transId",
+            "columnName": "trans_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billNo",
+            "columnName": "bill_no",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billDt",
+            "columnName": "bill_dt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "device_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftId",
+            "columnName": "shift_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "luggageQty",
+            "columnName": "luggage_qty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "daysCharged",
+            "columnName": "days_charged",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstBlockRate",
+            "columnName": "first_block_rate",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "nextBlockRate",
+            "columnName": "next_block_rate",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "blockHours",
+            "columnName": "block_hours",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "baseAmt",
+            "columnName": "base_amt",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "penalAmt",
+            "columnName": "penal_amt",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "netAmt",
+            "columnName": "net_amt",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "taxableAmt",
+            "columnName": "taxable_amt",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "gstPct",
+            "columnName": "gst_pct",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "cgst",
+            "columnName": "cgst",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "sgst",
+            "columnName": "sgst",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "igst",
+            "columnName": "igst",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0.0"
+          },
+          {
+            "fieldPath": "gstFlag",
+            "columnName": "gst_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "graceMinutes",
+            "columnName": "grace_minutes",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "gstInclusive",
+            "columnName": "gst_inclusive",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "penaltyGstFlag",
+            "columnName": "penalty_gst_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "payMode",
+            "columnName": "pay_mode",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'C'"
+          },
+          {
+            "fieldPath": "upiRef",
+            "columnName": "upi_ref",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "billPrinted",
+            "columnName": "bill_printed",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Y'"
+          },
+          {
+            "fieldPath": "gstNo",
+            "columnName": "gst_no",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "trans_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_td_receipt_customer_id_bill_no_bill_dt",
+            "unique": true,
+            "columnNames": [
+              "customer_id",
+              "bill_no",
+              "bill_dt"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_td_receipt_customer_id_bill_no_bill_dt` ON `${TABLE_NAME}` (`customer_id`, `bill_no`, `bill_dt`)"
+          },
+          {
+            "name": "index_td_receipt_customer_id_bill_dt",
+            "unique": false,
+            "columnNames": [
+              "customer_id",
+              "bill_dt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_td_receipt_customer_id_bill_dt` ON `${TABLE_NAME}` (`customer_id`, `bill_dt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "md_user_counter",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`customer_id` INTEGER NOT NULL, `user_id` INTEGER NOT NULL, `counter_type` TEXT NOT NULL, `period_key` TEXT NOT NULL, `last_no` INTEGER NOT NULL DEFAULT 0, `is_deleted` TEXT NOT NULL DEFAULT 'N', `sync_flag` TEXT NOT NULL DEFAULT 'N', `local_version` INTEGER NOT NULL DEFAULT 0, `created_by` TEXT, `created_at` TEXT, `updated_by` TEXT, `updated_at` TEXT, PRIMARY KEY(`customer_id`, `user_id`, `counter_type`, `period_key`))",
+        "fields": [
+          {
+            "fieldPath": "customerId",
+            "columnName": "customer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "user_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "counterType",
+            "columnName": "counter_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "periodKey",
+            "columnName": "period_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastNo",
+            "columnName": "last_no",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "syncFlag",
+            "columnName": "sync_flag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'N'"
+          },
+          {
+            "fieldPath": "localVersion",
+            "columnName": "local_version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "created_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedBy",
+            "columnName": "updated_by",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "customer_id",
+            "user_id",
+            "counter_type",
+            "period_key"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3f654f41683b6ef2fa101170f1cbaeb8')"
+    ]
+  }
+}

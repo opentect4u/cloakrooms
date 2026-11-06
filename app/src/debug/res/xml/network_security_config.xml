@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: the UAT server (API_GUIDE.md §0) runs on plain http. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">14.192.17.108</domain>
+    </domain-config>
+</network-security-config>
