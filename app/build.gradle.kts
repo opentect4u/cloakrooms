@@ -23,9 +23,8 @@ android {
 
     buildTypes {
         debug {
-            // UAT server (API_GUIDE.md §0). Plain http is allowed only in debug builds
-            // (src/debug/res/xml/network_security_config.xml).
-            buildConfigField("String", "API_BASE_URL", "\"http://14.192.17.108:3003\"")
+            // UAT server (API_GUIDE.md §0), HTTPS.
+            buildConfigField("String", "API_BASE_URL", "\"https://cloakroom.synergicdatabank.com\"")
         }
         release {
             // Set the production URL here before the first release build.

@@ -208,6 +208,10 @@ interface SettingDao {
     )
     suspend fun retire(names: List<String>, by: String, now: String): Int
 
+    /** Every active row (all customers, customer-wide and user overrides) of the given settings. */
+    @Query("SELECT * FROM md_setting WHERE setting_name IN (:names) AND is_deleted = 'N'")
+    suspend fun getActiveByNames(names: List<String>): List<SettingEntity>
+
     @Update
     suspend fun update(item: SettingEntity)
 

@@ -182,7 +182,7 @@ class ReportsViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 val doc = reportRepository.reportDocument(filter())
-                printer.print(doc, settingsRepository.currentSettings.value?.printCopies ?: 1)
+                printer.print(doc, 1) // reports: always one copy (DECISIONS #199)
             }.onSuccess { r ->
                 val msg = when (r) {
                     PrintResult.Printed -> "Report printed."

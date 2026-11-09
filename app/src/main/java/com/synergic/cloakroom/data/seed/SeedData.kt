@@ -73,12 +73,16 @@ object SeedData {
     )
 
     /** In screen order; sort_order is assigned from the position in this list. */
+    /** The old single copies setting; its values are copied into the check-in and check-out copies at start-up. */
+    const val LEGACY_PRINT_COPIES = "PRINT_COPIES"
+
     /** Settings that were removed from the app: their md_setting rows (all scopes) are soft-deleted at start-up. */
     val retiredSettings: List<String> = listOf(
         "UPI_REF_REQUIRED", // 2026-11-05: no UPI reference number any more
         "DAY_BILL_LIMIT_FLAG", "DAY_BILL_LIMIT_COUNT", // 2026-11-05: bills per user per day are unlimited
         "MAX_LOGIN_ATTEMPTS", // 2026-11-05: the server decides blocking
         "ADMIN_COUNTER_FLAG", // 2026-11-05: admins never check in / check out
+        SeedData.LEGACY_PRINT_COPIES, // 2026-11-08: split into CHECKIN_PRINT_COPIES and CHECKOUT_PRINT_COPIES
     )
 
     val settings: List<SeedSetting> = with(SettingKeys) {
@@ -117,7 +121,8 @@ object SeedData {
             SeedSetting(PAPER_WIDTH, "P", "ENUM", "58", "Paper width", "Printer paper width", options = "58:58 mm|80:80 mm"),
             SeedSetting(QR_FLAG, "P", "BOOL", "Y", "Print QR", "Print the QR on the check-in receipt"),
             SeedSetting(CHECKIN_PRINT_FLAG, "P", "BOOL", "Y", "Print at check-in", "Print a receipt at check-in"),
-            SeedSetting(PRINT_COPIES, "P", "INT", "1", "Print copies", "Copies per print (1–3)", min = 1.0, max = 3.0),
+            SeedSetting(CHECKIN_PRINT_COPIES, "P", "INT", "1", "Print copies for Check-in", "Copies of the check-in receipt per print (1–3)", min = 1.0, max = 3.0),
+            SeedSetting(CHECKOUT_PRINT_COPIES, "P", "INT", "1", "Print copies for Check-out", "Copies of the check-out bill per print (1–3)", min = 1.0, max = 3.0),
             SeedSetting(PRINTER_TYPE, "P", "ENUM", "A", "Printer", "Auto: a paired Bluetooth printer, else the POS's built-in printer. None = preview and Share PDF only", options = "A:Auto|B:Bluetooth|S:Built-in (GC039, serial)|U:USB (GC039ES)|N:None"),
             SeedSetting(BT_PRINTER, "P", "TEXT", "", "Bluetooth printer", "Name or address of the paired printer; leave empty to find it automatically"),
             // Appended (not in the General block) so existing phones keep their sort order.

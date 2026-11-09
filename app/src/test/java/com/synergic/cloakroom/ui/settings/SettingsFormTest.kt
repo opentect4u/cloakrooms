@@ -84,9 +84,9 @@ class SettingsFormTest {
 
     @Test
     fun `invalid draft shows its error on the field and the tab`() {
-        val drafts = SettingsForm.edit(defs, emptyMap(), SettingKeys.PRINT_COPIES, "5")
+        val drafts = SettingsForm.edit(defs, emptyMap(), SettingKeys.CHECKIN_PRINT_COPIES, "5")
         val tabs = SettingsForm.tabs(defs, drafts)
-        assertEquals("Must be at most 3", field(tabs, SettingKeys.PRINT_COPIES).error)
+        assertEquals("Must be at most 3", field(tabs, SettingKeys.CHECKIN_PRINT_COPIES).error)
         assertEquals(1, tabs.first { it.title == "Print" }.errorCount)
         assertNull(field(tabs, SettingKeys.QR_FLAG).error)
     }

@@ -10,6 +10,7 @@ import com.synergic.cloakroom.data.db.entity.SettingEntity
 import com.synergic.cloakroom.data.db.entity.ShiftEntity
 import com.synergic.cloakroom.data.db.entity.UserEntity
 import com.synergic.cloakroom.data.security.PasswordHasher
+import com.synergic.cloakroom.domain.settings.SettingKeys
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.domain.time.TimeSource
 import kotlinx.coroutines.Dispatchers
@@ -44,8 +45,9 @@ class DemoSeeder @Inject constructor(
      */
     suspend fun addMissingSettings(): Int = mutex.withLock {
         db.withTransaction {
-            val existing = db.settingDao().getScopedRows(Tenant.CUSTOMER_ID, null).map { it.settingName }.toSet()
             val now = DateTimes.toDbText(time.now())
+            splitPrintCopies(now)
+            val existing = db.settingDao().getScopedRows(Tenant.CUSTOMER_ID, null).map { it.settingName }.toSet()
             val missing = SeedData.settings.withIndex()
                 .filter { it.value.name !in existing }
                 .map { settingRow(it.index, it.value, now) }
@@ -54,6 +56,34 @@ class DemoSeeder @Inject constructor(
             refreshDefinitions(now)
             missing.size
         }
+    }
+
+    /**
+     * PRINT_COPIES became CHECKIN_PRINT_COPIES and CHECKOUT_PRINT_COPIES (2026-11-08). Every
+     * active PRINT_COPIES row (customer-wide and user overrides) is copied into both new settings
+     * with the same value, unless that scope already has the new row; the old row is retired
+     * afterwards. Returns how many rows were added.
+     */
+    private suspend fun splitPrintCopies(now: String): Int {
+        val newNames = listOf(SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.CHECKOUT_PRINT_COPIES)
+        val rows = db.settingDao().getActiveByNames(listOf(SeedData.LEGACY_PRINT_COPIES) + newNames)
+        val have = rows.map { Triple(it.customerId, it.userId, it.settingName) }.toSet()
+        val seeds = SeedData.settings.associateBy { it.name }
+        val added = rows.filter { it.settingName == SeedData.LEGACY_PRINT_COPIES }.flatMap { old ->
+            newNames.withIndex()
+                .filter { (_, name) -> Triple(old.customerId, old.userId, name) !in have }
+                .map { (i, name) ->
+                    val s = seeds.getValue(name)
+                    old.copy(
+                        settingId = 0, settingName = name, label = s.label, dataType = s.dataType, options = s.options,
+                        minValue = s.min, maxValue = s.max, dependsOn = s.dependsOn, description = s.description,
+                        sortOrder = old.sortOrder + i * 5, syncFlag = "N", localVersion = 1,
+                        createdBy = Tenant.SYSTEM_USER, createdAt = now, updatedBy = Tenant.SYSTEM_USER, updatedAt = now,
+                    )
+                }
+        }
+        if (added.isNotEmpty()) db.settingDao().insertAll(added)
+        return added.size
     }
 
     /**

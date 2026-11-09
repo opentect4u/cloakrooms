@@ -75,8 +75,8 @@ class CustomerSettingsRepositoryTest {
 
         assertEquals("80", defs.getValue(SettingKeys.PAPER_WIDTH).value)
         assertEquals("customer-wide value, not a user's override", "Y", defs.getValue(SettingKeys.QR_FLAG).value)
-        assertEquals("Print tab key without API keeps its default", "1", defs.getValue(SettingKeys.PRINT_COPIES).value)
-        assertTrue(defs.getValue(SettingKeys.PRINT_COPIES).description!!.contains("this phone only"))
+        assertEquals("Print tab key without API keeps its default", "1", defs.getValue(SettingKeys.CHECKIN_PRINT_COPIES).value)
+        assertTrue(defs.getValue(SettingKeys.CHECKIN_PRINT_COPIES).description!!.contains("this phone only"))
         // §8 choices: the server accepts "Never" (N) since 2026-11-05.
         assertEquals(listOf("D", "M", "Y", "N"), defs.getValue(SettingKeys.RECEIPT_RESET).options.map { it.first })
         assertTrue("Force online after (days) is not shown", "FORCE_ONLINE_DAYS" !in defs)
@@ -90,7 +90,7 @@ class CustomerSettingsRepositoryTest {
         server.enqueue(serverSettings(paperRow)) // rows to update
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true,"data":$paperRow}"""))
 
-        assertEquals(2, repo.save(customer, mapOf(SettingKeys.PAPER_WIDTH to "58", SettingKeys.PRINT_COPIES to "2")))
+        assertEquals(2, repo.save(customer, mapOf(SettingKeys.PAPER_WIDTH to "58", SettingKeys.CHECKIN_PRINT_COPIES to "2")))
 
         repeat(4) { server.takeRequest() }
         val patch = server.takeRequest()
@@ -98,7 +98,7 @@ class CustomerSettingsRepositoryTest {
         assertEquals("/api/v1/settings/4", patch.path)
         assertEquals("""{"setting_value":"58"}""", patch.body.readUtf8())
 
-        val local = env.db.settingDao().getScopedRows(customer, null).single { it.settingName == SettingKeys.PRINT_COPIES }
+        val local = env.db.settingDao().getScopedRows(customer, null).single { it.settingName == SettingKeys.CHECKIN_PRINT_COPIES }
         assertEquals("2", local.settingValue)
         assertEquals(customer, local.customerId)
     }
@@ -169,7 +169,7 @@ class CustomerSettingsRepositoryTest {
         server.enqueue(rates(oldRate))
         server.enqueue(gst(gstMaster)) // definitions(): GST
         assertThrows(com.synergic.cloakroom.domain.settings.SettingsValidationException::class.java) {
-            runBlocking { repo.save(customer, mapOf(SettingKeys.PRINT_COPIES to "9")) }
+            runBlocking { repo.save(customer, mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "9")) }
         }
         assertEquals("only the definitions calls", 3, server.requestCount)
     }

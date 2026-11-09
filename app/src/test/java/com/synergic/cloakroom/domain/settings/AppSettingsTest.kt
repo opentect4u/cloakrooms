@@ -27,7 +27,7 @@ class AppSettingsTest {
         assertEquals(10, s.maxBagsPerReceipt)
         assertEquals("", s.reportPwdHash)
         assertEquals(58, s.paperWidthMm)
-        assertEquals(1, s.printCopies)
+        assertEquals(1, s.checkinPrintCopies)
     }
 
     @Test

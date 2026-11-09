@@ -12,7 +12,7 @@
 1. **Never invent endpoints, fields or values.** Use only what is in this file. If something is
    missing, ask the developer instead of guessing.
 2. All JSON endpoints are under `<baseUrl>/api/v1`. Make `baseUrl` configurable
-   (UAT: `http://14.192.17.108:3003`). Send `Content-Type: application/json`.
+   (UAT: `https://cloakroom.synergicdatabank.com`). Send `Content-Type: application/json`.
 3. Every response has the **same envelope** (§2). Always read `success` and `code`, never only
    the HTTP status.
 4. Implement auth exactly as in §3 (token refresh, one session per user, force-logout).

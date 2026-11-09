@@ -44,7 +44,8 @@ object SettingKeys {
     const val PAPER_WIDTH = "PAPER_WIDTH"
     const val QR_FLAG = "QR_FLAG"
     const val CHECKIN_PRINT_FLAG = "CHECKIN_PRINT_FLAG"
-    const val PRINT_COPIES = "PRINT_COPIES"
+    const val CHECKIN_PRINT_COPIES = "CHECKIN_PRINT_COPIES"
+    const val CHECKOUT_PRINT_COPIES = "CHECKOUT_PRINT_COPIES"
     const val PRINTER_TYPE = "PRINTER_TYPE"
     const val BT_PRINTER = "BT_PRINTER"
 }
@@ -104,7 +105,10 @@ data class AppSettings(
     val paperWidthMm: Int,
     val qrFlag: Boolean,
     val checkinPrintFlag: Boolean,
-    val printCopies: Int,
+    /** Copies per print of the check-in receipt. */
+    val checkinPrintCopies: Int,
+    /** Copies per print of the check-out bill. */
+    val checkoutPrintCopies: Int,
     val printerType: PrinterType,
     /** Name or address of the paired Bluetooth printer; empty = find it automatically. */
     val btPrinter: String,
@@ -153,7 +157,8 @@ data class AppSettings(
                     paperWidthMm = r.int(PAPER_WIDTH),
                     qrFlag = r.bool(QR_FLAG),
                     checkinPrintFlag = r.bool(CHECKIN_PRINT_FLAG),
-                    printCopies = r.int(PRINT_COPIES),
+                    checkinPrintCopies = r.int(CHECKIN_PRINT_COPIES),
+                    checkoutPrintCopies = r.int(CHECKOUT_PRINT_COPIES),
                     printerType = r.enum(PRINTER_TYPE, PrinterType.entries) { it.code },
                     btPrinter = r.text(BT_PRINTER).trim(),
                 )

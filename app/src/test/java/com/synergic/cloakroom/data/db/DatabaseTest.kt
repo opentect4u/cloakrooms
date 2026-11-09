@@ -105,7 +105,7 @@ class DatabaseTest {
         val repo = SettingsRepositoryImpl(db, SessionManager(), hasher, time, scope)
         val settings = repo.getSettings(userId = null)
         assertTrue(settings.reportFlag)
-        assertEquals(1, settings.printCopies)
+        assertEquals(1, settings.checkinPrintCopies)
     }
 
     @Test
@@ -113,19 +113,19 @@ class DatabaseTest {
         val user1 = db.userDao().getByUserId("user1")!!.id
         val admin = db.userDao().getByUserId("admin")!!.id
         db.settingDao().insert(setting(SettingKeys.REPORT_FLAG, "N", userId = user1))
-        db.settingDao().insert(setting(SettingKeys.PRINT_COPIES, "3", userId = user1))
+        db.settingDao().insert(setting(SettingKeys.CHECKIN_PRINT_COPIES, "3", userId = user1))
 
         val repo = SettingsRepositoryImpl(db, SessionManager(), hasher, time, scope)
         val forUser1 = repo.getSettings(user1)
         assertFalse(forUser1.reportFlag)
-        assertEquals(3, forUser1.printCopies)
+        assertEquals(3, forUser1.checkinPrintCopies)
 
         val forAdmin = repo.getSettings(admin)
         assertTrue("other users keep the customer value", forAdmin.reportFlag)
-        assertEquals(1, forAdmin.printCopies)
+        assertEquals(1, forAdmin.checkinPrintCopies)
 
         assertTrue(repo.getSettings(null).reportFlag)
-        assertEquals(3, repo.observeSettings(user1).first().printCopies)
+        assertEquals(3, repo.observeSettings(user1).first().checkinPrintCopies)
     }
 
     @Test

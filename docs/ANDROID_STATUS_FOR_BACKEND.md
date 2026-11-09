@@ -10,7 +10,8 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
 - Table and column names match the server (`Cloak_Room_Table_Schema.xlsx` and the §3–§6 row shapes), so no mapping is needed. Every table has `sync_flag`, `local_version`, `is_deleted` and the audit columns. Trigger `trg_inout_resync` is present.
 - Money: BigDecimal in the domain layer, REAL in SQLite, **2-decimal strings on the wire** (`"70.00"`).
 - Time: UTC text `YYYY-MM-DD HH:mm:ss`, shown in IST.
-- Debug builds use the **UAT server** `http://14.192.17.108:3003` (the old LAN dev server `http://192.168.1.41:4000` was used until 2026-11-06). Release URL is still a placeholder (`app/build.gradle.kts`).
+- Debug builds use the **UAT server** `https://cloakroom.synergicdatabank.com` (HTTPS since 2026-11-09; before that `http://14.192.17.108:3003`, and the LAN dev server `http://192.168.1.41:4000` until 2026-11-06). Release URL is still a placeholder (`app/build.gradle.kts`).
+- **Open issue on UAT (found 2026-11-09):** IIS replaces every API error response (400, 401, 404, …) with its own HTML error page, so the JSON envelope (`code`, `message`, `errors`) never reaches the app. Example: `POST /api/v1/auth/login` with an unknown user returns `401 text/html` "Access is denied due to invalid credentials". Because of this, the app cannot tell `TOKEN_EXPIRED` from other 401s (so it cannot refresh the token), and it cannot show the server's messages ("Already logged in since…", field errors). Fix on the server: in `web.config`, set `<system.webServer><httpErrors existingResponse="PassThrough" /></system.webServer>`. Also check that IIS Windows/Basic authentication is not turned on for this site.
 - Test device: Vivo V2575 (Android 16) with a Bluetooth thermal printer.
 
 ## 2. API usage implemented in the app
@@ -35,7 +36,7 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
 
 ## 4. Device-only settings (not sent to the server)
 
-- Print tab (`PAPER_WIDTH`, `QR_FLAG`, `CHECKIN_PRINT_FLAG`, `PRINT_COPIES`) and the printer selection: per phone.
+- Print tab (`PAPER_WIDTH`, `QR_FLAG`, `CHECKIN_PRINT_FLAG`, `CHECKIN_PRINT_COPIES`, `CHECKOUT_PRINT_COPIES`) and the printer selection: per phone.
 - The extra keys in `BACKEND_API_REQUESTS.md` A2 (penalty, `UPI_ENABLED`, daily bill limit, `MAX_BAGS_PER_RECEIPT`, `PNR_REQUIRED`, `ID_PROOF_REQUIRED`, shift login, `ADMIN_COUNTER_FLAG`, `MAX_LOGIN_ATTEMPTS`, `PWD_MIN_LENGTH`, …) stay on the phone until backend Phase 11.
 - Admins never check in or check out (no switch since 2026-11-05). This is enforced in the UI and in the repositories.
 - Login-shift check (`SHIFT_LOGIN_FLAG`, `SHIFT_EARLY_LOGIN_MIN`) runs on the phone after a successful server login (request B1).
@@ -69,7 +70,7 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
   - `GST_PCT` absent → the phone bills with the `md_gst` row of the bill date; when present, it replaces that row.
   - Every bill now sends `grace_minutes` (int), `gst_inclusive`, `penalty_gst_flag` and `gst_flag` (Y/N), the values it was billed with.
   - Rounding confirmed against your §7 examples, including ₹50.05 with GST on top → taxable 50.05, CGST 4.51, SGST 4.50, net 59.06. All are unit tests and pass.
-  - `CHECKIN_PRINT_FLAG` and `PRINT_COPIES` stay per phone (owner's rule: Print tab settings belong to each counter's phone), so the app doesn't write them to `/settings`.
+  - `CHECKIN_PRINT_FLAG`, `CHECKIN_PRINT_COPIES` and `CHECKOUT_PRINT_COPIES` (these two replaced `PRINT_COPIES` on 2026-11-08) stay per phone (owner's rule: Print tab settings belong to each counter's phone), so the app doesn't write them to `/settings`.
 
 ## 7. Still waiting on the backend
 

@@ -87,7 +87,11 @@ class DocumentViewModel @Inject constructor(
         if (_state.value.printing) return
         _state.update { it.copy(printing = true, message = null) }
         viewModelScope.launch {
-            val copies = settingsRepository.currentSettings.value?.printCopies ?: 1
+            val settings = settingsRepository.currentSettings.value
+            val copies = when (kind) {
+                DocumentKind.RECEIPT -> settings?.checkinPrintCopies
+                DocumentKind.BILL -> settings?.checkoutPrintCopies
+            } ?: 1
             val message = when (val r = printer.print(document, copies)) {
                 PrintResult.Printed -> if (copies == 1) "Printed." else "$copies copies printed."
                 // Without a printer the preview on screen is the result; say so only when asked.

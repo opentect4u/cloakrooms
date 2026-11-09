@@ -107,14 +107,14 @@ class SettingsWriteTest {
             mapOf(
                 SettingKeys.GST_PCT to "30",
                 SettingKeys.BLOCK_HOURS to "0",
-                SettingKeys.PRINT_COPIES to "1.5",
+                SettingKeys.CHECKIN_PRINT_COPIES to "1.5",
                 SettingKeys.GST_TYPE to "X",
                 SettingKeys.QR_FLAG to "yes",
                 SettingKeys.FIRST_BLOCK_RATE to "70",
             )
         )
         assertEquals(
-            setOf(SettingKeys.GST_PCT, SettingKeys.BLOCK_HOURS, SettingKeys.PRINT_COPIES, SettingKeys.GST_TYPE, SettingKeys.QR_FLAG),
+            setOf(SettingKeys.GST_PCT, SettingKeys.BLOCK_HOURS, SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.GST_TYPE, SettingKeys.QR_FLAG),
             errors.keys,
         )
         assertEquals("Must be at most 28", errors[SettingKeys.GST_PCT])
@@ -158,6 +158,41 @@ class SettingsWriteTest {
         assertEquals(1, env.seeder.addMissingSettings())
         assertEquals("8", row(SettingKeys.PWD_MIN_LENGTH).settingValue)
         assertEquals(0, env.seeder.addMissingSettings())
+    }
+
+    @Test
+    fun `old PRINT_COPIES value is copied into check-in and check-out copies`() = runBlocking {
+        val user1 = env.userDbId("user1")
+        val sql = env.db.openHelper.writableDatabase
+        // A phone from before the split: one PRINT_COPIES row (customer-wide 2, user1 override 3).
+        sql.execSQL("DELETE FROM md_setting WHERE setting_name IN ('CHECKIN_PRINT_COPIES', 'CHECKOUT_PRINT_COPIES')")
+        val template = row(SettingKeys.QR_FLAG)
+        env.db.settingDao().insert(template.copy(settingId = 0, settingName = "PRINT_COPIES", settingValue = "2", dataType = "INT"))
+        env.db.settingDao().insert(template.copy(settingId = 0, userId = user1, settingName = "PRINT_COPIES", settingValue = "3", dataType = "INT"))
+
+        env.seeder.addMissingSettings()
+
+        assertEquals("2", row(SettingKeys.CHECKIN_PRINT_COPIES).settingValue)
+        assertEquals("2", row(SettingKeys.CHECKOUT_PRINT_COPIES).settingValue)
+        assertEquals("Print copies for Check-out", row(SettingKeys.CHECKOUT_PRINT_COPIES).label)
+        val own = ownRows(user1).associateBy { it.settingName }
+        assertEquals("3", own.getValue(SettingKeys.CHECKIN_PRINT_COPIES).settingValue)
+        assertEquals("3", own.getValue(SettingKeys.CHECKOUT_PRINT_COPIES).settingValue)
+        assertFalse("old rows are retired", env.db.settingDao().getActiveByNames(listOf("PRINT_COPIES")).isNotEmpty())
+        val s = env.settings.getSettings(user1)
+        assertEquals(3, s.checkinPrintCopies)
+        assertEquals(3, s.checkoutPrintCopies)
+        // Running again changes nothing.
+        assertEquals(0, env.seeder.addMissingSettings())
+    }
+
+    @Test
+    fun `check-in and check-out copies are set separately`() = runBlocking {
+        env.loginOk("admin", "Admin@123")
+        env.settings.updateSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "1", SettingKeys.CHECKOUT_PRINT_COPIES to "2"))
+        val s = env.settings.getSettings(null)
+        assertEquals(1, s.checkinPrintCopies)
+        assertEquals(2, s.checkoutPrintCopies)
     }
 
     @Test
@@ -230,27 +265,27 @@ class SettingsWriteTest {
         env.loginOk("user1", "User@123")
         val user1 = env.userDbId("user1")
 
-        assertEquals(2, env.settings.updatePrintSettings(mapOf(SettingKeys.PRINT_COPIES to "2", SettingKeys.QR_FLAG to "N")))
-        assertEquals("1", row(SettingKeys.PRINT_COPIES).settingValue)
+        assertEquals(2, env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2", SettingKeys.QR_FLAG to "N")))
+        assertEquals("1", row(SettingKeys.CHECKIN_PRINT_COPIES).settingValue)
         assertEquals("Y", row(SettingKeys.QR_FLAG).settingValue)
-        assertEquals(setOf(SettingKeys.PRINT_COPIES, SettingKeys.QR_FLAG), ownRows(user1).map { it.settingName }.toSet())
+        assertEquals(setOf(SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.QR_FLAG), ownRows(user1).map { it.settingName }.toSet())
 
         // The Print tab shows the user's own values with the customer labels.
         val tab = env.settings.observePrintDefinitions().first().associateBy { it.name }
-        assertEquals("2", tab.getValue(SettingKeys.PRINT_COPIES).value)
-        assertEquals("Print copies", tab.getValue(SettingKeys.PRINT_COPIES).label)
+        assertEquals("2", tab.getValue(SettingKeys.CHECKIN_PRINT_COPIES).value)
+        assertEquals("Print copies for Check-in", tab.getValue(SettingKeys.CHECKIN_PRINT_COPIES).label)
         assertEquals("58", tab.getValue(SettingKeys.PAPER_WIDTH).value)
         assertTrue(tab.values.all { it.group == "P" })
 
-        assertEquals(2, env.settings.getSettings(user1).printCopies)
-        assertEquals(1, env.settings.getSettings(env.userDbId("admin")).printCopies)
+        assertEquals(2, env.settings.getSettings(user1).checkinPrintCopies)
+        assertEquals(1, env.settings.getSettings(env.userDbId("admin")).checkinPrintCopies)
     }
 
     @Test
     fun `normal user cannot change other settings through the Print save`() {
         env.loginOk("user1", "User@123")
         assertThrows(NotAuthorizedException::class.java) {
-            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.PRINT_COPIES to "2", SettingKeys.FIRST_BLOCK_RATE to "1")) }
+            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2", SettingKeys.FIRST_BLOCK_RATE to "1")) }
         }
         assertTrue(ownRows(env.userDbId("user1")).isEmpty())
         assertTrue(logs().isEmpty())
@@ -260,9 +295,9 @@ class SettingsWriteTest {
     fun `Print settings from a normal user are validated`() {
         env.loginOk("user1", "User@123")
         val errors = assertThrows(SettingsValidationException::class.java) {
-            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.PRINT_COPIES to "5")) }
+            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "5")) }
         }.errors
-        assertEquals(setOf(SettingKeys.PRINT_COPIES), errors.keys)
+        assertEquals(setOf(SettingKeys.CHECKIN_PRINT_COPIES), errors.keys)
         assertTrue(ownRows(env.userDbId("user1")).isEmpty())
     }
 
@@ -282,10 +317,10 @@ class SettingsWriteTest {
 
     @Test
     fun `current settings react at once to a saved change`() = runBlocking {
-        assertEquals(1, awaitCurrent { it != null }!!.printCopies)
+        assertEquals(1, awaitCurrent { it != null }!!.checkinPrintCopies)
         env.loginOk("admin", "Admin@123")
-        env.settings.updateSettings(mapOf(SettingKeys.PRINT_COPIES to "2"))
-        assertEquals(2, awaitCurrent { it?.printCopies == 2 }!!.printCopies)
+        env.settings.updateSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2"))
+        assertEquals(2, awaitCurrent { it?.checkinPrintCopies == 2 }!!.checkinPrintCopies)
     }
 
     @Test
