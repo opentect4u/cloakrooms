@@ -61,7 +61,7 @@ class EscPosEncoderTest {
     fun `raster document is sent in bands with every dot row exactly once`() {
         val height = EscPosEncoder.BAND_ROWS + 10
         val data = ByteArray(48 * height) { it.toByte() }
-        val bytes = EscPosEncoder.encodeRaster(EscPosEncoder.MonoRaster(48, height, data), 1)
+        val bytes = EscPosEncoder.encodeRaster(EscPosEncoder.MonoRaster(48, height, data), 1, feedMm = 24)
 
         assertEquals(listOf<Byte>(0x1B, '@'.code.toByte()), bytes.take(2))
         val firstBand = byteArrayOf(0x1D, 'v'.code.toByte(), '0'.code.toByte(), 0, 48, 0, EscPosEncoder.BAND_ROWS.toByte(), 0) +
@@ -70,14 +70,29 @@ class EscPosEncoderTest {
             data.copyOfRange(48 * EscPosEncoder.BAND_ROWS, data.size)
         assertEquals(2, bytes.indexOf(firstBand))
         assertEquals(2 + firstBand.size, bytes.indexOf(secondBand))
-        // Ends with paper feed (ESC J) to tear off.
-        assertEquals(listOf<Byte>(0x1B, 'J'.code.toByte(), 48), bytes.takeLast(3))
+        // Ends with paper feed (ESC J) to tear off: 24 mm = 192 dots.
+        assertEquals(listOf<Byte>(0x1B, 'J'.code.toByte(), 192.toByte()), bytes.takeLast(3))
+        assertEquals(2 + firstBand.size + secondBand.size + 3, bytes.size)
     }
 
     @Test
     fun `raster copies repeat the picture but initialise once`() {
         val raster = EscPosEncoder.MonoRaster(48, 5, ByteArray(48 * 5))
-        val one = EscPosEncoder.encodeRaster(raster, 1)
-        assertEquals(2 + (one.size - 2) * 3, EscPosEncoder.encodeRaster(raster, 3).size)
+        val one = EscPosEncoder.encodeRaster(raster, 1, feedMm = 24)
+        assertEquals(2 + (one.size - 2) * 3, EscPosEncoder.encodeRaster(raster, 3, feedMm = 24).size)
+    }
+
+    @Test
+    fun `paper feed follows the setting`() {
+        val raster = EscPosEncoder.MonoRaster(1, 1, ByteArray(1))
+        val picture = EscPosEncoder.encodeRaster(raster, 1, feedMm = 0)
+        // 0 mm: nothing after the picture.
+        assertEquals(listOf<Byte>(0x1D, 'v'.code.toByte(), '0'.code.toByte(), 0, 1, 0, 1, 0, 0), picture.drop(2))
+        // 40 mm = 320 dots: split into 240 + 80, as ESC J takes one byte.
+        val long = EscPosEncoder.encodeRaster(raster, 1, feedMm = 40)
+        assertEquals(
+            listOf<Byte>(0x1B, 'J'.code.toByte(), 240.toByte(), 0x1B, 'J'.code.toByte(), 80),
+            long.drop(picture.size),
+        )
     }
 }

@@ -18,18 +18,21 @@ data class ReceiptQrData(
     val name: String,
     val mobile: String,
     val pnr: String,
+    /** Free extra bags (extra_lugage_qty); 0 on receipts printed before this existed. */
+    val extraBags: Int = 0,
 )
 
 /**
  * Compact JSON with short keys, which keeps the QR small enough to scan easily from 58 mm paper:
  * `{"v":1,"t":trans_id,"r":receipt_no,"d":receipt_dt,"c":customer_id,"u":user_id_in,
- *   "i":date_time_in,"b":bags,"n":name,"m":mobile,"p":pnr}`
+ *   "i":date_time_in,"b":bags,"n":name,"m":mobile,"p":pnr,"x":extra_bags}`
+ * `x` is only written when there are extra bags, so other receipts keep the same QR as before.
  */
 object ReceiptQr {
     const val VERSION = 1L
 
     fun encode(d: ReceiptQrData): String = CompactJson.encode(
-        linkedMapOf(
+        linkedMapOf<String, Any>(
             "v" to VERSION,
             "t" to d.transId,
             "r" to d.receiptNo,
@@ -41,7 +44,7 @@ object ReceiptQr {
             "n" to d.name,
             "m" to d.mobile,
             "p" to d.pnr,
-        )
+        ).apply { if (d.extraBags > 0) put("x", d.extraBags.toLong()) }
     )
 
     /** Returns null when the text is not a receipt QR of this app. */
@@ -60,6 +63,7 @@ object ReceiptQr {
                 name = m["n"] as String,
                 mobile = m["m"] as String,
                 pnr = m["p"] as String,
+                extraBags = ((m["x"] as Long?) ?: 0L).toInt(),
             )
         }.getOrNull()
     }

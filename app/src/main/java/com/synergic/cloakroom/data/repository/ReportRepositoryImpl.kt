@@ -194,6 +194,7 @@ class ReportRepositoryImpl @Inject constructor(
         mobile = pasnMobNo,
         pnr = pnrNo,
         bags = luggageQty,
+        extraBags = extraLugageQty,
         isOut = outFlag == "Y",
         shift = shiftIdIn?.let { shifts[it] }.orEmpty(),
     )
@@ -207,6 +208,7 @@ class ReportRepositoryImpl @Inject constructor(
         userCode = codes[receipt.userId].orEmpty(),
         name = name,
         bags = receipt.luggageQty,
+        extraBags = extraBags,
         baseAmt = receipt.baseAmt.toMoney(),
         penaltyAmt = receipt.penalAmt.toMoney(),
         taxableAmt = receipt.taxableAmt.toMoney(),

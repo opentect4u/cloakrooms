@@ -94,12 +94,15 @@ class ServerDataImporterTest {
 
     @Test
     fun serverSettingsReplaceThePhonesExceptPrintTabAndReportPassword() = runBlocking {
-        env.authApi.serverSettings = mapOf("GST_TYPE" to "I", "PAPER_WIDTH" to "80", "REPORT_PWD" to "********", "UNKNOWN_KEY" to "x")
+        env.authApi.serverSettings = mapOf(
+            "GST_TYPE" to "I", "PAPER_WIDTH" to "80", "QR_FLAG" to "N", "REPORT_PWD" to "********", "UNKNOWN_KEY" to "x",
+        )
         env.loginOk("user1", "User@123")
 
         val rows = env.db.settingDao().getScopedRows(1, null).filter { it.userId == null }.associate { it.settingName to it.settingValue }
         assertEquals("I", rows["GST_TYPE"])
         assertEquals("58", rows["PAPER_WIDTH"])
+        assertEquals("Print QR is set by the admin on the server", "N", rows["QR_FLAG"])
         assertEquals("", rows["REPORT_PWD"].orEmpty())
     }
 

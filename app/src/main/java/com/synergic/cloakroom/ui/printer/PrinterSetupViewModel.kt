@@ -9,6 +9,7 @@ import com.synergic.cloakroom.domain.print.PrintResult
 import com.synergic.cloakroom.domain.print.PrinterTestPage
 import com.synergic.cloakroom.domain.repository.SettingsRepository
 import com.synergic.cloakroom.domain.settings.PrinterType
+import com.synergic.cloakroom.domain.settings.SettingKeys
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.domain.time.TimeSource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,13 @@ data class PrinterSetupUiState(
     val printerType: PrinterType? = null,
     /** Admins save the default for everyone; normal users save for their own login. */
     val isAdmin: Boolean = false,
+    /** PAPER_FEED_MM as saved, and as typed in the field (test prints use the typed value). */
+    val savedFeedMm: Int? = null,
+    val feedText: String = "",
+    val feedError: String? = null,
+    /** Limits of PAPER_FEED_MM, from its md_setting row. */
+    val feedMin: Int = 0,
+    val feedMax: Int? = null,
     val manualAddress: String = "",
     val manualError: String? = null,
     /** Address being test-printed or saved; buttons are disabled meanwhile. */
@@ -54,8 +62,41 @@ class PrinterSetupViewModel @Inject constructor(
         refresh()
         viewModelScope.launch {
             settingsRepository.currentSettings.collect { s ->
-                if (s != null) _state.update { it.copy(chosen = s.btPrinter, printerType = s.printerType) }
+                if (s != null) _state.update {
+                    // A newly saved feed replaces the field; an unsaved edit is kept otherwise.
+                    val feedText = if (it.savedFeedMm != s.paperFeedMm) s.paperFeedMm.toString() else it.feedText
+                    it.copy(chosen = s.btPrinter, printerType = s.printerType, savedFeedMm = s.paperFeedMm, feedText = feedText)
+                }
             }
+        }
+        viewModelScope.launch {
+            settingsRepository.observePrintDefinitions().collect { defs ->
+                defs.firstOrNull { it.name == SettingKeys.PAPER_FEED_MM }?.let { d ->
+                    _state.update { it.copy(feedMin = d.minValue?.toInt() ?: 0, feedMax = d.maxValue?.toInt()) }
+                }
+            }
+        }
+    }
+
+    fun onFeedText(text: String) = _state.update { it.copy(feedText = text.filter(Char::isDigit).take(3), feedError = null) }
+
+    /** The typed feed when it is a number within the setting's limits; else null with an error shown. */
+    private fun validFeed(): Int? {
+        val s = _state.value
+        val mm = s.feedText.toIntOrNull()
+        if (mm != null && mm >= s.feedMin && (s.feedMax == null || mm <= s.feedMax)) return mm
+        _state.update { it.copy(feedError = "Enter ${s.feedMin}–${s.feedMax ?: "…"} mm") }
+        return null
+    }
+
+    fun saveFeed() {
+        if (_state.value.busyAddress != null) return
+        val mm = validFeed() ?: return
+        _state.update { it.copy(busyAddress = TYPE_SAVE, message = null) }
+        viewModelScope.launch {
+            val message = runCatching { settingsRepository.updatePrintSettings(mapOf(SettingKeys.PAPER_FEED_MM to mm.toString())) }
+                .fold(onSuccess = { "Blank paper after print saved: $mm mm." }, onFailure = { e -> e.message ?: "Could not save." })
+            _state.update { it.copy(busyAddress = null, message = message) }
         }
     }
 
@@ -80,11 +121,12 @@ class PrinterSetupViewModel @Inject constructor(
 
     fun testPrint(address: String, name: String) {
         if (_state.value.busyAddress != null) return
+        val feedMm = validFeed() ?: return
         _state.update { it.copy(busyAddress = address, message = null) }
         viewModelScope.launch {
             val paper = settingsRepository.currentSettings.value?.paperWidthMm ?: 58
             val page = PrinterTestPage.format(name, paper, DateTimes.displayText(DateTimes.toDbText(time.now())))
-            val message = when (val r = bluetooth.sendTo(address, PosPrinter.encode(page, copies = 1))) {
+            val message = when (val r = bluetooth.sendTo(address, PosPrinter.encode(page, copies = 1, feedMm = feedMm))) {
                 PrintResult.Printed -> "Test page sent to $name. If it printed well, press \"Use this printer\"."
                 PrintResult.PreviewOnly -> "Nothing was printed."
                 is PrintResult.Failed -> r.message

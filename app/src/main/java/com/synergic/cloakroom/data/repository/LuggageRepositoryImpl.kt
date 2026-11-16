@@ -63,6 +63,7 @@ class LuggageRepositoryImpl @Inject constructor(
                         mobile = it.pasnMobNo,
                         pnr = it.pnrNo,
                         bags = it.luggageQty,
+                        extraBags = it.extraLugageQty,
                         isOut = false,
                     )
                 }
@@ -106,6 +107,7 @@ class LuggageRepositoryImpl @Inject constructor(
                     pasnMobNo = data.mobile,
                     pnrNo = data.pnr,
                     luggageQty = data.bags,
+                    extraLugageQty = data.extraBags,
                     // ID type and number are stored together or not at all (API_GUIDE.md §6.2).
                     idProofId = data.idProofId.takeIf { it != CheckinValidator.NO_ID_PROOF && data.idNumber.isNotEmpty() },
                     idNumber = data.idNumber.takeIf { data.idProofId != CheckinValidator.NO_ID_PROOF && it.isNotEmpty() },
@@ -145,6 +147,7 @@ class LuggageRepositoryImpl @Inject constructor(
                 name = row.pasnName,
                 mobile = row.pasnMobNo,
                 pnr = row.pnrNo,
+                extraBags = row.extraLugageQty,
             ),
         )
         return CheckinReceiptFormatter.format(receipt, settings)

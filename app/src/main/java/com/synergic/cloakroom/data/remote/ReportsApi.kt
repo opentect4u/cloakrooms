@@ -24,6 +24,8 @@ data class ReportBagDto(
     @SerialName("pasn_mob_no") val pasnMobNo: String,
     @SerialName("pnr_no") val pnrNo: String = "",
     @SerialName("luggage_qty") val luggageQty: Int,
+    /** 0 when the server does not send it (yet). */
+    @SerialName("extra_lugage_qty") val extraLugageQty: Int = 0,
     @SerialName("out_flag") val outFlag: String = "N",
     @SerialName("date_time_out") val dateTimeOut: String? = null,
     @SerialName("user_id_out") val userIdOut: Long? = null,

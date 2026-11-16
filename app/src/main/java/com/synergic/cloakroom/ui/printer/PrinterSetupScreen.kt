@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -97,6 +98,7 @@ fun PrinterSetupScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CurrentPrinterCard(state, onType = viewModel::setPrinterType)
+            PaperFeedCard(state, onText = viewModel::onFeedText, onSave = viewModel::saveFeed)
 
             when (state.bluetooth) {
                 BluetoothPrinterPort.State.NO_BLUETOOTH ->
@@ -220,6 +222,38 @@ private fun CurrentPrinterCard(state: PrinterSetupUiState, onType: (PrinterType)
                 else "Your choice here applies to your login only.",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+    }
+}
+
+/** PAPER_FEED_MM: blank paper after each print. Test print uses the typed value before it is saved. */
+@Composable
+private fun PaperFeedCard(state: PrinterSetupUiState, onText: (String) -> Unit, onSave: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Blank paper after print", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "If the printer leaves a long empty strip after each print, lower this. If the last line " +
+                    "stays inside the printer, raise it. Press Test print to try, then Save.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = state.feedText,
+                    onValueChange = onText,
+                    label = { Text("mm") },
+                    isError = state.feedError != null,
+                    supportingText = state.feedError?.let { { Text(it) } },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                Button(
+                    onClick = onSave,
+                    enabled = state.busyAddress == null && state.feedText != state.savedFeedMm?.toString(),
+                    modifier = Modifier.heightIn(min = 52.dp),
+                ) { Text("Save") }
+            }
         }
     }
 }

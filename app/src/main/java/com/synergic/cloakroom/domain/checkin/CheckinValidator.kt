@@ -12,6 +12,8 @@ data class CheckinInput(
     val idNumber: String,
     /** The chosen ID proof type has `mask_flag = Y` (e.g. Aadhaar; set by the super admin). */
     val idProofMasked: Boolean = false,
+    /** Extra bags stored free of charge; empty = 0. */
+    val extraBags: String = "",
 )
 
 /** Cleaned values ready to save. [idNumber] is already masked (ID_MASK_FLAG = Y or the type's mask flag). */
@@ -23,9 +25,11 @@ data class CheckinData(
     /** 0 when no ID proof was given (ID_PROOF_REQUIRED = N); the column is NOT NULL. */
     val idProofId: Long,
     val idNumber: String,
+    /** Extra bags, not billed (td_luggage_in_out.extra_lugage_qty). */
+    val extraBags: Int = 0,
 )
 
-enum class CheckinField { PNR, NAME, MOBILE, BAGS, ID_PROOF, ID_NUMBER }
+enum class CheckinField { PNR, NAME, MOBILE, BAGS, EXTRA_BAGS, ID_PROOF, ID_NUMBER }
 
 sealed interface CheckinValidation {
     data class Valid(val data: CheckinData) : CheckinValidation
@@ -71,6 +75,15 @@ object CheckinValidator {
                 errors[CheckinField.BAGS] = "At most ${settings.maxBagsPerReceipt} bags per receipt."
         }
 
+        // Extra bags are free; the same per-receipt limit applies to them.
+        val extraText = input.extraBags.trim()
+        val extraBags = if (extraText.isEmpty()) 0 else extraText.toIntOrNull()
+        when {
+            extraBags == null || extraBags < 0 -> errors[CheckinField.EXTRA_BAGS] = "Enter the number of extra bags (0 or more)."
+            extraBags > settings.maxBagsPerReceipt ->
+                errors[CheckinField.EXTRA_BAGS] = "At most ${settings.maxBagsPerReceipt} extra bags per receipt."
+        }
+
         val mask = settings.idMaskFlag || input.idProofMasked
         val idNumber = input.idNumber.filter { !it.isWhitespace() && it != '-' }.uppercase()
         val hasType = input.idProofId != null && input.idProofId != NO_ID_PROOF
@@ -94,6 +107,7 @@ object CheckinValidator {
                 bags = bags!!,
                 idProofId = if (hasType) input.idProofId!! else NO_ID_PROOF,
                 idNumber = if (mask) maskId(idNumber) else idNumber,
+                extraBags = extraBags!!,
             )
         )
     }

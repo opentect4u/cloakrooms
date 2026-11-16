@@ -51,7 +51,7 @@ object EscPosEncoder {
      * A whole document already drawn as dots (see [ThermalRaster]): initialise, then the picture
      * in bands of [BAND_ROWS] rows (GS v 0, as in the GC039 SDK), then paper feed to tear off.
      */
-    fun encodeRaster(raster: MonoRaster, copies: Int): ByteArray {
+    fun encodeRaster(raster: MonoRaster, copies: Int, feedMm: Int): ByteArray {
         val out = ByteArrayOutputStream()
         out.write(byteArrayOf(ESC.toByte(), '@'.code.toByte()))
         repeat(copies.coerceAtLeast(1)) {
@@ -68,17 +68,29 @@ object EscPosEncoder {
                 out.write(raster.data, y * raster.widthBytes, rows * raster.widthBytes)
                 y += rows
             }
-            repeat(TEAR_OFF_FEEDS) { out.write(byteArrayOf(ESC.toByte(), 'J'.code.toByte(), FEED_DOTS.toByte())) }
+            feed(out, feedMm)
         }
         return out.toByteArray()
+    }
+
+    /** ESC J paper feed of [mm] millimetres (PAPER_FEED_MM), in steps of at most [MAX_FEED_DOTS] dots. */
+    private fun feed(out: ByteArrayOutputStream, mm: Int) {
+        var dots = mm.coerceAtLeast(0) * DOTS_PER_MM
+        while (dots > 0) {
+            val step = minOf(dots, MAX_FEED_DOTS)
+            out.write(byteArrayOf(ESC.toByte(), 'J'.code.toByte(), step.toByte()))
+            dots -= step
+        }
     }
 
     /** Rows per GS v 0 command; small bands keep each command within the printer's buffer. */
     const val BAND_ROWS = 64
 
-    /** ESC J feeds, 48 dots (6 mm) each, after every copy: as in the SDK demo. */
-    private const val TEAR_OFF_FEEDS = 4
-    private const val FEED_DOTS = 48
+    /** Thermal printers print 203 dpi = 8 dots per mm. */
+    const val DOTS_PER_MM = 8
+
+    /** ESC J takes one byte; 240 dots (30 mm) per command stays well inside it. */
+    const val MAX_FEED_DOTS = 240
 
     private fun qr(out: ByteArrayOutputStream, content: String) {
         val data = content.toByteArray(Charsets.UTF_8)

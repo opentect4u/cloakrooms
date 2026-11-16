@@ -265,10 +265,10 @@ class SettingsWriteTest {
         env.loginOk("user1", "User@123")
         val user1 = env.userDbId("user1")
 
-        assertEquals(2, env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2", SettingKeys.QR_FLAG to "N")))
+        assertEquals(2, env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2", SettingKeys.CHECKIN_PRINT_FLAG to "N")))
         assertEquals("1", row(SettingKeys.CHECKIN_PRINT_COPIES).settingValue)
-        assertEquals("Y", row(SettingKeys.QR_FLAG).settingValue)
-        assertEquals(setOf(SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.QR_FLAG), ownRows(user1).map { it.settingName }.toSet())
+        assertEquals("Y", row(SettingKeys.CHECKIN_PRINT_FLAG).settingValue)
+        assertEquals(setOf(SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.CHECKIN_PRINT_FLAG), ownRows(user1).map { it.settingName }.toSet())
 
         // The Print tab shows the user's own values with the customer labels.
         val tab = env.settings.observePrintDefinitions().first().associateBy { it.name }
@@ -289,6 +289,40 @@ class SettingsWriteTest {
         }
         assertTrue(ownRows(env.userDbId("user1")).isEmpty())
         assertTrue(logs().isEmpty())
+    }
+
+    @Test
+    fun `normal user cannot change Print QR and only sees it`() = runBlocking {
+        env.loginOk("user1", "User@123")
+        val user1 = env.userDbId("user1")
+        assertThrows(NotAuthorizedException::class.java) {
+            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.QR_FLAG to "N")) }
+        }
+        assertTrue(ownRows(user1).isEmpty())
+        assertTrue(logs().isEmpty())
+
+        val qr = env.settings.observePrintDefinitions().first().single { it.name == SettingKeys.QR_FLAG }
+        assertTrue(qr.readOnly)
+        assertEquals("Y", qr.value)
+        // Other Print settings stay editable for the user.
+        assertFalse(env.settings.observePrintDefinitions().first().single { it.name == SettingKeys.PAPER_WIDTH }.readOnly)
+    }
+
+    @Test
+    fun `an old user override of Print QR is ignored, the admin value applies`() = runBlocking {
+        val user1 = env.userDbId("user1")
+        // A phone from before this rule: user1 had switched Print QR off for themselves.
+        env.db.settingDao().insert(row(SettingKeys.QR_FLAG).copy(settingId = 0, userId = user1, settingValue = "N"))
+
+        assertTrue(env.settings.getSettings(user1).qrFlag)
+        env.loginOk("user1", "User@123")
+        assertEquals("Y", env.settings.observePrintDefinitions().first().single { it.name == SettingKeys.QR_FLAG }.value)
+    }
+
+    @Test
+    fun `admin still sees Print QR as editable`() = runBlocking {
+        env.loginOk("admin", "Admin@123")
+        assertFalse(env.settings.observePrintDefinitions().first().single { it.name == SettingKeys.QR_FLAG }.readOnly)
     }
 
     @Test

@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -15,8 +16,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -65,13 +72,34 @@ fun QrScanner(onResult: (String) -> Unit, onClose: () -> Unit) {
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             when {
                 granted -> {
-                    CameraPreview(onResult)
-                    Text(
-                        "Point the camera at the QR code on the receipt",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
+                    var camera by remember { mutableStateOf<Camera?>(null) }
+                    var torchOn by remember { mutableStateOf(false) }
+                    CameraPreview(onResult, onCamera = { camera = it })
+                    // Turn the flash light on or off whenever the switch or the camera changes.
+                    LaunchedEffect(camera, torchOn) { camera?.cameraControl?.enableTorch(torchOn) }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
-                    )
+                    ) {
+                        if (camera?.cameraInfo?.hasFlashUnit() == true) {
+                            FilledTonalButton(
+                                onClick = { torchOn = !torchOn },
+                                modifier = Modifier.heightIn(min = 56.dp),
+                            ) {
+                                Icon(if (torchOn) Icons.Default.FlashOff else Icons.Default.FlashOn, contentDescription = null)
+                                Text(
+                                    if (torchOn) "  Flash light off" else "  Flash light on",
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                            }
+                        }
+                        Text(
+                            "Point the camera at the QR code on the receipt",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
                 }
                 asked -> Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -88,7 +116,7 @@ fun QrScanner(onResult: (String) -> Unit, onClose: () -> Unit) {
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
-private fun CameraPreview(onResult: (String) -> Unit) {
+private fun CameraPreview(onResult: (String) -> Unit, onCamera: (Camera) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnResult by rememberUpdatedState(onResult)
@@ -123,7 +151,7 @@ private fun CameraPreview(onResult: (String) -> Unit) {
                     .addOnCompleteListener { proxy.close() }
             }
             provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            onCamera(provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis))
         }, ContextCompat.getMainExecutor(context))
 
         onDispose {

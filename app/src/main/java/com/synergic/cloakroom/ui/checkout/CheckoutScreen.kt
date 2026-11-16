@@ -183,6 +183,14 @@ private fun BagDetails(bag: CheckoutBag, now: Instant) {
             Text(bag.receiptNo, style = MaterialTheme.typography.headlineSmall)
             Text("${bag.name} · ${bag.mobile}", style = MaterialTheme.typography.bodyLarge)
             Text("PNR ${bag.pnr.ifEmpty { "-" }} · ${bag.bags} bag(s)", style = MaterialTheme.typography.bodyLarge)
+            if (bag.extraBags > 0) {
+                // Easy to see at the counter, so the extra bags are handed back too.
+                Text(
+                    "+ ${bag.extraBags} extra bag(s) (free, not in the bill)",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             if (bag.idProofName != null && bag.idNumber.isNotEmpty()) {
                 Text("${bag.idProofName} ${bag.idNumber}", style = MaterialTheme.typography.bodyMedium)
             }

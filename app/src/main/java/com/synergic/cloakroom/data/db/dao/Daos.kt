@@ -330,7 +330,8 @@ interface ReceiptDao {
 
     /** Bills between two local dates (both included) with their check-in details. */
     @Query(
-        """SELECT r.*, l.receipt_no AS l_receipt_no, l.pasn_name AS l_name, l.date_time_out AS l_out
+        """SELECT r.*, l.receipt_no AS l_receipt_no, l.pasn_name AS l_name, l.date_time_out AS l_out,
+                  l.extra_lugage_qty AS l_extra
            FROM td_receipt r JOIN td_luggage_in_out l ON l.trans_id = r.trans_id
            WHERE r.customer_id = :customerId AND r.bill_dt BETWEEN :from AND :to AND r.is_deleted = 'N'
              AND (:userId IS NULL OR r.user_id = :userId)
@@ -394,6 +395,7 @@ data class BillWithBag(
     @ColumnInfo(name = "l_receipt_no") val receiptNo: String,
     @ColumnInfo(name = "l_name") val name: String,
     @ColumnInfo(name = "l_out") val dateTimeOut: String?,
+    @ColumnInfo(name = "l_extra") val extraBags: Int,
 )
 
 /** Row counts of every table, for the database status screen. */

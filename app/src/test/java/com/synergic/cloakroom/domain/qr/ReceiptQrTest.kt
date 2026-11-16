@@ -37,6 +37,16 @@ class ReceiptQrTest {
     }
 
     @Test
+    fun `extra bags travel in the QR as x and an old QR reads as 0`() {
+        val withExtra = data.copy(name = "Ravi", extraBags = 2)
+        val json = ReceiptQr.encode(withExtra)
+        assertEquals(true, json.endsWith(""""p":"4512345678","x":2}"""))
+        assertEquals(withExtra, ReceiptQr.decode(json))
+        // A receipt printed before extra bags existed has no "x".
+        assertEquals(0, ReceiptQr.decode(ReceiptQr.encode(data))!!.extraBags)
+    }
+
+    @Test
     fun `other QR codes are not accepted`() {
         listOf("", "hello", "upi://pay?pa=x@upi", "{}", """{"v":2,"t":"x"}""", """{"v":1,"t":"x"}""", "{\"v\":1").forEach {
             assertNull(it, ReceiptQr.decode(it))

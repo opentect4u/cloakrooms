@@ -39,6 +39,7 @@ import com.synergic.cloakroom.domain.repository.CheckoutBag
 import com.synergic.cloakroom.domain.repository.QrLookup
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.ui.components.AppTopBar
+import com.synergic.cloakroom.ui.components.bagText
 import com.synergic.cloakroom.ui.components.ErrorBanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -187,7 +188,7 @@ private fun BagCard(bag: CheckoutBag, onClick: () -> Unit) {
             }
             Text("${bag.name} · ${bag.mobile}", style = MaterialTheme.typography.bodyLarge)
             Text(
-                "PNR ${bag.pnr.ifEmpty { "-" }} · ${bag.bags} bag(s) · in ${DateTimes.displayText(bag.dateTimeIn)}",
+                "PNR ${bag.pnr.ifEmpty { "-" }} · ${bagText(bag.bags, bag.extraBags)} · in ${DateTimes.displayText(bag.dateTimeIn)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

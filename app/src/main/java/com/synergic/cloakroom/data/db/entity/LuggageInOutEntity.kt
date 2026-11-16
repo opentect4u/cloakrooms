@@ -33,6 +33,8 @@ data class LuggageInOutEntity(
     @ColumnInfo(name = "pasn_mob_no") val pasnMobNo: String,
     @ColumnInfo(name = "pnr_no") val pnrNo: String,
     @ColumnInfo(name = "luggage_qty") val luggageQty: Int,
+    /** Extra bags stored free of charge: shown on receipts, bills and reports, never billed. */
+    @ColumnInfo(name = "extra_lugage_qty", defaultValue = "0") val extraLugageQty: Int = 0,
     /** Optional, but always together with [idNumber] (never in the QR). */
     @ColumnInfo(name = "id_proof_id") val idProofId: Long?,
     @ColumnInfo(name = "id_number") val idNumber: String?,

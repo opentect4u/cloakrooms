@@ -27,6 +27,8 @@ data class BillPrint(
     val mobile: String,
     val pnr: String,
     val bags: Int,
+    /** Extra bags stored free of charge (printed, not in the amounts). */
+    val extraBags: Int = 0,
     val blocks: Int,
     val blockHours: Int,
     val firstBlockRate: BigDecimal,
@@ -66,6 +68,7 @@ object BillFormatter {
         p.pair("Mobile", b.mobile)
         p.pair("PNR", b.pnr.ifEmpty { "-" })
         p.pair("Bags", b.bags.toString())
+        if (b.extraBags > 0) p.pair("Extra bags (free)", b.extraBags.toString())
         p.pair("In", DateTimes.displayText(b.dateTimeIn))
         p.pair("Out", DateTimes.displayText(b.dateTimeOut))
         p.pair("Time stored", storedTime(b.dateTimeIn, b.dateTimeOut))

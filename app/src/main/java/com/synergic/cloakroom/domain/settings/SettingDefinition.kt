@@ -19,6 +19,8 @@ data class SettingDefinition(
     val description: String?,
     /** Shown but not editable by this user (e.g. a super-admin-only setting seen by an admin). */
     val readOnly: Boolean = false,
+    /** Who sets a [readOnly] setting, shown under it; null = the super admin. */
+    val readOnlyNote: String? = null,
 ) {
     companion object {
         fun parseOptions(options: String?): List<Pair<String, String>> =

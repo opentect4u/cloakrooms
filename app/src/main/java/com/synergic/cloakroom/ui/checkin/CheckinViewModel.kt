@@ -24,6 +24,8 @@ data class CheckinForm(
     val name: String = "",
     val mobile: String = "",
     val bags: String = "1",
+    /** Extra bags, not billed. */
+    val extraBags: String = "0",
     val idProofId: Long? = null,
     val idNumber: String = "",
     val errors: Map<CheckinField, String> = emptyMap(),
@@ -64,13 +66,22 @@ class CheckinViewModel @Inject constructor(
         onBags((now + delta).coerceIn(1, max).toString())
     }
 
+    fun onExtraBags(v: String) = edit(CheckinField.EXTRA_BAGS) { it.copy(extraBags = v.filter { c -> c.isDigit() }.take(3)) }
+
+    /** The +/- buttons for extra bags: 0 up to MAX_BAGS_PER_RECEIPT. */
+    fun stepExtraBags(delta: Int) {
+        val max = settings.value?.maxBagsPerReceipt ?: return
+        val now = _form.value.extraBags.toIntOrNull() ?: 0
+        onExtraBags((now + delta).coerceIn(0, max).toString())
+    }
+
     fun save() {
         val f = _form.value
         if (f.saving) return
         _form.update { it.copy(saving = true, message = null) }
         viewModelScope.launch {
             val result = runCatching {
-                luggageRepository.checkIn(CheckinInput(f.pnr, f.name, f.mobile, f.bags, f.idProofId, f.idNumber))
+                luggageRepository.checkIn(CheckinInput(f.pnr, f.name, f.mobile, f.bags, f.idProofId, f.idNumber, extraBags = f.extraBags))
             }
             _form.update {
                 result.fold(

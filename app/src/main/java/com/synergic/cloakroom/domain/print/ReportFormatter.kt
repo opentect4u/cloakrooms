@@ -38,6 +38,7 @@ object ReportFormatter {
         p.center(shiftLabel)
         p.divider()
         p.pair("Check-ins", "${data.checkins.size} (${data.bagsCheckedIn} bags)")
+        if (data.extraBagsCheckedIn > 0) p.pair("Extra bags (free)", data.extraBagsCheckedIn.toString())
         p.pair("Bills", data.bills.size.toString())
         p.divider()
         data.byPayMode.forEach { line ->

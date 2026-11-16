@@ -42,8 +42,8 @@ class PosPrinter internal constructor(
     private val mutex = Mutex()
 
     override suspend fun print(document: PrintDocument, copies: Int): PrintResult = mutex.withLock {
-        val type = (settingsRepository.currentSettings.value ?: settingsRepository.getSettings(null)).printerType
-        val port: PrinterPort = when (type) {
+        val settings = settingsRepository.currentSettings.value ?: settingsRepository.getSettings(null)
+        val port: PrinterPort = when (settings.printerType) {
             PrinterType.NONE -> return preview.print(document, copies)
             PrinterType.AUTO -> {
                 val ports = listOf(bluetooth, serial, usb)
@@ -56,13 +56,13 @@ class PosPrinter internal constructor(
             PrinterType.BUILT_IN_SERIAL -> serial
             PrinterType.USB -> usb
         }
-        port.send(encode(document, copies))
+        port.send(encode(document, copies, settings.paperFeedMm))
     }
 
     companion object {
-        /** The document as one ESC/POS picture, ready for any [PrinterPort]. */
-        suspend fun encode(document: PrintDocument, copies: Int): ByteArray = withContext(Dispatchers.Default) {
-            EscPosEncoder.encodeRaster(ThermalRaster.render(document), copies)
+        /** The document as one ESC/POS picture plus [feedMm] of blank paper, ready for any [PrinterPort]. */
+        suspend fun encode(document: PrintDocument, copies: Int, feedMm: Int): ByteArray = withContext(Dispatchers.Default) {
+            EscPosEncoder.encodeRaster(ThermalRaster.render(document), copies, feedMm)
         }
     }
 }

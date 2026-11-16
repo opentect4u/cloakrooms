@@ -43,6 +43,7 @@ object CheckinReceiptFormatter {
         p.pair("Mobile", q.mobile)
         p.pair("PNR", q.pnr.ifEmpty { "-" })
         p.pair("Bags", q.bags.toString(), bold = true)
+        if (q.extraBags > 0) p.pair("Extra bags (free)", q.extraBags.toString(), bold = true)
         if (r.idProofName != null && r.idNumber.isNotEmpty()) p.pair("ID", "${r.idProofName} ${r.idNumber}")
         p.divider()
         p.left(

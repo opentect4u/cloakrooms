@@ -217,15 +217,16 @@ class ServerDataImporter @Inject constructor(
 
     /**
      * The §8 values (customer settings merged with this user's overrides) into the customer-wide
-     * rows. REPORT_PWD comes back as "********" and is not copied. Print tab settings (QR_FLAG,
-     * PAPER_WIDTH) belong to the device and keep the phone's value; keys the phone has no row for
-     * are skipped.
+     * rows. REPORT_PWD comes back as "********" and is not copied. Print tab settings (e.g.
+     * PAPER_WIDTH) belong to the device and keep the phone's value, except the admin-set ones
+     * ([SettingKeys.ADMIN_SET_PRINT], e.g. QR_FLAG), which take the server's value; keys the phone
+     * has no row for are skipped.
      */
     private suspend fun importSettings(customerId: Long, settings: Map<String, String>, at: String) {
         val rows = db.settingDao().getScopedRows(customerId, null).filter { it.userId == null }.associateBy { it.settingName }
         settings.forEach { (name, value) ->
             if (name == ServerSettingKey.REPORT_PWD.name) return@forEach
-            val row = rows[name]?.takeIf { it.settingType != PRINT_GROUP } ?: return@forEach
+            val row = rows[name]?.takeIf { it.settingType != PRINT_GROUP || name in SettingKeys.ADMIN_SET_PRINT } ?: return@forEach
             if (row.settingValue != value) {
                 db.settingDao().update(row.copy(settingValue = value, syncFlag = "Y", updatedBy = Tenant.SYSTEM_USER, updatedAt = at))
             }

@@ -36,7 +36,7 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
 
 ## 4. Device-only settings (not sent to the server)
 
-- Print tab (`PAPER_WIDTH`, `QR_FLAG`, `CHECKIN_PRINT_FLAG`, `CHECKIN_PRINT_COPIES`, `CHECKOUT_PRINT_COPIES`) and the printer selection: per phone.
+- Print tab (`PAPER_WIDTH`, `CHECKIN_PRINT_FLAG`, `CHECKIN_PRINT_COPIES`, `CHECKOUT_PRINT_COPIES`, `PAPER_FEED_MM`) and the printer selection: per phone. `QR_FLAG` is **not** per phone any more (see §6, 2026-11-16).
 - The extra keys in `BACKEND_API_REQUESTS.md` A2 (penalty, `UPI_ENABLED`, daily bill limit, `MAX_BAGS_PER_RECEIPT`, `PNR_REQUIRED`, `ID_PROOF_REQUIRED`, shift login, `ADMIN_COUNTER_FLAG`, `MAX_LOGIN_ATTEMPTS`, `PWD_MIN_LENGTH`, …) stay on the phone until backend Phase 11.
 - Admins never check in or check out (no switch since 2026-11-05). This is enforced in the UI and in the repositories.
 - Login-shift check (`SHIFT_LOGIN_FLAG`, `SHIFT_EARLY_LOGIN_MIN`) runs on the phone after a successful server login (request B1).
@@ -71,6 +71,15 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
   - Every bill now sends `grace_minutes` (int), `gst_inclusive`, `penalty_gst_flag` and `gst_flag` (Y/N), the values it was billed with.
   - Rounding confirmed against your §7 examples, including ₹50.05 with GST on top → taxable 50.05, CGST 4.51, SGST 4.50, net 59.06. All are unit tests and pass.
   - `CHECKIN_PRINT_FLAG`, `CHECKIN_PRINT_COPIES` and `CHECKOUT_PRINT_COPIES` (these two replaced `PRINT_COPIES` on 2026-11-08) stay per phone (owner's rule: Print tab settings belong to each counter's phone), so the app doesn't write them to `/settings`.
+
+- 2026-11-16: **`QR_FLAG` (Print QR) is set by the Admin / Super Admin on the server** (decision #202). The app saves it to `/settings` (customer-wide, `"Y"`/`"N"`) from the Admin and Super Admin Settings screens, and every phone now copies the value from login/pull `settings` into its local customer-wide row (before, Print tab keys were skipped on import). Counter users (role O) can only see it; the app refuses their change and ignores any old per-user `QR_FLAG` row. Please: (1) keep sending `QR_FLAG` in login/pull `settings`; (2) refuse a `/settings` create or update of `QR_FLAG` from role O (403) and, if possible, do not return a per-user `QR_FLAG` override.
+- 2026-11-16: **`PAPER_FEED_MM`** (new, Print tab, INT 0–40 mm, default 24): blank paper fed after each print, per phone. No API impact; the app does not send it.
+- 2026-11-16: **Extra bags (free), new column `extra_lugage_qty`** (decision #203; spelling as the owner gave it, "lugage"). Extra bags are stored free of charge: they are **never billed**, the bill and the §7 recompute use only `luggage_qty`. Please:
+  1. MySQL `td_luggage_in_out`: add `extra_lugage_qty INT NOT NULL DEFAULT 0`.
+  2. `/sync/push` luggage rows: accept `extra_lugage_qty` (integer, 0 up to `MAX_BAGS_PER_RECEIPT`, optional, default 0). It is a **check-in field (write-once)** like `luggage_qty`. The app sends it **only when it is more than 0**, so rows without extra bags look exactly as before. Until you accept it, a row with extra bags may come back as `EXCEPTION`.
+  3. `/sync/pull` luggage rows and the report rows (check-in register, bags in store, check-out register): return `extra_lugage_qty`. The app reads 0 when it is missing.
+  4. Do not use it in the bill recompute or in the collection totals. Report totals may add a separate extra-bags count if you like; the app sums the rows itself.
+  5. The receipt QR (`BACKEND_API_REQUESTS.md` §C) gets an optional key `x` = extra bags, written only when more than 0.
 
 ## 7. Still waiting on the backend
 

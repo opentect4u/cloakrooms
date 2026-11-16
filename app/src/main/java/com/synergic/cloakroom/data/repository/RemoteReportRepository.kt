@@ -251,13 +251,14 @@ class RemoteReportRepository(
     private fun ReportBagDto.toCheckin(codes: Map<Long, String>) = CheckinRow(
         transId = transId, receiptNo = receiptNo, dateTimeIn = dateTimeIn,
         userCode = codes[userIdIn] ?: userNameIn.orEmpty(), name = pasnName, mobile = pasnMobNo, pnr = pnrNo,
-        bags = luggageQty, isOut = outFlag == "Y", shift = shiftNameIn.orEmpty(),
+        bags = luggageQty, extraBags = extraLugageQty, isOut = outFlag == "Y", shift = shiftNameIn.orEmpty(),
     )
 
     /** check-out-register rows carry only the net amount; the GST breakup is in the totals. */
     private fun ReportBagDto.toBill(codes: Map<Long, String>) = BillRow(
         transId = transId, billNo = billNo.orEmpty(), billDt = billDt.orEmpty(), receiptNo = receiptNo,
         dateTimeOut = dateTimeOut.orEmpty(), userCode = userIdOut?.let { codes[it] }.orEmpty(), name = pasnName, bags = luggageQty,
+        extraBags = extraLugageQty,
         baseAmt = ZERO, penaltyAmt = ZERO, taxableAmt = ZERO, cgst = ZERO, sgst = ZERO, igst = ZERO,
         netAmt = amount(netAmt ?: "0"), payMode = if (payMode == PayMode.UPI.code) PayMode.UPI else PayMode.CASH,
         printed = billPrinted != "N", shift = shiftNameOut.orEmpty(),

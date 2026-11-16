@@ -279,6 +279,39 @@ class BillRepositoryTest {
         assertNull(env.bills.billDocument(checkIn()))
     }
 
+    @Test
+    fun `extra bags are saved, shown and printed but never billed`() = runBlocking {
+        env.clock.instant = checkInTime
+        val idProof = env.luggage.observeIdProofs().first().first().id
+        val saved = env.luggage.checkIn(
+            CheckinInput("4512345678", "Ravi Kumar", "9876543210", "2", idProof, "123456789012", extraBags = "3")
+        ) as CheckinResult.Saved
+        val transId = saved.transId
+        assertEquals(3, env.db.luggageDao().get(transId)!!.extraLugageQty)
+
+        // Receipt: printed line and the QR carry the extra bags.
+        val receipt = env.luggage.checkinReceipt(transId)!!
+        assertTrue(receipt.lines.filterIsInstance<PrintLine.Text>().any { it.text.startsWith("Extra bags (free)") && it.text.trim().endsWith("3") })
+        val qr = receipt.lines.filterIsInstance<PrintLine.Qr>().single().content
+        assertEquals(3, ReceiptQr.decode(qr)!!.extraBags)
+
+        // Check-out shows them; the bill is for the 2 charged bags only (2 x Rs.50).
+        val b = bag(transId)
+        assertEquals(3, b.extraBags)
+        assertTrue(checkOut(request(b, "100.00")) is CheckoutResult.Saved)
+        val bill = env.db.receiptDao().get(transId)!!
+        assertEquals(2, bill.luggageQty)
+        assertEquals(100.0, bill.netAmt, 0.0)
+        assertTrue(env.bills.billDocument(transId)!!.lines.filterIsInstance<PrintLine.Text>().any { it.text.startsWith("Extra bags (free)") })
+    }
+
+    @Test
+    fun `a bag without extra bags prints no extra line`() = runBlocking {
+        val transId = checkIn()
+        assertEquals(0, env.db.luggageDao().get(transId)!!.extraLugageQty)
+        assertTrue(env.luggage.checkinReceipt(transId)!!.lines.filterIsInstance<PrintLine.Text>().none { it.text.contains("Extra bags") })
+    }
+
     // ---- Scanned QR ------------------------------------------------------------------------
 
     @Test
@@ -326,10 +359,11 @@ class BillRepositoryTest {
         val qr = ReceiptQrData(
             transId = "11111111-2222-3333-4444-555555555555", receiptNo = "U07-00042", receiptDt = "2026-11-02",
             customerId = Tenant.CUSTOMER_ID, userIdIn = 7, dateTimeIn = "2026-11-02 06:30:00",
-            bags = 2, name = "Asha", mobile = "9000000001", pnr = "",
+            bags = 2, name = "Asha", mobile = "9000000001", pnr = "", extraBags = 1,
         )
         val found = env.bills.lookupQr(ReceiptQr.encode(qr)) as QrLookup.Found
         assertEquals(qr, found.bag.fromQr)
+        assertEquals(1, found.bag.extraBags)
 
         env.clock.instant = checkInTime.plusSeconds(600)
         val saved = checkOut(request(found.bag, "100.00")) as CheckoutResult.Saved
@@ -337,6 +371,7 @@ class BillRepositoryTest {
 
         val row = env.db.luggageDao().get(qr.transId)!!
         assertEquals("U07-00042", row.receiptNo) // same receipt number: no new one is made
+        assertEquals(1, row.extraLugageQty) // extra bags from the QR, still not billed (2 x Rs.50)
         assertEquals(7L, row.userIdIn) // counted as a check-in of the other user
         assertEquals("Y", row.outFlag)
         assertEquals(env.userDbId("user1"), row.userIdOut)

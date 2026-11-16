@@ -36,6 +36,7 @@ import com.synergic.cloakroom.domain.repository.SettingsRepository
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.domain.time.TimeSource
 import com.synergic.cloakroom.ui.components.AppTopBar
+import com.synergic.cloakroom.ui.components.bagText
 import com.synergic.cloakroom.ui.components.LoadingBox
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,7 +127,7 @@ fun BagsInStoreScreen(
             }
             item {
                 Text(
-                    "${bags.sumOf { it.bags }} bag(s) on ${bags.size} of ${state.totalReceipts} receipt(s)",
+                    "${bagText(bags.sumOf { it.bags }, bags.sumOf { it.extraBags })} on ${bags.size} of ${state.totalReceipts} receipt(s)",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -138,7 +139,7 @@ fun BagsInStoreScreen(
             items(bags, key = { it.transId }) { bag ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("${bag.receiptNo} · ${bag.bags} bag(s)", style = MaterialTheme.typography.titleLarge)
+                        Text("${bag.receiptNo} · ${bagText(bag.bags, bag.extraBags)}", style = MaterialTheme.typography.titleLarge)
                         Text("${bag.name} · ${bag.mobile}", style = MaterialTheme.typography.bodyLarge)
                         Text(
                             "PNR ${bag.pnr.ifEmpty { "-" }} · in ${DateTimes.displayText(bag.dateTimeIn)} by ${bag.userCode}",

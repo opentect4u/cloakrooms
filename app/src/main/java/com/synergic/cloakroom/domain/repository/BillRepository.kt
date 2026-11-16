@@ -22,6 +22,8 @@ data class CheckoutBag(
     val mobile: String,
     val pnr: String,
     val bags: Int,
+    /** Extra bags stored free of charge: shown, never billed. */
+    val extraBags: Int = 0,
     val idProofName: String?,
     /** Stored (masked) ID number; empty for a bag known only from its QR. */
     val idNumber: String,

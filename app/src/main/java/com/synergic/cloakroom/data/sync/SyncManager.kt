@@ -150,7 +150,7 @@ class SyncManager @Inject constructor(
     private fun LuggageInOutEntity.toPush() = PushLuggageDto(
         transId = transId, localVersion = localVersion, receiptNo = receiptNo, receiptDt = receiptDt,
         userIdIn = userIdIn, deviceIdIn = deviceIdIn, shiftIdIn = shiftIdIn, dateTimeIn = dateTimeIn,
-        pasnName = pasnName, pasnMobNo = pasnMobNo, pnrNo = pnrNo, luggageQty = luggageQty,
+        pasnName = pasnName, pasnMobNo = pasnMobNo, pnrNo = pnrNo, luggageQty = luggageQty, extraLugageQty = extraLugageQty,
         idProofId = idProofId.takeIf { !idNumber.isNullOrEmpty() }, idNumber = idNumber?.takeIf { idProofId != null && it.isNotEmpty() },
         userIdOut = userIdOut, deviceIdOut = deviceIdOut, shiftIdOut = shiftIdOut, dateTimeOut = dateTimeOut, outFlag = outFlag,
     )
@@ -210,6 +210,7 @@ class SyncManager @Inject constructor(
                         transId = r.transId, customerId = customerId, receiptNo = r.receiptNo, receiptDt = r.receiptDt,
                         userIdIn = r.userIdIn, deviceIdIn = r.deviceIdIn, shiftIdIn = r.shiftIdIn, dateTimeIn = r.dateTimeIn,
                         pasnName = r.pasnName, pasnMobNo = r.pasnMobNo, pnrNo = r.pnrNo, luggageQty = r.luggageQty,
+                        extraLugageQty = r.extraLugageQty,
                         idProofId = r.idProofId, idNumber = r.idNumber, userIdOut = r.userIdOut, deviceIdOut = r.deviceIdOut,
                         shiftIdOut = r.shiftIdOut, dateTimeOut = r.dateTimeOut, outFlag = r.outFlag, isDeleted = r.isDeleted,
                         syncFlag = "Y", createdBy = r.createdBy, createdAt = r.createdAt, updatedBy = SYNC_USER, updatedAt = at,
@@ -222,6 +223,8 @@ class SyncManager @Inject constructor(
             val merged = local.copy(
                 deviceIdIn = local.deviceIdIn ?: r.deviceIdIn,
                 shiftIdIn = local.shiftIdIn ?: r.shiftIdIn,
+                // Check-in value, filled once (e.g. a row copied from an older QR without it).
+                extraLugageQty = if (local.extraLugageQty == 0) r.extraLugageQty else local.extraLugageQty,
                 idProofId = if (local.idProofId == null && local.idNumber == null) r.idProofId else local.idProofId,
                 idNumber = if (local.idProofId == null && local.idNumber == null) r.idNumber else local.idNumber,
                 userIdOut = if (takeOut) r.userIdOut else local.userIdOut,

@@ -91,24 +91,16 @@ fun CheckinScreen(
                 KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next))
 
             Text("Number of bags * (max ${s.maxBagsPerReceipt})")
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilledTonalIconButton(onClick = { viewModel.stepBags(-1) }, modifier = Modifier.size(56.dp)) {
-                    Icon(Icons.Default.Remove, contentDescription = "One bag less")
-                }
-                OutlinedTextField(
-                    value = form.bags,
-                    onValueChange = viewModel::onBags,
-                    singleLine = true,
-                    isError = form.errors[CheckinField.BAGS] != null,
-                    textStyle = MaterialTheme.typography.headlineSmall.copy(textAlign = TextAlign.Center),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                    modifier = Modifier.weight(1f),
-                )
-                FilledTonalIconButton(onClick = { viewModel.stepBags(1) }, modifier = Modifier.size(56.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "One bag more")
-                }
-            }
-            form.errors[CheckinField.BAGS]?.let { ErrorText(it) }
+            Stepper(
+                value = form.bags, onValueChange = viewModel::onBags, onStep = viewModel::stepBags,
+                error = form.errors[CheckinField.BAGS], lessLabel = "One bag less", moreLabel = "One bag more",
+            )
+
+            Text("Extra bags (free, not charged)")
+            Stepper(
+                value = form.extraBags, onValueChange = viewModel::onExtraBags, onStep = viewModel::stepExtraBags,
+                error = form.errors[CheckinField.EXTRA_BAGS], lessLabel = "One extra bag less", moreLabel = "One extra bag more",
+            )
 
             IdProofDropdown(
                 options = idProofs,
@@ -152,6 +144,36 @@ private fun Field(
         keyboardOptions = keyboard,
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+/** A number with big − / + buttons on each side, and its error underneath. */
+@Composable
+private fun Stepper(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onStep: (Int) -> Unit,
+    error: String?,
+    lessLabel: String,
+    moreLabel: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FilledTonalIconButton(onClick = { onStep(-1) }, modifier = Modifier.size(56.dp)) {
+            Icon(Icons.Default.Remove, contentDescription = lessLabel)
+        }
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            isError = error != null,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            modifier = Modifier.weight(1f),
+        )
+        FilledTonalIconButton(onClick = { onStep(1) }, modifier = Modifier.size(56.dp)) {
+            Icon(Icons.Default.Add, contentDescription = moreLabel)
+        }
+    }
+    error?.let { ErrorText(it) }
 }
 
 @Composable

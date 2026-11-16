@@ -32,6 +32,8 @@ data class CheckinRow(
     val pnr: String,
     val bags: Int,
     val isOut: Boolean,
+    /** Extra bags stored free of charge (not billed). */
+    val extraBags: Int = 0,
     /** Shift name at check-in, empty when none. */
     val shift: String = "",
 )
@@ -47,6 +49,8 @@ data class BillRow(
     val userCode: String,
     val name: String,
     val bags: Int,
+    /** Extra bags stored free of charge (not billed). */
+    val extraBags: Int = 0,
     val baseAmt: BigDecimal,
     val penaltyAmt: BigDecimal,
     val taxableAmt: BigDecimal,
@@ -107,6 +111,9 @@ data class ReportData(
 ) {
 
     val bagsCheckedIn: Int get() = checkins.sumOf { it.bags }
+
+    /** Free extra bags of the check-ins (not billed). */
+    val extraBagsCheckedIn: Int get() = checkins.sumOf { it.extraBags }
 }
 
 /**

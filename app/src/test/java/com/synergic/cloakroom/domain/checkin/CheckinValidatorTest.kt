@@ -67,6 +67,17 @@ class CheckinValidatorTest {
     }
 
     @Test
+    fun `extra bags are optional, 0 to MAX_BAGS_PER_RECEIPT`() {
+        assertEquals("empty means none", 0, valid(good.copy(extraBags = "")).extraBags)
+        assertEquals(0, valid(good).extraBags)
+        assertEquals(3, valid(good.copy(extraBags = " 3 ")).extraBags)
+        assertEquals(10, valid(good.copy(extraBags = "10")).extraBags)
+        assertEquals("At most 10 extra bags per receipt.", errors(good.copy(extraBags = "11"))[CheckinField.EXTRA_BAGS])
+        assertEquals(setOf(CheckinField.EXTRA_BAGS), errors(good.copy(extraBags = "abc")).keys)
+        assertEquals(setOf(CheckinField.EXTRA_BAGS), errors(good.copy(extraBags = "-1")).keys)
+    }
+
+    @Test
     fun `PNR is required only when PNR_REQUIRED is on`() {
         assertEquals(setOf(CheckinField.PNR), errors(good.copy(pnr = " ")).keys)
         assertEquals("", valid(good.copy(pnr = ""), settings(PNR_REQUIRED to "N")).pnr)
@@ -100,7 +111,7 @@ class CheckinValidatorTest {
 
     @Test
     fun `all problems are reported at once`() {
-        val e = errors(CheckinInput("", "", "1", "0", null, ""))
+        val e = errors(CheckinInput("", "", "1", "0", null, "", extraBags = "x"))
         assertTrue(e.keys.containsAll(CheckinField.entries))
     }
 

@@ -8,6 +8,12 @@ object SettingKeys {
     /** Settings only the Synergic super admin may change; a station admin sees them read-only. */
     val SUPER_ADMIN_ONLY: Set<String> get() = setOf(SINGLE_SESSION_FLAG)
 
+    /**
+     * Print tab settings the Admin / Super Admin set on the server (MySQL md_setting). Sync copies
+     * them into this phone's customer-wide row; counter users only see them and have no own value.
+     */
+    val ADMIN_SET_PRINT: Set<String> get() = setOf(QR_FLAG)
+
     // Billing (B)
     const val FIRST_BLOCK_RATE = "FIRST_BLOCK_RATE"
     const val NEXT_BLOCK_RATE = "NEXT_BLOCK_RATE"
@@ -48,6 +54,7 @@ object SettingKeys {
     const val CHECKOUT_PRINT_COPIES = "CHECKOUT_PRINT_COPIES"
     const val PRINTER_TYPE = "PRINTER_TYPE"
     const val BT_PRINTER = "BT_PRINTER"
+    const val PAPER_FEED_MM = "PAPER_FEED_MM"
 }
 
 enum class GstType(val code: String) { CGST_SGST("E"), IGST("I") }
@@ -112,6 +119,8 @@ data class AppSettings(
     val printerType: PrinterType,
     /** Name or address of the paired Bluetooth printer; empty = find it automatically. */
     val btPrinter: String,
+    /** Blank paper fed after each print so it reaches the tear bar (differs per printer model). */
+    val paperFeedMm: Int,
 ) {
     /** Whether a user of [userType] may check bags in and out: counter users only, never admins. */
     fun canWorkCounter(userType: String): Boolean = userType != UserTypes.ADMIN
@@ -161,6 +170,7 @@ data class AppSettings(
                     checkoutPrintCopies = r.int(CHECKOUT_PRINT_COPIES),
                     printerType = r.enum(PRINTER_TYPE, PrinterType.entries) { it.code },
                     btPrinter = r.text(BT_PRINTER).trim(),
+                    paperFeedMm = r.int(PAPER_FEED_MM),
                 )
             }
         }

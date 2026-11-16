@@ -1,5 +1,8 @@
 package com.synergic.cloakroom.ui.settings
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -196,6 +199,23 @@ fun SettingsScreen(onBack: () -> Unit, title: String = "Settings", viewModel: Se
     }
 }
 
+/** A read-only On/Off value, written out in words so it is clear at a glance (a greyed switch is not). */
+@Composable
+private fun OnOffBadge(on: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.errorContainer,
+        contentColor = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onErrorContainer,
+    ) {
+        Text(
+            if (on) "ON" else "OFF",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+        )
+    }
+}
+
 @Composable
 private fun SettingCard(field: SettingField, onValueChange: (String) -> Unit) {
     val def = field.def
@@ -205,7 +225,9 @@ private fun SettingCard(field: SettingField, onValueChange: (String) -> Unit) {
         } else {
             CardDefaults.cardColors()
         },
-        modifier = Modifier.fillMaxWidth().alpha(if (field.enabled) 1f else 0.5f),
+        // Read-only settings stay fully visible (the user must be able to read them); only
+        // settings switched off by their depends_on parent are faded.
+        modifier = Modifier.fillMaxWidth().alpha(if (field.enabled || def.readOnly) 1f else 0.5f),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             when (def.dataType) {
@@ -215,11 +237,15 @@ private fun SettingCard(field: SettingField, onValueChange: (String) -> Unit) {
                         def.description?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Switch(
-                        checked = field.value == "Y",
-                        onCheckedChange = { onValueChange(if (it) "Y" else "N") },
-                        enabled = field.enabled,
-                    )
+                    if (def.readOnly) {
+                        OnOffBadge(on = field.value == "Y")
+                    } else {
+                        Switch(
+                            checked = field.value == "Y",
+                            onCheckedChange = { onValueChange(if (it) "Y" else "N") },
+                            enabled = field.enabled,
+                        )
+                    }
                 }
 
                 SettingDataType.INT, SettingDataType.DECIMAL, SettingDataType.TEXT -> {
@@ -271,7 +297,7 @@ private fun SettingCard(field: SettingField, onValueChange: (String) -> Unit) {
                 Text(field.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             if (def.readOnly) {
-                Text("Set by Synergic (super admin).", style = MaterialTheme.typography.bodySmall)
+                Text(def.readOnlyNote ?: "Set by Synergic (super admin).", style = MaterialTheme.typography.bodySmall)
             } else if (!field.enabled && field.parentLabel != null) {
                 Text("Turn on \"${field.parentLabel}\" to change this.", style = MaterialTheme.typography.bodySmall)
             }

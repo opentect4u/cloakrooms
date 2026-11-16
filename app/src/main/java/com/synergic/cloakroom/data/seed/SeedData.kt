@@ -126,6 +126,7 @@ object SeedData {
             SeedSetting(PRINTER_TYPE, "P", "ENUM", "A", "Printer", "Auto: a paired Bluetooth printer, else the POS's built-in printer. None = preview and Share PDF only", options = "A:Auto|B:Bluetooth|S:Built-in (GC039, serial)|U:USB (GC039ES)|N:None"),
             SeedSetting(BT_PRINTER, "P", "TEXT", "", "Bluetooth printer", "Name or address of the paired printer; leave empty to find it automatically"),
             // Appended (not in the General block) so existing phones keep their sort order.
+            SeedSetting(PAPER_FEED_MM, "P", "INT", "24", "Blank paper after print (mm)", "Paper fed after each print to reach the tear bar. Lower it if your printer leaves a long blank strip", min = 0.0, max = 40.0),
         )
     }
 }

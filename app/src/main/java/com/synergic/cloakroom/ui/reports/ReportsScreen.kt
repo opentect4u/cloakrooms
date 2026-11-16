@@ -63,6 +63,7 @@ import com.synergic.cloakroom.domain.report.SyncExceptionRow
 import com.synergic.cloakroom.domain.settings.PayMode
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.ui.components.AppTopBar
+import com.synergic.cloakroom.ui.components.bagText
 import com.synergic.cloakroom.ui.components.BigButton
 import com.synergic.cloakroom.ui.components.ErrorBanner
 import com.synergic.cloakroom.ui.components.LoadingBox
@@ -289,7 +290,7 @@ private fun shiftSuffix(shift: String) = if (shift.isEmpty()) "" else " · $shif
 private fun CheckinList(rows: List<CheckinRow>) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (rows.isEmpty()) item { Text("No check-ins in this period.") }
-        else item { Text("${rows.size} check-in(s), ${rows.sumOf { it.bags }} bag(s)", style = MaterialTheme.typography.titleMedium) }
+        else item { Text("${rows.size} check-in(s), ${bagText(rows.sumOf { it.bags }, rows.sumOf { it.extraBags })}", style = MaterialTheme.typography.titleMedium) }
         items(rows, key = { it.transId }) { r ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
@@ -297,7 +298,7 @@ private fun CheckinList(rows: List<CheckinRow>) {
                         Text(r.receiptNo, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Text(if (r.isOut) "Out" else "In store")
                     }
-                    Text("${r.name} · ${r.mobile} · ${r.bags} bag(s)")
+                    Text("${r.name} · ${r.mobile} · ${bagText(r.bags, r.extraBags)}")
                     Text("${DateTimes.displayText(r.dateTimeIn)} · ${r.userCode}${shiftSuffix(r.shift)}", style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -316,7 +317,7 @@ private fun BillList(rows: List<BillRow>) {
                         Text(b.billNo, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Text("₹${money(b.netAmt)}", fontWeight = FontWeight.Bold)
                     }
-                    Text("${b.name} · receipt ${b.receiptNo} · ${b.bags} bag(s)")
+                    Text("${b.name} · receipt ${b.receiptNo} · ${bagText(b.bags, b.extraBags)}")
                     Text(
                         "${DateTimes.displayText(b.dateTimeOut)} · ${b.userCode}${shiftSuffix(b.shift)} · ${if (b.payMode == PayMode.UPI) "UPI" else "Cash"}" +
                             if (b.printed) "" else " · not printed",

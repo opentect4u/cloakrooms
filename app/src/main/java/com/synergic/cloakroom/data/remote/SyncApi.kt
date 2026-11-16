@@ -24,6 +24,8 @@ data class PushLuggageDto(
     @SerialName("pasn_mob_no") val pasnMobNo: String,
     @SerialName("pnr_no") val pnrNo: String,
     @SerialName("luggage_qty") val luggageQty: Int,
+    /** Free extra bags; left out of the JSON when 0 (defaults are not encoded). */
+    @SerialName("extra_lugage_qty") val extraLugageQty: Int = 0,
     @SerialName("id_proof_id") val idProofId: Long? = null,
     @SerialName("id_number") val idNumber: String? = null,
     @SerialName("user_id_out") val userIdOut: Long? = null,
@@ -104,6 +106,8 @@ data class PullLuggageDto(
     @SerialName("pasn_mob_no") val pasnMobNo: String,
     @SerialName("pnr_no") val pnrNo: String = "",
     @SerialName("luggage_qty") val luggageQty: Int,
+    /** 0 when the server does not send it (yet). */
+    @SerialName("extra_lugage_qty") val extraLugageQty: Int = 0,
     @SerialName("id_proof_id") val idProofId: Long? = null,
     @SerialName("id_number") val idNumber: String? = null,
     @SerialName("user_id_out") val userIdOut: Long? = null,

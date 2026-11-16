@@ -126,15 +126,27 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override fun observePrintDefinitions(): Flow<List<SettingDefinition>> {
-        val userId = sessionProvider.current?.id
-        return settingDao.observeScopedRows(Tenant.CUSTOMER_ID, userId).map { rows ->
+        val session = sessionProvider.current
+        val userId = session?.id
+        return settingDao.observeScopedRows(Tenant.CUSTOMER_ID, userId).map { raw ->
+            val rows = withoutAdminSetOverrides(raw)
             val effective = SettingsResolver.resolve(rows, userId, { it.settingName }, { it.userId })
             // Screen details from the customer row (kept up to date), value from the user's own row if any.
             rows.filter { it.userId == null && it.settingType == PRINT_GROUP }
                 .sortedBy { it.sortOrder }
-                .map { it.toDefinition().copy(value = effective[it.settingName]?.settingValue ?: it.settingValue) }
+                .map { row ->
+                    val def = row.toDefinition().copy(value = effective[row.settingName]?.settingValue ?: row.settingValue)
+                    // Counter users see admin-set Print settings (e.g. Print QR) but cannot change them.
+                    if (session?.isAdmin != true && row.settingName in SettingKeys.ADMIN_SET_PRINT) {
+                        def.copy(readOnly = true, readOnlyNote = ADMIN_SET_NOTE)
+                    } else def
+                }
         }
     }
+
+    /** User override rows of [SettingKeys.ADMIN_SET_PRINT] never apply: the admin's value is for everyone. */
+    private fun withoutAdminSetOverrides(rows: List<SettingEntity>): List<SettingEntity> =
+        rows.filterNot { it.userId != null && it.settingName in SettingKeys.ADMIN_SET_PRINT }
 
     override suspend fun updatePrintSettings(changes: Map<String, String>): Int {
         val session = sessionProvider.requireLogin()
@@ -145,6 +157,10 @@ class SettingsRepositoryImpl @Inject constructor(
             val ownRows = rows.filter { it.userId == session.id }.associateBy { it.settingName }
             if (changes.keys.any { customerRows[it]?.settingType != PRINT_GROUP }) {
                 throw NotAuthorizedException("Counter users can change only the Print settings.")
+            }
+            changes.keys.firstOrNull { it in SettingKeys.ADMIN_SET_PRINT }?.let { name ->
+                val label = customerRows[name]?.label ?: name
+                throw NotAuthorizedException("\"$label\" is set by the admin.")
             }
             val requested = changes
                 .mapValues { it.value.trim() }
@@ -195,10 +211,13 @@ class SettingsRepositoryImpl @Inject constructor(
     private companion object {
         /** setting_type of the Print tab: the only settings counter users may change (for themselves). */
         const val PRINT_GROUP = "P"
+
+        /** Shown under an admin-set Print setting on a counter user's Settings screen. */
+        const val ADMIN_SET_NOTE = "Set by the admin. You can only see it."
     }
 
     private fun toAppSettings(rows: List<SettingEntity>, userId: Long?): AppSettings {
-        val effective = SettingsResolver.resolve(rows, userId, { it.settingName }, { it.userId })
+        val effective = SettingsResolver.resolve(withoutAdminSetOverrides(rows), userId, { it.settingName }, { it.userId })
         return AppSettings.fromValues(effective.mapValues { it.value.settingValue })
     }
 }

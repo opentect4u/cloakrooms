@@ -34,7 +34,7 @@ import com.synergic.cloakroom.data.db.entity.UserCounterEntity
 import com.synergic.cloakroom.data.db.entity.UserEntity
 
 @Database(
-    version = 4,
+    version = 5,
     exportSchema = true,
     entities = [
         CustomerEntity::class,
@@ -158,10 +158,22 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
+         * Version 5: td_luggage_in_out.extra_lugage_qty, the extra bags stored free of charge
+         * (same column name as on the server). Existing bags get 0.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE td_luggage_in_out ADD COLUMN extra_lugage_qty INTEGER NOT NULL DEFAULT 0")
+                SchemaExtras.apply(db)
+                SchemaExtras.beforeRoomValidation(db)
+            }
+        }
+
+        /**
          * Migrations from version 1 onward. Add each new one here; never use destructive fallback.
          * Every migration must end with [SchemaExtras.beforeRoomValidation].
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         /**
          * Creates the trigger, CHECK rules and expression index after Room creates the tables, and

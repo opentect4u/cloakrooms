@@ -216,6 +216,28 @@ class MigrationTest {
     }
 
     @Test
+    fun `4 to 5 keeps bags and adds extra bags as 0`() {
+        helper.createDatabase(dbName, 4).apply {
+            SchemaExtras.apply(this)
+            execSQL(
+                """INSERT INTO td_luggage_in_out (trans_id, customer_id, receipt_no, receipt_dt, user_id_in, device_id_in, date_time_in,
+                       pasn_name, pasn_mob_no, pnr_no, luggage_qty, out_flag, sync_flag, local_version)
+                   VALUES ('t1', 1, 'U02-00001', '2026-11-16', 2, 'dev-A', '2026-11-16 05:00:00', 'Ravi', '9876543210', 'P1', 2, 'N', 'Y', 1)"""
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 5, true, AppDatabase.MIGRATION_4_5)
+        db.query("SELECT luggage_qty, extra_lugage_qty, sync_flag, local_version FROM td_luggage_in_out WHERE trans_id = 't1'").use {
+            it.moveToFirst()
+            assertEquals(2, it.getInt(0))
+            assertEquals("older bags have no extra bags", 0, it.getInt(1))
+            assertEquals("the row is not re-sent", "Y", it.getString(2))
+            assertEquals(1, it.getInt(3))
+        }
+        db.close()
+    }
+
+    @Test
     fun `a version-1 phone upgrades straight to the current version`() = runBlocking {
         createVersion1()
         val app = Room.databaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java, dbName)
