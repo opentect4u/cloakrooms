@@ -10,6 +10,7 @@ import com.synergic.cloakroom.domain.auth.NotAuthorizedException
 import com.synergic.cloakroom.domain.auth.SessionProvider
 import com.synergic.cloakroom.domain.billing.BillCalculationException
 import com.synergic.cloakroom.domain.billing.BillCalculator
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.billing.Tariff
 import com.synergic.cloakroom.domain.billing.withTariff
 import com.synergic.cloakroom.domain.billing.toMoney
@@ -48,6 +49,7 @@ class BillRepositoryImpl @Inject constructor(
     private val sequence: UserCounterSequence,
     private val deviceInfo: DeviceInfo,
     private val time: TimeSource,
+    private val tariffs: TariffLookup,
 ) : BillRepository {
 
     override suspend fun search(query: String): List<CheckoutBag> {
@@ -81,6 +83,7 @@ class BillRepositoryImpl @Inject constructor(
                 pnr = qr.pnr,
                 bags = qr.bags,
                 extraBags = qr.extraBags,
+                advAmt = qr.advAmt,
                 idProofName = null,
                 idNumber = "",
                 isOut = false,
@@ -101,19 +104,7 @@ class BillRepositoryImpl @Inject constructor(
         return tariffOn(receiptDt, DateTimes.localDateText(time.now()))
     }
 
-    private suspend fun tariffOn(receiptDt: String, billDt: String): Tariff {
-        val rate = db.rateDao().rateOn(Tenant.CUSTOMER_ID, receiptDt)
-        // Used only when the cloak room has no own GST % (withTariff).
-        val gst = db.gstDao().gstOn(billDt)
-        return Tariff(
-            blockHours = rate?.blockHours,
-            firstBlockRate = rate?.firstBlockRate?.toMoney(),
-            nextBlockRate = rate?.nextBlockRate?.toMoney(),
-            cgstPct = gst?.cgstPct?.toMoney(),
-            sgstPct = gst?.sgstPct?.toMoney(),
-            igstPct = gst?.igstPct?.toMoney(),
-        )
-    }
+    private suspend fun tariffOn(receiptDt: String, billDt: String): Tariff = tariffs.on(receiptDt, billDt)
 
     override suspend fun checkOut(request: CheckoutRequest): CheckoutResult {
         val session = sessionProvider.requireLogin()
@@ -149,6 +140,8 @@ class BillRepositoryImpl @Inject constructor(
                     bags = existing?.luggageQty ?: request.bag.bags,
                     penalty = valid.penalty,
                     settings = settings,
+                    // The advance of the check-in row (or, before it synced here, from the QR).
+                    advance = existing?.advAmt?.toMoney() ?: request.bag.advAmt,
                 )
             } catch (e: BillCalculationException) {
                 return@withTransaction CheckoutResult.Invalid(mapOf(CheckoutField.PENALTY to e.message!!))
@@ -180,6 +173,7 @@ class BillRepositoryImpl @Inject constructor(
                         pnrNo = qr.pnr,
                         luggageQty = qr.bags,
                         extraLugageQty = qr.extraBags,
+                        advAmt = qr.advAmt.toDouble(),
                         idProofId = null,
                         idNumber = null,
                         createdBy = session.userId, createdAt = nowText, updatedBy = session.userId, updatedAt = nowText,
@@ -209,9 +203,12 @@ class BillRepositoryImpl @Inject constructor(
                     firstBlockRate = bill.firstBlockRate.toDouble(),
                     nextBlockRate = bill.nextBlockRate.toDouble(),
                     blockHours = bill.blockHours,
+                    rateSlabs = RateSlabs.toJson(bill.slabs),
                     baseAmt = bill.baseAmt.toDouble(),
                     penalAmt = bill.penaltyAmt.toDouble(),
                     netAmt = bill.netAmt.toDouble(),
+                    advAmt = bill.advAmt.toDouble(),
+                    balAmt = bill.balAmt.toDouble(),
                     taxableAmt = bill.taxableAmt.toDouble(),
                     gstPct = bill.gstPct.toDouble(),
                     cgst = bill.cgst.toDouble(),
@@ -257,9 +254,8 @@ class BillRepositoryImpl @Inject constructor(
             bags = r.luggageQty,
             extraBags = inOut.extraLugageQty,
             blocks = r.daysCharged,
-            blockHours = r.blockHours,
-            firstBlockRate = r.firstBlockRate.toMoney(),
-            nextBlockRate = r.nextBlockRate.toMoney(),
+            slabs = RateSlabs.parse(r.rateSlabs)
+                ?: RateSlabs.fromTwoRate(r.blockHours.coerceAtLeast(1), r.firstBlockRate.toMoney(), r.nextBlockRate.toMoney()),
             baseAmt = r.baseAmt.toMoney(),
             penaltyAmt = r.penalAmt.toMoney(),
             taxableAmt = r.taxableAmt.toMoney(),
@@ -269,12 +265,14 @@ class BillRepositoryImpl @Inject constructor(
             sgst = r.sgst.toMoney(),
             igst = r.igst.toMoney(),
             netAmt = r.netAmt.toMoney(),
+            advAmt = r.advAmt.toMoney(),
+            balAmt = r.balAmt.toMoney(),
             payMode = if (r.payMode == PayMode.UPI.code) PayMode.UPI else PayMode.CASH,
             logo = all.firstOrNull { it.lineType == "L" && it.image != null }?.image,
             // Same link as the QR shown at check-out.
             upiLink = if (r.payMode == PayMode.UPI.code) {
                 customer?.upiId?.takeIf { it.isNotBlank() }?.let {
-                    UpiLink.build(UpiPayee(it, customer.customerName), r.netAmt.toMoney(), "Cloak room ${inOut.receiptNo}")
+                    UpiLink.build(UpiPayee(it, customer.customerName), r.balAmt.toMoney(), "Cloak room ${inOut.receiptNo}")
                 }
             } else null,
         )
@@ -292,6 +290,7 @@ class BillRepositoryImpl @Inject constructor(
         pnr = row.pnrNo,
         bags = row.luggageQty,
         extraBags = row.extraLugageQty,
+        advAmt = row.advAmt.toMoney(),
         idProofName = row.idProofId?.let { db.idProofDao().get(it) }?.idProofName,
         idNumber = row.idNumber.orEmpty(),
         isOut = row.outFlag == "Y",

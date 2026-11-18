@@ -163,3 +163,20 @@ Install the debug APK on the POS (USB cable + Android Studio ▶, or copy the AP
 - [ ] **10.18** As `user1`: Print copies = 2 → Save → the next receipt prints twice. Print copies = 5 → red "Must be at most 3", Save disabled.
 - [ ] **10.19** Log in as `admin` → Settings → Print still shows Print copies = 1 (the default), and all three tabs.
 
+
+## 11. Price ranges, advance and extra bags (version 0.2.0, 2026-11-18)
+
+Log in as the Admin on a phone with internet. The server must have the slab release.
+
+- [ ] **11.1** Settings → Billing → **Price range** shows the current tariff as rows (e.g. 0 → 24 h ₹50, 24 → 48 h ₹20). The "From" fields are grey: each one is the previous row's "To".
+- [ ] **11.2** Change it to one row 0 → 24 h ₹30 (delete the second row) → Save → confirm. Under the field: "Now: 0-24 h ₹30, then ₹30 per 24 h (per bag)".
+- [ ] **11.3** **Add price range** → a row 24 → 48 h ₹30 appears; change its price to ₹10 → Save.
+- [ ] **11.4** Type "To h" = 20 in the second row (smaller than 24) → red "Range 2: "to" hours must be more than 24", Save disabled.
+- [ ] **11.5** Counter user: sync (or log in again), then check in 2 bags. Checked out on day 3 (more than 48 h later; or set the phone clock forward), the bill is 2 × (30 + 10 + 10) = ₹100, with one line per range. Exactly 48 h or less is 2 × (30 + 10) = ₹80.
+- [ ] **11.6** Admin: Settings → Billing → **Advance** on, **Advance hours** 24 → Save.
+- [ ] **11.7** Counter user: Check-in shows "Collect advance ₹60.00 in cash (first 24 h)" for 2 bags; it changes as you press + / −. Save → the receipt prints "Advance paid (cash) Rs.60.00".
+- [ ] **11.8** Check-out of that bag: the bill shows TOTAL, "Less advance paid at check-in − 60.00" and **COLLECT NOW**. The confirm dialog asks to collect the balance, not the total. With UPI, the QR is for the balance.
+- [ ] **11.9** Check out a bag with an advance after 1 hour → COLLECT NOW ₹0.00 and "The advance covers the whole bill. Nothing is refunded."
+- [ ] **11.10** Scan the receipt QR on a second phone before the first one syncs → the advance is shown and subtracted there too.
+- [ ] **11.11** Reports → Collection: "Money taken" shows the advance at check-in, the balance at check-out and the total collected. The Dashboard's today's collection = advances + balances of today.
+- [ ] **11.12** Extra bags: check in with 1 extra bag → sync → Admin's Reports (server) list the extra bag.

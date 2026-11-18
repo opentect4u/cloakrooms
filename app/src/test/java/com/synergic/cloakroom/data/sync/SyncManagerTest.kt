@@ -171,12 +171,28 @@ class SyncManagerTest {
             listOf("2026-11-02 07:00:00" to null, null to "c1"), env.syncApi.pullCalls.takeLast(2))
         val added = env.db.luggageDao().get(other.transId)!!
         assertEquals("Y" to "N", added.syncFlag to added.outFlag)
+        assertEquals("server time is IST, the phone keeps UTC", "2026-11-01 23:30:00", added.dateTimeIn)
         val out = env.db.luggageDao().get(mine)!!
         assertEquals("Y", out.outFlag)
         assertEquals("checked out elsewhere: nothing to send back", "Y", out.syncFlag)
 
         env.sync.syncNow()
         assertEquals("2026-11-02 07:10:00" to null, env.syncApi.pullCalls.last())
+    }
+
+    @Test
+    fun `times are sent as UTC and a bag's own time is never replaced by the server's`() = runBlocking {
+        val mine = checkIn() // 2026-11-02 06:30:00 UTC = 12:00 IST
+        env.sync.syncNow()
+        assertEquals("pushed as UTC (the server converts)", "2026-11-02 06:30:00", env.syncApi.pushes.single().luggage.single().dateTimeIn)
+        // The server answers with a wrong time (UTC it stored as IST): the phone keeps its own.
+        val serverCopy = PullLuggageDto(
+            transId = mine, receiptNo = "U02-00001", receiptDt = "2026-11-02", userIdIn = env.userDbId("user1"),
+            dateTimeIn = "2026-11-02 06:30:00", pasnName = "Ravi Kumar", pasnMobNo = "9876543210", luggageQty = 1,
+        )
+        env.syncApi.pullPages += PullResponseDto(luggage = listOf(serverCopy), serverTime = "2026-11-02 07:20:00")
+        env.sync.syncNow()
+        assertEquals("2026-11-02 06:30:00", env.db.luggageDao().get(mine)!!.dateTimeIn)
     }
 
     @Test

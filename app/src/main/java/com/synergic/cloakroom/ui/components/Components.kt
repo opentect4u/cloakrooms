@@ -53,7 +53,17 @@ fun AppTopBar(
                 }
             }
         },
-        actions = { actions() },
+        actions = {
+            // App version, small, at the top right of every screen after login; the screen's own
+            // buttons (e.g. the ⋮ menu) come after it, so they stay at the far right.
+            Text(
+                appVersionText(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+            actions()
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -62,6 +72,9 @@ fun AppTopBar(
         ),
     )
 }
+
+/** "v0.1.0 (1)": versionName and versionCode from build.gradle.kts. */
+fun appVersionText(): String = "v${com.synergic.cloakroom.BuildConfig.VERSION_NAME} (${com.synergic.cloakroom.BuildConfig.VERSION_CODE})"
 
 /** Password input with a show/hide eye button. */
 @Composable

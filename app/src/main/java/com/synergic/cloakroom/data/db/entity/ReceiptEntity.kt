@@ -30,9 +30,16 @@ data class ReceiptEntity(
     @ColumnInfo(name = "first_block_rate", defaultValue = "0.0") val firstBlockRate: Double = 0.0,
     @ColumnInfo(name = "next_block_rate", defaultValue = "0.0") val nextBlockRate: Double = 0.0,
     @ColumnInfo(name = "block_hours", defaultValue = "0") val blockHours: Int = 0,
+    /** The price ranges billed with (rate_slabs JSON, database version 6); null on older bills (then the two-rate fields). */
+    @ColumnInfo(name = "rate_slabs") val rateSlabs: String? = null,
     @ColumnInfo(name = "base_amt", defaultValue = "0.0") val baseAmt: Double = 0.0,
     @ColumnInfo(name = "penal_amt", defaultValue = "0.0") val penalAmt: Double = 0.0,
+    /** The full bill. */
     @ColumnInfo(name = "net_amt", defaultValue = "0.0") val netAmt: Double = 0.0,
+    /** The bag's advance (paid at check-in), subtracted from [netAmt]. */
+    @ColumnInfo(name = "adv_amt", defaultValue = "0") val advAmt: Double = 0.0,
+    /** Collected at check-out: max(0, net_amt − adv_amt). Older bills: net_amt. */
+    @ColumnInfo(name = "bal_amt", defaultValue = "0") val balAmt: Double = 0.0,
     @ColumnInfo(name = "taxable_amt", defaultValue = "0.0") val taxableAmt: Double = 0.0,
     @ColumnInfo(name = "gst_pct", defaultValue = "0.0") val gstPct: Double = 0.0,
     @ColumnInfo(name = "cgst", defaultValue = "0.0") val cgst: Double = 0.0,

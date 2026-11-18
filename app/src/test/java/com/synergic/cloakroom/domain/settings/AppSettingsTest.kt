@@ -1,6 +1,7 @@
 package com.synergic.cloakroom.domain.settings
 
 import com.synergic.cloakroom.data.seed.SeedData
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -14,9 +15,7 @@ class AppSettingsTest {
     @Test
     fun `seed values parse into typed settings`() {
         val s = AppSettings.fromValues(seedValues)
-        assertEquals(0, "50".toBigDecimal().compareTo(s.firstBlockRate))
-        assertEquals(0, "20".toBigDecimal().compareTo(s.nextBlockRate))
-        assertEquals(24, s.blockHours)
+        assertEquals(RateSlabs.fromTwoRate(24, "50".toBigDecimal(), "20".toBigDecimal()), s.rateSlabs)
         assertEquals(0, s.graceMinutes)
         assertTrue(s.gstFlag)
         assertEquals(0, "18".toBigDecimal().compareTo(s.gstPct))
@@ -35,7 +34,8 @@ class AppSettingsTest {
         val keys = SettingKeys::class.java.declaredFields
             .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) && it.type == String::class.java }
             .map { it.get(null) as String }
-        assertEquals(keys.toSet(), seedValues.keys)
+        // Retired keys (e.g. the old two-rate tariff) stay only to convert older phones at start-up.
+        assertEquals(keys.toSet() - SeedData.retiredSettings.toSet(), seedValues.keys)
     }
 
     @Test

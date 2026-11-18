@@ -9,7 +9,7 @@ import java.time.Instant
 
 /**
  * The bill and the snapshot saved on td_receipt. Every amount has 2 decimals.
- * [blocks] is what td_receipt.hours_charged stores.
+ * [blocks] is what td_receipt.days_charged stores (how many slab rates were added per bag).
  */
 data class BillResult(
     /** Whole minutes between check-in and check-out (seconds are dropped). */
@@ -18,9 +18,10 @@ data class BillResult(
     val minutesCharged: Long,
     val blocks: Int,
     val bags: Int,
-    val firstBlockRate: BigDecimal,
-    val nextBlockRate: BigDecimal,
-    val blockHours: Int,
+    /** The tariff billed with (td_receipt.rate_slabs). */
+    val slabs: List<RateSlab>,
+    /** How often each of [slabs] was charged per bag (same order; the last includes repeats). */
+    val slabCounts: List<Int>,
     val baseAmt: BigDecimal,
     val penaltyAmt: BigDecimal,
     val gstFlag: Boolean,
@@ -35,23 +36,38 @@ data class BillResult(
     val cgst: BigDecimal,
     val sgst: BigDecimal,
     val igst: BigDecimal,
-    /** Total amount collected from the passenger. */
+    /** The full bill (rent + penalty + GST added on top). */
     val netAmt: BigDecimal,
+    /** Advance paid at check-in (td_luggage_in_out.adv_amt), subtracted from [netAmt]. */
+    val advAmt: BigDecimal = ZERO_MONEY,
 ) {
     val gstAmt: BigDecimal get() = cgst + sgst + igst
+
+    /** Collected at check-out: max(0, net − advance). No refund when the advance is larger. */
+    val balAmt: BigDecimal get() = (netAmt - advAmt).max(BigDecimal.ZERO).money()
+
+    /** Breakup lines (one per charged slab, plus the repeats of the last one). */
+    val charges: List<SlabCharge> get() = RateSlabs.charges(slabs, slabCounts)
+
+    /** The older two-rate snapshot columns, kept for older readers: first slab length and rates. */
+    val blockHours: Int get() = slabs.first().hours
+    val firstBlockRate: BigDecimal get() = slabs.first().rate.money()
+    val nextBlockRate: BigDecimal get() = (slabs.getOrNull(1) ?: slabs.first()).rate.money()
 }
 
 /** The inputs cannot be billed, e.g. a penalty above PENALTY_MAX_AMT. [message] is shown on screen. */
 class BillCalculationException(message: String) : IllegalArgumentException(message)
 
 /**
- * Bill formula from CLAUDE.md. Rates, block length, grace, penalty limits and GST all come from
- * the [AppSettings] snapshot; nothing is hard-coded.
+ * Bill formula of API_GUIDE.md §7. The price ranges (rate slabs), grace, penalty limits and GST
+ * all come from the [AppSettings] snapshot; nothing is hard-coded.
  *
  * ```
  * minutes  = (out − in) in minutes − GRACE_MINUTES (not below 0)
- * blocks   = max(1, ceil(minutes / (BLOCK_HOURS × 60)))
- * base_amt = bags × (FIRST_BLOCK_RATE + NEXT_BLOCK_RATE × (blocks − 1))
+ * per bag  = Σ rate of every started slab (the first always; a later one once minutes > from_hour × 60)
+ *          + last.rate × ceil((minutes − last.to_hour × 60) / ((last.to − last.from) × 60))  when past the last slab
+ * blocks   = how many rates were added
+ * base_amt = bags × per bag
  * ```
  */
 object BillCalculator {
@@ -64,18 +80,20 @@ object BillCalculator {
         bags: Int,
         penalty: BigDecimal,
         settings: AppSettings,
+        advance: BigDecimal = ZERO_MONEY,
     ): BillResult {
         if (bags < 1) throw BillCalculationException("Number of bags must be at least 1.")
-        if (settings.blockHours < 1) throw BillCalculationException("Block length must be at least 1 hour.")
+        val slabs = settings.rateSlabs
+        RateSlabs.problem(slabs)?.let { throw BillCalculationException("The price list is not valid: $it.") }
         val penaltyAmt = checkPenalty(penalty, settings)
 
         // A check-out clock earlier than check-in (wrong device time) counts as 0 minutes.
         val minutesStored = Duration.between(checkIn, checkOut).toMinutes().coerceAtLeast(0)
         val minutesCharged = (minutesStored - settings.graceMinutes).coerceAtLeast(0)
-        val blockMinutes = settings.blockHours * 60L
-        val blocks = maxOf(1L, (minutesCharged + blockMinutes - 1) / blockMinutes).toInt()
+        val counts = RateSlabs.counts(slabs, minutesCharged)
+        val blocks = counts.sum()
 
-        val perBag = settings.firstBlockRate + settings.nextBlockRate * BigDecimal(blocks - 1)
+        val perBag = RateSlabs.perBag(slabs, counts)
         val baseAmt = (perBag * BigDecimal(bags)).money()
 
         val gstOn = settings.gstFlag
@@ -117,9 +135,8 @@ object BillCalculator {
             minutesCharged = minutesCharged,
             blocks = blocks,
             bags = bags,
-            firstBlockRate = settings.firstBlockRate.money(),
-            nextBlockRate = settings.nextBlockRate.money(),
-            blockHours = settings.blockHours,
+            slabs = slabs.map { it.copy(rate = it.rate.money()) },
+            slabCounts = counts,
             baseAmt = baseAmt,
             penaltyAmt = penaltyAmt,
             gstFlag = gstOn,
@@ -133,7 +150,19 @@ object BillCalculator {
             sgst = sgst,
             igst = igst,
             netAmt = net,
+            advAmt = advance.money().max(ZERO_MONEY),
         )
+    }
+
+    /**
+     * Advance taken at check-in (API_GUIDE.md §7): the bill for ADVANCE_HOURS with the same slabs
+     * and GST setting, without penalty. Zero when ADVANCE_FLAG = N.
+     */
+    fun advance(checkIn: Instant, bags: Int, settings: AppSettings): BigDecimal {
+        if (!settings.advanceFlag || settings.advanceHours < 1) return ZERO_MONEY
+        // Grace minutes are added back, so exactly ADVANCE_HOURS are charged.
+        val out = checkIn.plus(Duration.ofHours(settings.advanceHours.toLong())).plus(Duration.ofMinutes(settings.graceMinutes.toLong()))
+        return calculate(checkIn, out, bags, ZERO_MONEY, settings).netAmt
     }
 
     /** 0 when PENALTY_FLAG = N; otherwise 0 ≤ penalty ≤ PENALTY_MAX_AMT. */

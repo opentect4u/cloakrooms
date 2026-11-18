@@ -20,7 +20,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +38,7 @@ import com.synergic.cloakroom.domain.repository.CheckoutBag
 import com.synergic.cloakroom.domain.repository.QrLookup
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.ui.components.AppTopBar
+import com.synergic.cloakroom.ui.components.CompactField
 import com.synergic.cloakroom.ui.components.bagText
 import com.synergic.cloakroom.ui.components.ErrorBanner
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -157,14 +157,13 @@ fun CheckoutSearchScreen(
                 }
             }
             item {
-                OutlinedTextField(
+                CompactField(
                     value = state.query,
-                    onValueChange = viewModel::onQuery,
-                    label = { Text("PNR, mobile, name or receipt no.") },
+                    onChange = viewModel::onQuery,
+                    label = "PNR, mobile, name or receipt no.",
+                    error = null,
+                    keyboard = KeyboardOptions(imeAction = ImeAction.Search),
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             item { ErrorBanner(state.message) }

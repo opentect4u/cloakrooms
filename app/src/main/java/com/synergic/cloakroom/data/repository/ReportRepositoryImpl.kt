@@ -64,14 +64,16 @@ class ReportRepositoryImpl @Inject constructor(
                 db.luggageDao().observeInStore(Tenant.CUSTOMER_ID),
                 db.luggageDao().observeCheckinCount(Tenant.CUSTOMER_ID, today, scope),
                 db.receiptDao().observeBillsOn(Tenant.CUSTOMER_ID, today, scope),
-            ) { inStore, checkins, bills ->
+                db.luggageDao().observeAdvanceOn(Tenant.CUSTOMER_ID, today, scope),
+            ) { inStore, checkins, bills, advance ->
                 DashboardData(
                     receiptsInStore = inStore.size,
                     bagsInStore = inStore.sumOf { it.luggageQty },
                     todayCheckins = checkins,
                     todayBills = bills.size,
+                    // Money taken today: balances at check-out + advances at check-in.
                     todayCollection = if (settings.totalCollectionFlag) {
-                        bills.fold(ZERO_MONEY) { acc, b -> acc + b.netAmt.toMoney() }.money()
+                        bills.fold(advance.toMoney()) { acc, b -> acc + b.balAmt.toMoney() }.money()
                     } else {
                         null
                     },
@@ -197,6 +199,7 @@ class ReportRepositoryImpl @Inject constructor(
         extraBags = extraLugageQty,
         isOut = outFlag == "Y",
         shift = shiftIdIn?.let { shifts[it] }.orEmpty(),
+        advAmt = advAmt.toMoney(),
     )
 
     private fun BillWithBag.toRow(codes: Map<Long, String>, shifts: Map<Long, String>) = BillRow(
@@ -219,6 +222,8 @@ class ReportRepositoryImpl @Inject constructor(
         payMode = if (receipt.payMode == PayMode.UPI.code) PayMode.UPI else PayMode.CASH,
         printed = receipt.billPrinted == "Y",
         shift = receipt.shiftId?.let { shifts[it] }.orEmpty(),
+        advAmt = receipt.advAmt.toMoney(),
+        balAmt = receipt.balAmt.toMoney(),
     )
 }
 

@@ -34,7 +34,7 @@ import com.synergic.cloakroom.data.db.entity.UserCounterEntity
 import com.synergic.cloakroom.data.db.entity.UserEntity
 
 @Database(
-    version = 5,
+    version = 7,
     exportSchema = true,
     entities = [
         CustomerEntity::class,
@@ -170,10 +170,63 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
+         * Version 6 (price ranges and advance, same names as MySQL):
+         * - md_rate_dtls.rate_slabs (the server's price ranges, JSON);
+         * - td_luggage_in_out.adv_amt / adv_hours (advance paid at check-in);
+         * - td_receipt.rate_slabs, adv_amt, bal_amt. Older bills had no advance, so bal_amt = net_amt.
+         * md_setting.data_type may now be SLABS: its CHECK triggers are made again with the new list.
+         * Bags with extra bags are pushed once more, so a server that did not store
+         * extra_lugage_qty yet fills it now (the server fills it once while it is 0).
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE md_rate_dtls ADD COLUMN rate_slabs TEXT")
+                db.execSQL("ALTER TABLE td_luggage_in_out ADD COLUMN adv_amt REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE td_luggage_in_out ADD COLUMN adv_hours INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE td_receipt ADD COLUMN rate_slabs TEXT")
+                db.execSQL("ALTER TABLE td_receipt ADD COLUMN adv_amt REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE td_receipt ADD COLUMN bal_amt REAL NOT NULL DEFAULT 0")
+                // Not a change of the bill (sync_flag stays): the old bills were collected in full at check-out.
+                db.execSQL("UPDATE td_receipt SET bal_amt = net_amt")
+                db.execSQL("UPDATE td_luggage_in_out SET sync_flag = 'N', local_version = local_version + 1 WHERE extra_lugage_qty > 0")
+                db.execSQL("DROP TRIGGER IF EXISTS chk_md_setting_data_type_ins")
+                db.execSQL("DROP TRIGGER IF EXISTS chk_md_setting_data_type_upd")
+                SchemaExtras.apply(db)
+                SchemaExtras.beforeRoomValidation(db)
+            }
+        }
+
+        /**
+         * Version 7 (data only, 2026-11-18): repairs bags whose in / out time was replaced by the
+         * server's value read the wrong way (UTC sent, stored by the server as IST, read back as
+         * IST: exactly 5 h 30 m early). A check-in made on this phone has date_time_in = created_at,
+         * and a bill made here has created_at = date_time_out, so a time that is 5 h 30 m (± 2 min)
+         * before that stamp is put back.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """UPDATE td_luggage_in_out SET date_time_in = created_at
+                       WHERE created_at IS NOT NULL
+                         AND ABS((julianday(created_at) - julianday(date_time_in)) * 86400 - 19800) < 120"""
+                )
+                db.execSQL(
+                    """UPDATE td_luggage_in_out SET date_time_out =
+                           (SELECT r.created_at FROM td_receipt r WHERE r.trans_id = td_luggage_in_out.trans_id)
+                       WHERE date_time_out IS NOT NULL AND EXISTS (
+                           SELECT 1 FROM td_receipt r WHERE r.trans_id = td_luggage_in_out.trans_id AND r.created_at IS NOT NULL
+                             AND ABS((julianday(r.created_at) - julianday(td_luggage_in_out.date_time_out)) * 86400 - 19800) < 120)"""
+                )
+                SchemaExtras.apply(db)
+                SchemaExtras.beforeRoomValidation(db)
+            }
+        }
+
+        /**
          * Migrations from version 1 onward. Add each new one here; never use destructive fallback.
          * Every migration must end with [SchemaExtras.beforeRoomValidation].
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
         /**
          * Creates the trigger, CHECK rules and expression index after Room creates the tables, and

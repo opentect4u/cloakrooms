@@ -26,6 +26,10 @@ data class PushLuggageDto(
     @SerialName("luggage_qty") val luggageQty: Int,
     /** Free extra bags; left out of the JSON when 0 (defaults are not encoded). */
     @SerialName("extra_lugage_qty") val extraLugageQty: Int = 0,
+    /** Advance paid at check-in ("50.00"); null (left out) when there is none. */
+    @SerialName("adv_amt") val advAmt: String? = null,
+    /** ADVANCE_HOURS the advance covered; left out when 0. */
+    @SerialName("adv_hours") val advHours: Int = 0,
     @SerialName("id_proof_id") val idProofId: Long? = null,
     @SerialName("id_number") val idNumber: String? = null,
     @SerialName("user_id_out") val userIdOut: Long? = null,
@@ -47,12 +51,20 @@ data class PushReceiptDto(
     @SerialName("shift_id") val shiftId: Long? = null,
     @SerialName("luggage_qty") val luggageQty: Int,
     @SerialName("days_charged") val daysCharged: Int,
-    @SerialName("block_hours") val blockHours: Int,
-    @SerialName("first_block_rate") val firstBlockRate: String,
-    @SerialName("next_block_rate") val nextBlockRate: String,
+    /** The price ranges billed with. When sent, the two-rate fields below are left out (null). */
+    @SerialName("rate_slabs") val rateSlabs: List<RateSlabDto>? = null,
+    /** Older two-rate form, only for a bill made before the slab release (no rate_slabs). */
+    @SerialName("block_hours") val blockHours: Int? = null,
+    @SerialName("first_block_rate") val firstBlockRate: String? = null,
+    @SerialName("next_block_rate") val nextBlockRate: String? = null,
     @SerialName("base_amt") val baseAmt: String,
     @SerialName("penal_amt") val penalAmt: String,
+    /** The full bill. */
     @SerialName("net_amt") val netAmt: String,
+    /** The bag's advance (must equal the luggage row's adv_amt). */
+    @SerialName("adv_amt") val advAmt: String,
+    /** Collected at check-out: max(0, net_amt − adv_amt). */
+    @SerialName("bal_amt") val balAmt: String,
     @SerialName("taxable_amt") val taxableAmt: String,
     @SerialName("gst_pct") val gstPct: String,
     val cgst: String,
@@ -108,6 +120,8 @@ data class PullLuggageDto(
     @SerialName("luggage_qty") val luggageQty: Int,
     /** 0 when the server does not send it (yet). */
     @SerialName("extra_lugage_qty") val extraLugageQty: Int = 0,
+    @SerialName("adv_amt") val advAmt: String = "0.00",
+    @SerialName("adv_hours") val advHours: Int = 0,
     @SerialName("id_proof_id") val idProofId: Long? = null,
     @SerialName("id_number") val idNumber: String? = null,
     @SerialName("user_id_out") val userIdOut: Long? = null,

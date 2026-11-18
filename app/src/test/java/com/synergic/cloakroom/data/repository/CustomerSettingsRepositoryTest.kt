@@ -2,6 +2,8 @@ package com.synergic.cloakroom.data.repository
 
 import android.app.Application
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.synergic.cloakroom.data.seed.SeedData
+import com.synergic.cloakroom.domain.slabs
 import com.synergic.cloakroom.data.FakeSessionStore
 import com.synergic.cloakroom.data.TestEnv
 import com.synergic.cloakroom.data.remote.ApiClient
@@ -70,8 +72,9 @@ class CustomerSettingsRepositoryTest {
         server.enqueue(rates(oldRate))
         server.enqueue(gst(gstMaster)) // definitions(): GST
         val defs = repo.definitions(customer).associateBy { it.name }
-        assertEquals("tariff comes from /rates", "50.00", defs.getValue(SettingKeys.FIRST_BLOCK_RATE).value)
-        assertTrue(repo.isOnServer(SettingKeys.FIRST_BLOCK_RATE))
+        // An older rate row without rate_slabs: its two-rate fields are shown as price ranges.
+        assertEquals("tariff comes from /rates", SeedData.DEFAULT_RATE_SLABS, defs.getValue(SettingKeys.RATE_SLABS).value)
+        assertTrue(repo.isOnServer(SettingKeys.RATE_SLABS))
 
         assertEquals("80", defs.getValue(SettingKeys.PAPER_WIDTH).value)
         assertEquals("customer-wide value, not a user's override", "Y", defs.getValue(SettingKeys.QR_FLAG).value)
@@ -183,14 +186,14 @@ class CustomerSettingsRepositoryTest {
         server.enqueue(rates(oldRate)) // current rate
         server.enqueue(MockResponse().setResponseCode(201).setBody("""{"success":true,"data":$oldRate}"""))
 
-        repo.save(customer, mapOf(SettingKeys.FIRST_BLOCK_RATE to "60", SettingKeys.NEXT_BLOCK_RATE to "25"))
+        repo.save(customer, mapOf(SettingKeys.RATE_SLABS to slabs(Triple(0, 24, "30"), Triple(24, 48, "10"))))
 
         repeat(5) { server.takeRequest() }
         val create = server.takeRequest()
         assertEquals("POST", create.method)
         assertEquals("/api/v1/rates", create.path)
         assertEquals(
-            """{"customer_id":7,"block_hours":24,"first_block_rate":"60.00","next_block_rate":"25.00","effective_from":"2026-11-02"}""",
+            """{"customer_id":7,"rate_slabs":[{"from_hour":0,"to_hour":24,"rate":"30.00"},{"from_hour":24,"to_hour":48,"rate":"10.00"}],"effective_from":"2026-11-02"}""",
             create.body.readUtf8(),
         )
         assertTrue("nothing kept on the phone for the tariff", env.db.settingDao().getScopedRows(customer, null).isEmpty())
@@ -206,13 +209,15 @@ class CustomerSettingsRepositoryTest {
         server.enqueue(rates(todayRate, oldRate))
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true,"data":$todayRate}"""))
 
-        repo.save(customer, mapOf(SettingKeys.BLOCK_HOURS to "12"))
+        repo.save(customer, mapOf(SettingKeys.RATE_SLABS to slabs(Triple(0, 4, "10"), Triple(4, 24, "20"))))
 
         repeat(5) { server.takeRequest() }
         val patch = server.takeRequest()
         assertEquals("PATCH", patch.method)
         assertEquals("/api/v1/rates/5", patch.path)
-        assertTrue(patch.body.readUtf8().contains(""""block_hours":12"""))
+        val body = patch.body.readUtf8()
+        assertTrue(body.contains(""""rate_slabs":[{"from_hour":0,"to_hour":4,"rate":"10.00"},{"from_hour":4,"to_hour":24,"rate":"20.00"}]"""))
+        assertFalse("never the older fields with rate_slabs", body.contains("block_hours"))
     }
 
     @Test

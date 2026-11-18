@@ -1,6 +1,8 @@
 package com.synergic.cloakroom.domain.settings
 
 import com.synergic.cloakroom.domain.auth.UserTypes
+import com.synergic.cloakroom.domain.billing.RateSlab
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import java.math.BigDecimal
 
 /** Names of the md_setting rows the app reads. */
@@ -15,9 +17,16 @@ object SettingKeys {
     val ADMIN_SET_PRINT: Set<String> get() = setOf(QR_FLAG)
 
     // Billing (B)
+    /** The tariff: price ranges as the server's rate_slabs JSON (Settings → Billing → Price range). */
+    const val RATE_SLABS = "RATE_SLABS"
+    /** Retired 2026-11-18 (replaced by [RATE_SLABS]); read once at start-up to build it. */
     const val FIRST_BLOCK_RATE = "FIRST_BLOCK_RATE"
     const val NEXT_BLOCK_RATE = "NEXT_BLOCK_RATE"
     const val BLOCK_HOURS = "BLOCK_HOURS"
+    /** Advance payment at check-in on/off: the first ADVANCE_HOURS are billed and paid in cash at check-in. */
+    const val ADVANCE_FLAG = "ADVANCE_FLAG"
+    /** Hours paid in advance at check-in (whole number, at least 1). */
+    const val ADVANCE_HOURS = "ADVANCE_HOURS"
     const val GRACE_MINUTES = "GRACE_MINUTES"
     const val GST_FLAG = "GST_FLAG"
     const val GST_PCT = "GST_PCT"
@@ -72,9 +81,12 @@ enum class PrinterType(val code: String) { AUTO("A"), BLUETOOTH("B"), BUILT_IN_S
  */
 data class AppSettings(
     // Billing
-    val firstBlockRate: BigDecimal,
-    val nextBlockRate: BigDecimal,
-    val blockHours: Int,
+    /** Price ranges (RATE_SLABS); the server's rate of the check-in date replaces them (withTariff). */
+    val rateSlabs: List<RateSlab>,
+    /** Advance payment at check-in is on (paid in cash, subtracted at check-out). */
+    val advanceFlag: Boolean,
+    /** Hours covered by the advance (ADVANCE_HOURS). */
+    val advanceHours: Int,
     val graceMinutes: Int,
     val gstFlag: Boolean,
     /** The cloak room's own GST % ([gstPctOwn]); 0 when not set (the shared GST row applies). */
@@ -134,9 +146,9 @@ data class AppSettings(
             val r = Reader(values)
             return with(SettingKeys) {
                 AppSettings(
-                    firstBlockRate = r.decimal(FIRST_BLOCK_RATE),
-                    nextBlockRate = r.decimal(NEXT_BLOCK_RATE),
-                    blockHours = r.int(BLOCK_HOURS),
+                    rateSlabs = r.slabs(RATE_SLABS),
+                    advanceFlag = r.bool(ADVANCE_FLAG),
+                    advanceHours = r.int(ADVANCE_HOURS),
                     graceMinutes = r.int(GRACE_MINUTES),
                     gstFlag = r.bool(GST_FLAG),
                     gstPct = r.decimalOrNull(GST_PCT) ?: BigDecimal.ZERO,
@@ -188,6 +200,9 @@ data class AppSettings(
 
         fun int(name: String): Int =
             text(name).trim().toIntOrNull() ?: throw InvalidSettingException(name, "must be a whole number")
+
+        fun slabs(name: String): List<RateSlab> =
+            RateSlabs.parse(text(name)) ?: throw InvalidSettingException(name, "is not a valid price list")
 
         fun decimal(name: String): BigDecimal =
             text(name).trim().toBigDecimalOrNull() ?: throw InvalidSettingException(name, "must be a number")

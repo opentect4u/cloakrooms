@@ -12,7 +12,7 @@
 1. **Never invent endpoints, fields or values.** Use only what is in this file. If something is
    missing, ask the developer instead of guessing.
 2. All JSON endpoints are under `<baseUrl>/api/v1`. Make `baseUrl` configurable
-   (UAT: `https://cloakroom.synergicdatabank.com`). Send `Content-Type: application/json`.
+   (dev: `https://cloakroom.synergicdatabank.com`). Send `Content-Type: application/json`.
 3. Every response has the **same envelope** (§2). Always read `success` and `code`, never only
    the HTTP status.
 4. Implement auth exactly as in §3 (token refresh, one session per user, force-logout).
@@ -92,7 +92,7 @@ Rate-limit sample (11th login attempt within a minute):
   "message": "Too many requests, please slow down",
   "code": "RATE_LIMITED",
   "data": null,
-  "requestId": "10fd192e-27e9-4111-9814-4a6e9e8e5279"
+  "requestId": "decd7ec7-2660-4cb6-b695-24339ec68581"
 }
 ```
 
@@ -172,7 +172,7 @@ Response `200`:
       "email": "ops@howrahcloak.in",
       "gst_no": "19AABCS1234C1Z5",
       "upi_id": "howrah.cloak@oksbi",
-      "renewal_dt": "2027-11-04",
+      "renewal_dt": "2027-11-17",
       "user_limit": 5,
       "active_flag": "Y"
     },
@@ -185,7 +185,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:23",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         },
@@ -196,7 +196,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:24",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         },
@@ -212,7 +212,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:24",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         }
@@ -224,13 +224,25 @@ Response `200`:
           "block_hours": 24,
           "first_block_rate": "50.00",
           "next_block_rate": "20.00",
+          "rate_slabs": [
+            {
+              "rate": "50.00",
+              "to_hour": 24,
+              "from_hour": 0
+            },
+            {
+              "rate": "20.00",
+              "to_hour": 48,
+              "from_hour": 24
+            }
+          ],
           "effective_from": "2026-01-01",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:46",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shifts": [
@@ -243,9 +255,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "shift_id": 2,
@@ -256,9 +268,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shift_assignments": [
@@ -267,13 +279,13 @@ Response `200`:
           "customer_id": 1,
           "user_id": 3,
           "shift_id": 1,
-          "effective_from": "2026-11-06",
+          "effective_from": "2026-11-19",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "header_footer": [
@@ -290,9 +302,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 2,
@@ -307,9 +319,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         "… 1 more item(s) of the same shape"
       ],
@@ -322,7 +334,7 @@ Response `200`:
           "user_type": "A",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 3,
@@ -332,7 +344,7 @@ Response `200`:
           "user_type": "O",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         "… 1 more item(s) of the same shape"
       ]
@@ -364,6 +376,8 @@ Response `200`:
       "SHIFT_LOGIN_FLAG": "Y",
       "SHIFT_EARLY_LOGIN_MIN": "15",
       "PWD_MIN_LENGTH": "8",
+      "ADVANCE_FLAG": "N",
+      "ADVANCE_HOURS": "24",
       "CHECKIN_PRINT_FLAG": "Y",
       "PRINT_COPIES": "1"
     },
@@ -373,9 +387,9 @@ Response `200`:
       "receipt_last_no": 0,
       "bill_last_no": 0
     },
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "4019d55f-43c5-4706-b982-b63808182725"
+  "requestId": "e615cd63-4ba1-4a58-9138-83dd8476f328"
 }
 ```
 
@@ -410,7 +424,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:23",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         },
@@ -421,7 +435,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:24",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         },
@@ -437,7 +451,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:24",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         }
@@ -450,9 +464,9 @@ Response `200`:
     },
     "settings": {},
     "counters": null,
-    "server_time": "2026-11-05 11:46:28"
+    "server_time": "2026-11-18 07:16:46"
   },
-  "requestId": "f794e446-e069-4b13-bfe1-7ad1a914674a"
+  "requestId": "2d12805f-d4ed-4c30-ba31-4662bdfb51a5"
 }
 ```
 
@@ -465,10 +479,10 @@ Response `409`:
   "code": "SESSION_ACTIVE",
   "data": null,
   "errors": {
-    "session_started_at": "2026-11-05 11:46:29",
+    "session_started_at": "2026-11-18 07:16:48",
     "device_id": "******H-01"
   },
-  "requestId": "2946a336-cbc1-4a2e-a63b-c61a48ada635"
+  "requestId": "afc22150-10c9-4153-8387-f065d5872b28"
 }
 ```
 
@@ -480,7 +494,7 @@ Response `401`:
   "message": "Invalid user id or password",
   "code": "UNAUTHORIZED",
   "data": null,
-  "requestId": "d22b63e6-f027-44e4-980f-9b4b845965f6"
+  "requestId": "94c0c1a8-f6c6-49b2-a006-640a7b7953dd"
 }
 ```
 
@@ -504,7 +518,7 @@ Response `400`:
       "message": "Invalid input: expected string, received undefined"
     }
   ],
-  "requestId": "3e4171cc-cf3a-4ad2-b376-f3b24155e9be"
+  "requestId": "df33328c-91ed-4460-9b36-55a32c8b5d99"
 }
 ```
 
@@ -536,10 +550,10 @@ Response `426`:
       "apk_url": "/downloads/cloakroom-1.0.0.apk",
       "mandatory_flag": "Y",
       "release_notes": "First release",
-      "created_at": "2026-11-05 11:46:29"
+      "created_at": "2026-11-18 07:16:49"
     }
   },
-  "requestId": "765805b6-01af-4e91-af9c-bed8f0e9c487"
+  "requestId": "1b3f0f77-4546-4f1b-8c4e-cf2467ff706f"
 }
 ```
 
@@ -570,7 +584,7 @@ Response `200`:
   "data": {
     "must_change_pwd": "N"
   },
-  "requestId": "28e66526-b5ef-41af-8e2c-0153506f9924"
+  "requestId": "6b8aaee4-c1e1-4995-bf1a-e617e76ec1e7"
 }
 ```
 
@@ -584,7 +598,7 @@ Response `403`:
   "message": "Change your password first (POST /api/v1/auth/change-password)",
   "code": "PASSWORD_CHANGE_REQUIRED",
   "data": null,
-  "requestId": "a28f0498-aaf9-457d-8313-cde3c304de56"
+  "requestId": "c5c8e3f1-16e8-4fe1-ad41-9a27fca9dde6"
 }
 ```
 
@@ -602,7 +616,7 @@ Response `400`:
       "message": "is wrong"
     }
   ],
-  "requestId": "9112dc98-0b15-44e2-a3ee-406d9ce69d4c"
+  "requestId": "09ffbc94-1864-4420-a9e0-f8b93bb26cb4"
 }
 ```
 
@@ -629,9 +643,9 @@ Response `200`:
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiIs…(JWT)",
     "refreshToken": "eyJhbGciOiJIUzI1NiIs…(JWT)",
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "fbb0e64a-122d-461d-a529-e6b1c3b8ab44"
+  "requestId": "44a1c0d5-d750-4741-b963-c9408250f0db"
 }
 ```
 
@@ -645,7 +659,7 @@ Response `401`:
   "message": "Session was renewed or replaced; log in again",
   "code": "SESSION_ENDED",
   "data": null,
-  "requestId": "a5c85048-6e1f-4933-a42d-670029a421eb"
+  "requestId": "0efab70e-ebb8-49e7-9a03-316ee36af931"
 }
 ```
 
@@ -657,7 +671,7 @@ Response `401`:
   "message": "Token expired",
   "code": "TOKEN_EXPIRED",
   "data": null,
-  "requestId": "6aaced70-1483-41ed-9ccd-f2080256d8c7"
+  "requestId": "60b635a2-d146-4a59-bd85-830d590d18a4"
 }
 ```
 
@@ -681,8 +695,8 @@ Response `200`:
       "allow_flag": "Y",
       "must_change_pwd": "Y",
       "device_id": "POS-HWH-01",
-      "session_started_at": "2026-11-05 11:46:29",
-      "last_login": "2026-11-05 11:46:29"
+      "session_started_at": "2026-11-18 07:16:48",
+      "last_login": "2026-11-18 07:16:48"
     },
     "customer": {
       "customer_id": 1,
@@ -694,14 +708,14 @@ Response `200`:
       "email": "ops@howrahcloak.in",
       "gst_no": "19AABCS1234C1Z5",
       "upi_id": "howrah.cloak@oksbi",
-      "renewal_dt": "2027-11-04",
+      "renewal_dt": "2027-11-17",
       "user_limit": 5,
       "active_flag": "Y"
     },
-    "session_id": "19c5047d-2fa5-406b-92f3-fd703a390a63",
-    "server_time": "2026-11-05 11:46:29"
+    "session_id": "283898e5-7f83-4cb0-956e-deab6b2c6be7",
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "1812f14f-b151-45a9-90ef-cfbf97f1645d"
+  "requestId": "1dadbba7-c6af-4509-aa5d-49fd3b8b5641"
 }
 ```
 
@@ -715,7 +729,7 @@ Response `200`:
   "success": true,
   "message": "Logged out",
   "data": null,
-  "requestId": "9c4fb839-b060-4566-b016-bda778481cfe"
+  "requestId": "b6c7bfe1-5f4e-4c5e-b1b5-b20aceab7cd4"
 }
 ```
 
@@ -727,7 +741,7 @@ Response `401`:
   "message": "Logged out by admin; sync pending data and log out",
   "code": "SESSION_ENDED",
   "data": null,
-  "requestId": "32e63288-a280-49d5-8c69-abf4be6ce31f"
+  "requestId": "fb7ddca7-3e8d-4251-9236-787d3c738f97"
 }
 ```
 
@@ -747,10 +761,10 @@ Response `200`:
   "data": {
     "status": "ok",
     "version": "0.1.0",
-    "uptime_sec": 4,
-    "server_time": "2026-11-05 11:46:28"
+    "uptime_sec": 8,
+    "server_time": "2026-11-18 07:16:46"
   },
-  "requestId": "b39db6e8-918d-452e-aa22-5ac1c940d1d9"
+  "requestId": "ce60a55b-a91e-4e59-b42f-af862f8e13a1"
 }
 ```
 
@@ -766,9 +780,9 @@ Response `200`:
   "data": {
     "status": "ready",
     "db": "ok",
-    "server_time": "2026-11-05 11:46:28"
+    "server_time": "2026-11-18 07:16:46"
   },
-  "requestId": "160e8340-b6bf-4be8-9393-df4acec8497f"
+  "requestId": "5776226e-c22f-43ed-a644-f1361ec8cd03"
 }
 ```
 
@@ -797,12 +811,12 @@ Response `200`:
       "apk_url": "/downloads/cloakroom-1.0.0.apk",
       "mandatory_flag": "Y",
       "release_notes": "First release",
-      "created_at": "2026-11-05 11:46:29"
+      "created_at": "2026-11-18 07:16:49"
     },
     "update_available": true,
     "mandatory": true
   },
-  "requestId": "bb364f8c-1ece-4905-b525-7a974d814357"
+  "requestId": "c7820b2f-fdf6-4c92-b92d-6cb8e2c541f6"
 }
 ```
 
@@ -872,11 +886,11 @@ Response `201`:
     "session_started_at": null,
     "last_login": null,
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "fad8384e-bb9e-44a7-b626-db7cab8f452d"
+  "requestId": "5f2a90e6-6886-4c9b-81cf-688e5d23991b"
 }
 ```
 
@@ -893,7 +907,7 @@ Response `409`:
   "errors": {
     "key": "md_user.uq_user_code"
   },
-  "requestId": "4fb1c267-9005-4d0d-a430-b4b1fb13641b"
+  "requestId": "40771a63-1421-4869-af90-ff8b6e235581"
 }
 ```
 
@@ -917,9 +931,9 @@ Response `200`:
       "session_started_at": null,
       "last_login": null,
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     },
     {
       "id": 3,
@@ -934,9 +948,9 @@ Response `200`:
       "session_started_at": null,
       "last_login": null,
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     }
   ],
   "meta": {
@@ -944,7 +958,7 @@ Response `200`:
     "limit": 50,
     "total": 2
   },
-  "requestId": "06d97770-6be1-4e2a-afd8-ef98bc29a04c"
+  "requestId": "a0bc1377-4df6-4208-bf07-692ddf5d572c"
 }
 ```
 
@@ -974,11 +988,11 @@ Response `200`:
     "session_started_at": null,
     "last_login": null,
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "0cbd651e-052b-4a8c-9959-d1042faa366e"
+  "requestId": "406103c6-f673-441b-a5bb-6fef98b5e020"
 }
 ```
 
@@ -1006,13 +1020,13 @@ Response `200`:
     "must_change_pwd": "N",
     "device_id": null,
     "session_started_at": null,
-    "last_login": "2026-11-05 11:46:29",
+    "last_login": "2026-11-18 07:16:48",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:29"
+    "updated_at": "2026-11-18 07:16:49"
   },
-  "requestId": "d4c41aac-0e35-434c-9683-f78ca9e24e56"
+  "requestId": "1c87d33c-b47d-46b6-ab95-546adf469c88"
 }
 ```
 
@@ -1032,7 +1046,7 @@ Response `200`:
   "data": {
     "sessions_ended": 0
   },
-  "requestId": "36b96743-d7ae-4372-8bcc-9d3d41ac5136"
+  "requestId": "a6f27ca5-4ed4-4303-8e36-214631e8d5dc"
 }
 ```
 
@@ -1045,7 +1059,7 @@ Response `200`:
   "data": {
     "sessions_ended": 1
   },
-  "requestId": "61f1e01a-27e3-41e3-8cde-c02950017f91"
+  "requestId": "cb4617ea-fdbd-4d48-83f2-d8dcc1643d3e"
 }
 ```
 
@@ -1058,7 +1072,7 @@ Response `200`:
   "data": {
     "id": 6
   },
-  "requestId": "d9c1660e-34f6-4989-b389-b4297bd37fdf"
+  "requestId": "7bb908c1-34d7-4a6b-9088-e14f68501ae1"
 }
 ```
 
@@ -1072,7 +1086,7 @@ Response `200`:
 | PATCH | `/api/v1/rates/:id` | partial update | A, S |
 | DELETE | `/api/v1/rates/:id` | soft delete → `{ "rate_id": id }` | A, S |
 
-Versioned by `effective_from`: the bill uses the latest rate with `effective_from ≤ receipt_dt`. One row per date per customer (`409` on duplicates). A new customer gets 24 h / ₹50 / ₹20 automatically.
+Versioned by `effective_from`: the bill uses the latest rate with `effective_from ≤ receipt_dt`. One row per date per customer (`409` on duplicates). A new customer gets 0–24 h ₹50 + 24–48 h ₹20 automatically. `rate_slabs` is the tariff (§7); send it, or the older two-rate fields (then the server builds the slabs). The server keeps both forms in step: `block_hours` = first slab length, `first_block_rate` / `next_block_rate` = first / second slab rate.
 
 #### `POST /api/v1/rates` — create
 
@@ -1080,18 +1094,26 @@ Versioned by `effective_from`: the bill uses the latest rate with `effective_fro
 
 | Body field | Rules |
 |---|---|
-| `block_hours` | integer 1–720, default 24 |
-| `first_block_rate` | money, per bag for the first block |
-| `next_block_rate` | money, per bag for each further started block |
+| `rate_slabs` | array of `{from_hour, to_hour, rate}` (1–20): first from 0, each starts where the previous ends, hours whole numbers ≤ 8760, rate money per bag |
+| `block_hours, first_block_rate, next_block_rate` | older two-rate form, only without `rate_slabs` (both rates required, block_hours default 24) |
 | `effective_from` | `YYYY-MM-DD` |
 
 Request body:
 ```json
 {
-  "block_hours": 24,
-  "first_block_rate": "60.00",
-  "next_block_rate": "25.00",
-  "effective_from": "2027-01-04"
+  "effective_from": "2027-01-17",
+  "rate_slabs": [
+    {
+      "from_hour": 0,
+      "to_hour": 24,
+      "rate": "30.00"
+    },
+    {
+      "from_hour": 24,
+      "to_hour": 48,
+      "rate": "10.00"
+    }
+  ]
 }
 ```
 
@@ -1104,17 +1126,29 @@ Response `201`:
     "rate_id": 2,
     "customer_id": 1,
     "block_hours": 24,
-    "first_block_rate": "60.00",
-    "next_block_rate": "25.00",
-    "effective_from": "2027-01-04",
+    "first_block_rate": "30.00",
+    "next_block_rate": "10.00",
+    "rate_slabs": [
+      {
+        "rate": "30.00",
+        "to_hour": 24,
+        "from_hour": 0
+      },
+      {
+        "rate": "10.00",
+        "to_hour": 48,
+        "from_hour": 24
+      }
+    ],
+    "effective_from": "2027-01-17",
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "f127b9ac-f6dd-4032-a9f2-84a6a98101cd"
+  "requestId": "387bfd6c-36ea-49d0-8a21-a4a713731c99"
 }
 ```
 
@@ -1143,13 +1177,25 @@ Response `200`:
       "block_hours": 24,
       "first_block_rate": "50.00",
       "next_block_rate": "20.00",
-      "effective_from": "2026-11-05",
+      "rate_slabs": [
+        {
+          "rate": "50.00",
+          "to_hour": 24,
+          "from_hour": 0
+        },
+        {
+          "rate": "20.00",
+          "to_hour": 48,
+          "from_hour": 24
+        }
+      ],
+      "effective_from": "2026-11-18",
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     }
   ],
   "meta": {
@@ -1157,7 +1203,7 @@ Response `200`:
     "limit": 50,
     "total": 1
   },
-  "requestId": "1456a160-4500-4135-bbbb-99475b3eb26f"
+  "requestId": "c6df743c-9768-41ed-acec-df8dfc965357"
 }
 ```
 
@@ -1187,15 +1233,27 @@ Response `200`:
     "block_hours": 24,
     "first_block_rate": "50.00",
     "next_block_rate": "20.00",
+    "rate_slabs": [
+      {
+        "rate": "50.00",
+        "to_hour": 24,
+        "from_hour": 0
+      },
+      {
+        "rate": "20.00",
+        "to_hour": 48,
+        "from_hour": 24
+      }
+    ],
     "effective_from": "2026-01-01",
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:46",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "774cab57-12cf-4459-86cb-c7665800df67"
+  "requestId": "c5129abf-11fd-4215-87fb-cba498b9e5e1"
 }
 ```
 
@@ -1213,7 +1271,7 @@ Response `200`:
   "data": {
     "rate_id": 2
   },
-  "requestId": "126702e8-5d4b-45cf-8c9c-eb85103ecd7e"
+  "requestId": "b13331ab-6739-4341-be05-405b3e15af26"
 }
 ```
 
@@ -1262,11 +1320,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "f8f7fb91-123d-4a66-9f60-e0823543713d"
+  "requestId": "90e01e64-938f-4ed2-bc75-bb25f0bb59ac"
 }
 ```
 
@@ -1298,9 +1356,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     },
     {
       "shift_id": 2,
@@ -1311,9 +1369,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     }
   ],
   "meta": {
@@ -1321,7 +1379,7 @@ Response `200`:
     "limit": 50,
     "total": 2
   },
-  "requestId": "0d4f2755-3cee-44cb-8330-ee879b8dba12"
+  "requestId": "367e8092-9170-456b-9349-54014ad183b9"
 }
 ```
 
@@ -1354,11 +1412,11 @@ Response `200`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "922358ba-e7f4-4d92-8d88-e03a967b6b42"
+  "requestId": "4befc189-9715-4bc8-9aa0-b9e70549010a"
 }
 ```
 
@@ -1391,7 +1449,7 @@ Request body:
 {
   "user_id": 3,
   "shift_id": 1,
-  "effective_from": "2026-11-05"
+  "effective_from": "2026-11-18"
 }
 ```
 
@@ -1405,15 +1463,15 @@ Response `201`:
     "customer_id": 1,
     "user_id": 3,
     "shift_id": 1,
-    "effective_from": "2026-11-05",
+    "effective_from": "2026-11-18",
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "ac88d267-11d3-4dfb-815a-8f9d48193367"
+  "requestId": "25246c19-9da9-42d1-8b69-7c3c2a861a50"
 }
 ```
 
@@ -1443,13 +1501,13 @@ Response `200`:
       "customer_id": 1,
       "user_id": 3,
       "shift_id": 1,
-      "effective_from": "2026-11-05",
+      "effective_from": "2026-11-18",
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     }
   ],
   "meta": {
@@ -1457,7 +1515,7 @@ Response `200`:
     "limit": 50,
     "total": 1
   },
-  "requestId": "88c59ee4-fc92-47e4-aeda-b88bab2261c9"
+  "requestId": "01ea04d9-4a19-4200-8077-7e5ae21dc1d4"
 }
 ```
 
@@ -1472,7 +1530,7 @@ Response `200`:
 Request body:
 ```json
 {
-  "effective_from": "2026-11-06"
+  "effective_from": "2026-11-19"
 }
 ```
 
@@ -1486,15 +1544,15 @@ Response `200`:
     "customer_id": 1,
     "user_id": 3,
     "shift_id": 1,
-    "effective_from": "2026-11-06",
+    "effective_from": "2026-11-19",
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "b049f6b1-622d-4087-b1bd-188118510759"
+  "requestId": "f37ad6b9-fad7-4964-af52-e6b187e7b73e"
 }
 ```
 
@@ -1552,11 +1610,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "e58adfe7-6a72-41bf-9fad-abf081f219df"
+  "requestId": "21468dc7-2a2d-4e55-94fb-c05b746bcb3e"
 }
 ```
 
@@ -1593,9 +1651,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     },
     {
       "id": 2,
@@ -1610,9 +1668,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.admin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:47",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     },
     "… 1 more item(s) of the same shape"
   ],
@@ -1621,7 +1679,7 @@ Response `200`:
     "limit": 50,
     "total": 3
   },
-  "requestId": "d2f34445-700c-4341-a932-558bbfada816"
+  "requestId": "1c1eba5d-b2bd-4ce2-8270-602d5f4f9fd4"
 }
 ```
 
@@ -1658,11 +1716,11 @@ Response `200`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "0c0fe169-bbc3-4e6a-879a-68d31480cf42"
+  "requestId": "12ff92a2-fbfd-4503-a463-e767989332ce"
 }
 ```
 
@@ -1692,11 +1750,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "dbcd03bd-3129-4d52-bddd-e35e6dcf091a"
+  "requestId": "2f9b890d-4932-4df3-979e-17bd1d0ad2b5"
 }
 ```
 
@@ -1748,11 +1806,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:29",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:29"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "e903a7c3-31ca-42dc-81f4-c406bbdf3fa6"
+  "requestId": "98f85e08-b9c7-40c7-8f1f-94e74b43e63e"
 }
 ```
 
@@ -1779,11 +1837,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.admin",
-    "created_at": "2026-11-05 11:46:29",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:29"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "21ef0c76-4356-4e7e-889e-8dc5a50c31fb"
+  "requestId": "fbe9d414-7231-4908-9de4-767c5abb4b97"
 }
 ```
 
@@ -1819,9 +1877,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     },
     {
       "setting_id": 6,
@@ -1833,9 +1891,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     },
     "… 8 more item(s) of the same shape"
   ],
@@ -1844,7 +1902,7 @@ Response `200`:
     "limit": 100,
     "total": 10
   },
-  "requestId": "04774e55-a00f-43e8-be4e-21ab43b9b151"
+  "requestId": "c0ff5b0a-d758-4e97-8c5d-2e721a40c58b"
 }
 ```
 
@@ -1878,11 +1936,11 @@ Response `200`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:46",
     "updated_by": "howrah.admin",
-    "updated_at": "2026-11-05 11:46:29"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "9624591b-4644-4587-a04b-e8a42e5d8a69"
+  "requestId": "4b288fe8-d9c3-44b1-bacd-c229507df9f4"
 }
 ```
 
@@ -1900,7 +1958,7 @@ Response `200`:
   "data": {
     "setting_id": 11
   },
-  "requestId": "dc8dba8a-5493-4e41-b0b9-5c53cf619f5a"
+  "requestId": "ed5dd933-8a13-41ed-ba8d-cb6d11009467"
 }
 ```
 
@@ -1926,7 +1984,7 @@ Response `400`:
       "message": "SYNC_INTERVAL_MIN: must be between 15 and 1440"
     }
   ],
-  "requestId": "dacac36d-b8b4-42a0-8a44-ea6b6cd0adc4"
+  "requestId": "3bd65c85-7c47-4932-b9a0-76bf2a776a90"
 }
 ```
 
@@ -1999,11 +2057,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:29",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "superadmin",
-    "updated_at": "2026-11-05 11:46:29"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "2ee78e71-b166-49ab-b638-28d9daa53bed"
+  "requestId": "c45dfd4b-5f08-4293-b873-66c3f913fe4f"
 }
 ```
 
@@ -2035,7 +2093,7 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "system",
-      "created_at": "2026-11-05 11:46:24",
+      "created_at": "2026-11-18 07:16:37",
       "updated_by": null,
       "updated_at": null
     }
@@ -2045,7 +2103,7 @@ Response `200`:
     "limit": 50,
     "total": 1
   },
-  "requestId": "87173dbc-3e2b-4909-9e92-d13bd16e33ae"
+  "requestId": "9da27545-3c4b-40ef-828b-e65bae2df557"
 }
 ```
 
@@ -2071,7 +2129,7 @@ Response `200`:
   "data": {
     "gst_id": 2
   },
-  "requestId": "69885346-f668-4415-9dfe-91accc34e5c7"
+  "requestId": "6241826f-86d1-4a22-9bc4-8bb5ddce2586"
 }
 ```
 
@@ -2116,11 +2174,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:29",
+    "created_at": "2026-11-18 07:16:47",
     "updated_by": "superadmin",
-    "updated_at": "2026-11-05 11:46:29"
+    "updated_at": "2026-11-18 07:16:47"
   },
-  "requestId": "1c0f375b-4e8f-4082-abf9-15e45a5da9f3"
+  "requestId": "bb202775-f5b3-4a06-ab41-a39dcba90449"
 }
 ```
 
@@ -2150,7 +2208,7 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "system",
-      "created_at": "2026-11-05 11:46:23",
+      "created_at": "2026-11-18 07:16:37",
       "updated_by": null,
       "updated_at": null
     },
@@ -2161,7 +2219,7 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "system",
-      "created_at": "2026-11-05 11:46:24",
+      "created_at": "2026-11-18 07:16:37",
       "updated_by": null,
       "updated_at": null
     },
@@ -2172,7 +2230,7 @@ Response `200`:
     "limit": 50,
     "total": 6
   },
-  "requestId": "44085c1d-348b-4666-909e-52a78c153a66"
+  "requestId": "10b75536-b2f1-45f1-84ae-ac280cb84837"
 }
 ```
 
@@ -2209,11 +2267,11 @@ Response `200`:
     "email": "ops@howrahcloak.in",
     "gst_no": "19ABCDE1234F1Z5",
     "upi_id": "howrahcloak@okaxis",
-    "renewal_dt": "2027-11-04",
+    "renewal_dt": "2027-11-17",
     "user_limit": 5,
     "active_flag": "Y"
   },
-  "requestId": "140de6f0-1a97-4552-b2f1-d82586253bfb"
+  "requestId": "01a3eee3-13ee-4671-9f41-df94c7a76565"
 }
 ```
 
@@ -2258,11 +2316,11 @@ Response `200`:
     "email": "ops@howrahcloak.in",
     "gst_no": "19AABCS1234C1Z5",
     "upi_id": "howrah.cloak@oksbi",
-    "renewal_dt": "2027-11-04",
+    "renewal_dt": "2027-11-17",
     "user_limit": 5,
     "active_flag": "Y"
   },
-  "requestId": "77530d59-d395-4979-b339-2a3aff84a678"
+  "requestId": "c4fe84ae-8267-400e-a277-4a6c165415e6"
 }
 ```
 
@@ -2287,7 +2345,7 @@ Response `400`:
       "message": "Send at least one of customer_name, customer_addr, state, pin_code, mobile_no, email, gst_no, upi_id"
     }
   ],
-  "requestId": "8d23ba4c-018d-4377-899e-e758f008d5d7"
+  "requestId": "e3e857f6-7ebe-4d93-8ee1-823b78bb1bcf"
 }
 ```
 
@@ -2362,11 +2420,11 @@ Response `201`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:46",
     "updated_by": "superadmin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:46"
   },
-  "requestId": "ce123904-360c-4eaa-8fd2-d2f1b2363151"
+  "requestId": "034bccff-3014-4b35-aeec-651158df91f5"
 }
 ```
 
@@ -2408,9 +2466,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     }
   ],
   "meta": {
@@ -2418,7 +2476,7 @@ Response `200`:
     "limit": 20,
     "total": 1
   },
-  "requestId": "ae0b11b8-6c7b-4918-99cb-d6aa59438afb"
+  "requestId": "b3a8093f-ac7a-409b-b9c9-a6c9508c62c4"
 }
 ```
 
@@ -2459,11 +2517,11 @@ Response `200`:
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:46",
     "updated_by": "superadmin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:46"
   },
-  "requestId": "2e240421-ceac-43f0-a412-25944cd1e07f"
+  "requestId": "cabe12c1-509d-4804-8d7d-e3baefc1975e"
 }
 ```
 
@@ -2487,7 +2545,7 @@ Response `200`:
       "pin_code": "711101",
       "mobile_no": "9830012345",
       "email": "ops@howrahcloak.in",
-      "renewal_dt": "2027-11-04",
+      "renewal_dt": "2027-11-17",
       "gst_no": "19AABCS1234C1Z5",
       "upi_id": "howrah.cloak@oksbi",
       "user_limit": 5,
@@ -2496,9 +2554,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "howrah.admin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:47"
     },
     "users": {
       "total": 3,
@@ -2511,27 +2569,27 @@ Response `200`:
       "reg_id": 1,
       "reg_no": "REG-2026-0001",
       "customer_id": 1,
-      "start_date": "2026-11-05",
-      "end_date": "2027-11-04",
+      "start_date": "2026-11-18",
+      "end_date": "2027-11-17",
       "user_count": 5,
       "remarks": "Annual plan",
       "is_deleted": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     },
     "payments": {
       "count": 1,
       "total_net": "5900.00",
-      "last_payment_dt": "2026-11-05"
+      "last_payment_dt": "2026-11-18"
     },
     "luggage": {
       "total": 3,
       "in_store": 1
     }
   },
-  "requestId": "79fb8d3a-e358-4db3-a9b5-cf585decc358"
+  "requestId": "53c72d40-efac-4629-ad6a-99e5f733a8ae"
 }
 ```
 
@@ -2563,8 +2621,8 @@ Request body:
 ```json
 {
   "reg_no": "REG-2026-0001",
-  "start_date": "2026-11-05",
-  "end_date": "2027-11-04",
+  "start_date": "2026-11-18",
+  "end_date": "2027-11-17",
   "user_count": 5,
   "remarks": "Annual plan"
 }
@@ -2579,17 +2637,17 @@ Response `201`:
     "reg_id": 1,
     "reg_no": "REG-2026-0001",
     "customer_id": 1,
-    "start_date": "2026-11-05",
-    "end_date": "2027-11-04",
+    "start_date": "2026-11-18",
+    "end_date": "2027-11-17",
     "user_count": 5,
     "remarks": "Annual plan",
     "is_deleted": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:46",
     "updated_by": "superadmin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:46"
   },
-  "requestId": "91f2b711-c42d-4cb7-a9d2-f6d668883227"
+  "requestId": "a16205c1-cf01-4398-ad25-b599055097a8"
 }
 ```
 
@@ -2616,15 +2674,15 @@ Response `200`:
       "reg_id": 1,
       "reg_no": "REG-2026-0001",
       "customer_id": 1,
-      "start_date": "2026-11-05",
-      "end_date": "2027-11-04",
+      "start_date": "2026-11-18",
+      "end_date": "2027-11-17",
       "user_count": 5,
       "remarks": "Annual plan",
       "is_deleted": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     }
   ],
   "meta": {
@@ -2632,7 +2690,7 @@ Response `200`:
     "limit": 50,
     "total": 1
   },
-  "requestId": "3cb11d6f-7d84-49d8-959a-75066f8ba376"
+  "requestId": "cd5dbb54-fd8f-40eb-9b78-d0b3d780a02e"
 }
 ```
 
@@ -2677,7 +2735,7 @@ Request body:
 ```json
 {
   "reg_id": 1,
-  "payment_dt": "2026-11-05",
+  "payment_dt": "2026-11-18",
   "base_amt": "5000.00",
   "cgst": "450.00",
   "sgst": "450.00",
@@ -2695,7 +2753,7 @@ Response `201`:
     "payment_id": 1,
     "customer_id": 1,
     "reg_id": 1,
-    "payment_dt": "2026-11-05",
+    "payment_dt": "2026-11-18",
     "base_amt": "5000.00",
     "cgst": "450.00",
     "sgst": "450.00",
@@ -2706,11 +2764,11 @@ Response `201`:
     "remarks": null,
     "is_deleted": "N",
     "created_by": "superadmin",
-    "created_at": "2026-11-05 11:46:28",
+    "created_at": "2026-11-18 07:16:46",
     "updated_by": "superadmin",
-    "updated_at": "2026-11-05 11:46:28"
+    "updated_at": "2026-11-18 07:16:46"
   },
-  "requestId": "fdc08149-7ad9-4cd1-a497-fa709aa4628e"
+  "requestId": "f8e298d5-4f44-4cca-8ea7-f5b44331ad73"
 }
 ```
 
@@ -2739,7 +2797,7 @@ Response `200`:
       "payment_id": 1,
       "customer_id": 1,
       "reg_id": 1,
-      "payment_dt": "2026-11-05",
+      "payment_dt": "2026-11-18",
       "base_amt": "5000.00",
       "cgst": "450.00",
       "sgst": "450.00",
@@ -2750,9 +2808,9 @@ Response `200`:
       "remarks": null,
       "is_deleted": "N",
       "created_by": "superadmin",
-      "created_at": "2026-11-05 11:46:28",
+      "created_at": "2026-11-18 07:16:46",
       "updated_by": "superadmin",
-      "updated_at": "2026-11-05 11:46:28"
+      "updated_at": "2026-11-18 07:16:46"
     }
   ],
   "meta": {
@@ -2760,7 +2818,7 @@ Response `200`:
     "limit": 50,
     "total": 1
   },
-  "requestId": "54cc0a92-4bfc-4b0c-8c25-ead2638a5f1b"
+  "requestId": "324bf612-28d1-4f7d-86e2-2411a4339af7"
 }
 ```
 
@@ -2809,9 +2867,9 @@ Response `201`:
     "apk_url": "/downloads/cloakroom-1.0.0.apk",
     "mandatory_flag": "Y",
     "release_notes": "First release",
-    "created_at": "2026-11-05 11:46:29"
+    "created_at": "2026-11-18 07:16:49"
   },
-  "requestId": "f76c7726-11ec-42b2-a346-52e050a15834"
+  "requestId": "f35008df-a594-4268-9d4d-05866d0e377b"
 }
 ```
 
@@ -2849,13 +2907,16 @@ Luggage row fields (`customer_id`, `sync_flag`, audit fields are ignored if sent
 | `device_id_in` | required when `out_flag = N`; may be omitted/null on a QR check-out row |
 | `shift_id_in` | nullable |
 | `pasn_name` (≤ 200), `pasn_mob_no` (≤ 15), `pnr_no` (≤ 20, may be empty), `luggage_qty` (1–999) | passenger / bags |
+| `extra_lugage_qty` (0–999, default 0) | extra bags stored **free**, never billed (QR key `x`) |
+| `adv_amt` (money, default 0), `adv_hours` (0–720, default 0) | advance taken at check-in and the `ADVANCE_HOURS` it covered (QR key `a` = adv_amt) |
 | `id_proof_id`, `id_number` (≤ 50) | ID proof — both or neither (null when none was taken, or on a QR check-out row); masked by the server when `mask_flag = Y` |
 | `user_id_out`, `device_id_out`, `shift_id_out`, `date_time_out` | check-out (null while in store) |
 | `out_flag` | `N` in store / `Y` checked out (then the 3 out fields + date_time_out are required) |
 
 Receipt (bill) row fields: `trans_id`, `local_version`, `bill_no` (bill series), `bill_dt` (IST),
-`user_id`, `device_id`, `shift_id`, `luggage_qty`, `days_charged`, `block_hours`, `first_block_rate`,
-`next_block_rate` (the rate snapshot used), `base_amt`, `penal_amt`, `net_amt`, `taxable_amt`, `gst_pct`,
+`user_id`, `device_id`, `shift_id`, `luggage_qty`, `days_charged`, `rate_slabs` (the slabs used; then
+`block_hours`, `first_block_rate`, `next_block_rate` are optional), `base_amt`, `penal_amt`, `net_amt`
+(full bill), `adv_amt` (the bag's advance, default 0), `bal_amt` (max(0, net_amt − adv_amt)), `taxable_amt`, `gst_pct`,
 `cgst`, `sgst`, `igst`, `gst_flag`, `pay_mode` (`C`/`U`), `upi_ref` (nullable), `bill_printed`
 (`N` = "Out Without Bill Print", the bill is still recorded). Do not send `gst_no`: the server stamps the
 customer's current GSTIN on the bill when it stores it (old bills keep the GSTIN they were made with).
@@ -2867,12 +2928,15 @@ customer's current GSTIN on the bill when it stores it (old bills keep the GSTIN
 - Luggage merge: check-in fields are write-once; check-out fields only fill empty values; `out_flag`
   never goes back from `Y`. Push order between devices does not matter. Re-pushing is safe.
 - Bills are stored once per `trans_id`; the server recomputes the bill (§7). A difference keeps the bill
-  and logs `AMOUNT_MISMATCH`.
+  and logs `AMOUNT_MISMATCH`. A bill without `rate_slabs` (app older than the slab release) for a tariff
+  the two-rate fields cannot express is refused with `APP_UPDATE_REQUIRED` (not stored).
+- `extra_lugage_qty`, `adv_amt`, `adv_hours` are filled once while still 0 (QR row first, or a row
+  synced before the app sent them), then never change.
 - The response `counters` are the server’s last receipt/bill numbers of the current period for this user.
 
 `reason` codes on `EXCEPTION`: `VALIDATION_ERROR`, `INVALID_REFERENCE` (user/shift/ID proof not of this
 customer), `TENANT_MISMATCH`, `DUPLICATE_RECEIPT_NO`, `DUPLICATE_CHECKOUT` (a different second check-out),
-`BILL_WITHOUT_LUGGAGE`, `DUPLICATE_BILL`, `DUPLICATE_BILL_NO`, `CHECKOUT_MISSING`, `NO_RATE`,
+`BILL_WITHOUT_LUGGAGE`, `DUPLICATE_BILL`, `DUPLICATE_BILL_NO`, `CHECKOUT_MISSING`, `NO_RATE`, `APP_UPDATE_REQUIRED`,
 `AMOUNT_MISMATCH`, `DB_ERROR`.
 
 Sample (bag 1 still in store with an Aadhaar number, bag 2 checked out and billed, plus a bill for an
@@ -2882,14 +2946,14 @@ Request body:
 {
   "luggage": [
     {
-      "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+      "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
       "local_version": 1,
       "receipt_no": "U03-00001",
-      "receipt_dt": "2026-11-05",
+      "receipt_dt": "2026-11-18",
       "user_id_in": 3,
       "device_id_in": "POS-HWH-01",
       "shift_id_in": 1,
-      "date_time_in": "2026-11-05 09:46:29",
+      "date_time_in": "2026-11-18 05:16:48",
       "pasn_name": "Suresh Patel",
       "pasn_mob_no": "9876543210",
       "pnr_no": "4521367890",
@@ -2899,33 +2963,36 @@ Request body:
       "out_flag": "N"
     },
     {
-      "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+      "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
       "local_version": 3,
       "receipt_no": "U03-00002",
-      "receipt_dt": "2026-11-04",
+      "receipt_dt": "2026-11-17",
       "user_id_in": 3,
       "device_id_in": "POS-HWH-01",
       "shift_id_in": 1,
-      "date_time_in": "2026-11-04 09:46:29",
+      "date_time_in": "2026-11-17 05:16:48",
       "pasn_name": "Meera Iyer",
       "pasn_mob_no": "9123456780",
       "pnr_no": "8812345670",
       "luggage_qty": 1,
+      "extra_lugage_qty": 1,
+      "adv_amt": "50.00",
+      "adv_hours": 24,
       "id_proof_id": 3,
       "id_number": "P1234567",
       "user_id_out": 3,
       "device_id_out": "POS-HWH-01",
       "shift_id_out": 1,
-      "date_time_out": "2026-11-05 10:46:29",
+      "date_time_out": "2026-11-18 06:16:48",
       "out_flag": "Y"
     }
   ],
   "receipts": [
     {
-      "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+      "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
       "local_version": 1,
       "bill_no": "U03-00001",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "user_id": 3,
       "device_id": "POS-HWH-01",
       "shift_id": 1,
@@ -2934,6 +3001,18 @@ Request body:
       "block_hours": 24,
       "first_block_rate": "50.00",
       "next_block_rate": "20.00",
+      "rate_slabs": [
+        {
+          "from_hour": 0,
+          "to_hour": 24,
+          "rate": "50.00"
+        },
+        {
+          "from_hour": 24,
+          "to_hour": 48,
+          "rate": "20.00"
+        }
+      ],
       "base_amt": "70.00",
       "penal_amt": "0.00",
       "net_amt": "70.00",
@@ -2942,6 +3021,8 @@ Request body:
       "cgst": "5.34",
       "sgst": "5.34",
       "igst": "0.00",
+      "adv_amt": "50.00",
+      "bal_amt": "20.00",
       "gst_flag": "Y",
       "grace_minutes": 0,
       "gst_inclusive": "Y",
@@ -2951,10 +3032,10 @@ Request body:
       "bill_printed": "Y"
     },
     {
-      "trans_id": "195a99d7-666d-46f8-8558-3317cc1695fb",
+      "trans_id": "4a1f4596-83cc-4081-8232-2578532f4c82",
       "local_version": 1,
       "bill_no": "U03-00002",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "user_id": 3,
       "device_id": "POS-HWH-01",
       "shift_id": 1,
@@ -2963,6 +3044,18 @@ Request body:
       "block_hours": 24,
       "first_block_rate": "50.00",
       "next_block_rate": "20.00",
+      "rate_slabs": [
+        {
+          "from_hour": 0,
+          "to_hour": 24,
+          "rate": "50.00"
+        },
+        {
+          "from_hour": 24,
+          "to_hour": 48,
+          "rate": "20.00"
+        }
+      ],
       "base_amt": "70.00",
       "penal_amt": "0.00",
       "net_amt": "70.00",
@@ -2971,6 +3064,8 @@ Request body:
       "cgst": "5.34",
       "sgst": "5.34",
       "igst": "0.00",
+      "adv_amt": "50.00",
+      "bal_amt": "20.00",
       "gst_flag": "Y",
       "grace_minutes": 0,
       "gst_inclusive": "Y",
@@ -2992,25 +3087,25 @@ Response `200`:
     "results": [
       {
         "table": "td_luggage_in_out",
-        "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+        "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
         "local_version": 1,
         "status": "ACCEPTED"
       },
       {
         "table": "td_luggage_in_out",
-        "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+        "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
         "local_version": 3,
         "status": "ACCEPTED"
       },
       {
         "table": "td_receipt",
-        "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+        "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
         "local_version": 1,
         "status": "ACCEPTED"
       },
       {
         "table": "td_receipt",
-        "trans_id": "195a99d7-666d-46f8-8558-3317cc1695fb",
+        "trans_id": "4a1f4596-83cc-4081-8232-2578532f4c82",
         "local_version": 1,
         "status": "EXCEPTION",
         "reason": "BILL_WITHOUT_LUGGAGE: no luggage row for this trans_id"
@@ -3022,9 +3117,9 @@ Response `200`:
       "receipt_last_no": 2,
       "bill_last_no": 1
     },
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "4d142f80-4d60-4b31-a242-f8f84b32c042"
+  "requestId": "dfcb3e09-548c-4065-ba49-6381fed680f1"
 }
 ```
 
@@ -3038,19 +3133,19 @@ Response `200`:
     "results": [
       {
         "table": "td_luggage_in_out",
-        "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+        "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
         "local_version": 1,
         "status": "ACCEPTED"
       },
       {
         "table": "td_luggage_in_out",
-        "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+        "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
         "local_version": 3,
         "status": "ACCEPTED"
       },
       {
         "table": "td_receipt",
-        "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+        "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
         "local_version": 1,
         "status": "ACCEPTED"
       }
@@ -3061,9 +3156,9 @@ Response `200`:
       "receipt_last_no": 2,
       "bill_last_no": 1
     },
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "f972f77e-b1dc-4df9-b38b-0ac0c680d5e2"
+  "requestId": "5f84caeb-68a5-4a48-9ee8-666e672d4694"
 }
 ```
 
@@ -3081,9 +3176,9 @@ Response `200`:
       "receipt_last_no": 3,
       "bill_last_no": 1
     },
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:49"
   },
-  "requestId": "69a4779c-e842-4777-be4f-17f5b9d7df0e"
+  "requestId": "529998c8-7fae-4eb2-8608-667dcad13241"
 }
 ```
 
@@ -3102,12 +3197,12 @@ Request body:
 {
   "luggage": [
     {
-      "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+      "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
       "local_version": 1,
       "receipt_no": "U03-00003",
-      "receipt_dt": "2026-11-05",
+      "receipt_dt": "2026-11-18",
       "user_id_in": 3,
-      "date_time_in": "2026-11-05 08:46:29",
+      "date_time_in": "2026-11-18 04:16:48",
       "luggage_qty": 1,
       "pasn_name": "Arjun Sen",
       "pasn_mob_no": "9000011111",
@@ -3115,16 +3210,16 @@ Request body:
       "user_id_out": 4,
       "device_id_out": "POS-HWH-02",
       "shift_id_out": null,
-      "date_time_out": "2026-11-05 11:16:29",
+      "date_time_out": "2026-11-18 06:46:48",
       "out_flag": "Y"
     }
   ],
   "receipts": [
     {
-      "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+      "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
       "local_version": 1,
       "bill_no": "U04-00001",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "user_id": 4,
       "device_id": "POS-HWH-02",
       "shift_id": null,
@@ -3133,6 +3228,18 @@ Request body:
       "block_hours": 24,
       "first_block_rate": "50.00",
       "next_block_rate": "20.00",
+      "rate_slabs": [
+        {
+          "from_hour": 0,
+          "to_hour": 24,
+          "rate": "50.00"
+        },
+        {
+          "from_hour": 24,
+          "to_hour": 48,
+          "rate": "20.00"
+        }
+      ],
       "base_amt": "50.00",
       "penal_amt": "0.00",
       "net_amt": "50.00",
@@ -3162,13 +3269,13 @@ Response `200`:
     "results": [
       {
         "table": "td_luggage_in_out",
-        "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+        "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
         "local_version": 1,
         "status": "ACCEPTED"
       },
       {
         "table": "td_receipt",
-        "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+        "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
         "local_version": 1,
         "status": "ACCEPTED"
       }
@@ -3179,9 +3286,9 @@ Response `200`:
       "receipt_last_no": 0,
       "bill_last_no": 1
     },
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "adeb0d39-6cab-453e-8d93-efe845eb4f54"
+  "requestId": "899db442-f8d5-4d74-941a-39973d0ce3a8"
 }
 ```
 
@@ -3195,7 +3302,7 @@ Response `200`:
     "results": [
       {
         "table": "td_luggage_in_out",
-        "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+        "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
         "local_version": 1,
         "status": "ACCEPTED"
       }
@@ -3206,9 +3313,9 @@ Response `200`:
       "receipt_last_no": 3,
       "bill_last_no": 1
     },
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "85baca4c-3040-4d02-aec7-6089d5c9b7fd"
+  "requestId": "9d24a7d7-0941-4d73-b8a0-47998dd4899f"
 }
 ```
 
@@ -3219,36 +3326,39 @@ Response `200`:
   "success": true,
   "message": "OK",
   "data": {
-    "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+    "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
     "customer_id": 1,
     "receipt_no": "U03-00003",
-    "receipt_dt": "2026-11-05",
+    "receipt_dt": "2026-11-18",
     "user_id_in": 3,
     "device_id_in": "POS-HWH-01",
     "shift_id_in": 1,
-    "date_time_in": "2026-11-05 08:46:29",
+    "date_time_in": "2026-11-18 04:16:48",
     "pasn_name": "Arjun Sen",
     "pasn_mob_no": "9000011111",
     "pnr_no": "",
     "luggage_qty": 1,
+    "extra_lugage_qty": 0,
+    "adv_amt": "0.00",
+    "adv_hours": 0,
     "id_proof_id": 3,
     "id_number": "Z7654321",
     "user_id_out": 4,
     "device_id_out": "POS-HWH-02",
     "shift_id_out": null,
-    "date_time_out": "2026-11-05 11:16:29",
+    "date_time_out": "2026-11-18 06:46:48",
     "out_flag": "Y",
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.op2",
-    "created_at": "2026-11-05 11:46:29",
+    "created_at": "2026-11-18 07:16:48",
     "updated_by": "howrah.op1",
-    "updated_at": "2026-11-05 11:46:29",
+    "updated_at": "2026-11-18 07:16:48",
     "receipt": {
-      "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+      "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
       "customer_id": 1,
       "bill_no": "U04-00001",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "user_id": 4,
       "device_id": "POS-HWH-02",
       "shift_id": null,
@@ -3257,10 +3367,24 @@ Response `200`:
       "block_hours": 24,
       "first_block_rate": "50.00",
       "next_block_rate": "20.00",
+      "rate_slabs": [
+        {
+          "rate": "50.00",
+          "to_hour": 24,
+          "from_hour": 0
+        },
+        {
+          "rate": "20.00",
+          "to_hour": 48,
+          "from_hour": 24
+        }
+      ],
       "grace_minutes": 0,
       "base_amt": "50.00",
       "penal_amt": "0.00",
       "net_amt": "50.00",
+      "adv_amt": "0.00",
+      "bal_amt": "50.00",
       "taxable_amt": "42.37",
       "gst_pct": "18.00",
       "cgst": "3.82",
@@ -3276,12 +3400,12 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.op2",
-      "created_at": "2026-11-05 11:46:29",
+      "created_at": "2026-11-18 07:16:48",
       "updated_by": "howrah.op2",
-      "updated_at": "2026-11-05 11:46:29"
+      "updated_at": "2026-11-18 07:16:48"
     }
   },
-  "requestId": "d70d29d0-3067-4e3b-9c01-1808f00ea708"
+  "requestId": "e05831ba-5eb5-4f1b-8813-fb1ec2deb729"
 }
 ```
 
@@ -3322,7 +3446,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:23",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         },
@@ -3333,7 +3457,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:24",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         },
@@ -3349,7 +3473,7 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "system",
-          "created_at": "2026-11-05 11:46:24",
+          "created_at": "2026-11-18 07:16:37",
           "updated_by": null,
           "updated_at": null
         }
@@ -3361,13 +3485,25 @@ Response `200`:
           "block_hours": 24,
           "first_block_rate": "50.00",
           "next_block_rate": "20.00",
+          "rate_slabs": [
+            {
+              "rate": "50.00",
+              "to_hour": 24,
+              "from_hour": 0
+            },
+            {
+              "rate": "20.00",
+              "to_hour": 48,
+              "from_hour": 24
+            }
+          ],
           "effective_from": "2026-01-01",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:46",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shifts": [
@@ -3380,9 +3516,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "shift_id": 2,
@@ -3393,9 +3529,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shift_assignments": [
@@ -3404,13 +3540,13 @@ Response `200`:
           "customer_id": 1,
           "user_id": 3,
           "shift_id": 1,
-          "effective_from": "2026-11-06",
+          "effective_from": "2026-11-19",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "header_footer": [
@@ -3427,9 +3563,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 2,
@@ -3444,9 +3580,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         "… 1 more item(s) of the same shape"
       ],
@@ -3459,7 +3595,7 @@ Response `200`:
           "user_type": "A",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 3,
@@ -3469,7 +3605,7 @@ Response `200`:
           "user_type": "O",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:48"
         },
         "… 1 more item(s) of the same shape"
       ]
@@ -3501,6 +3637,8 @@ Response `200`:
       "SHIFT_LOGIN_FLAG": "Y",
       "SHIFT_EARLY_LOGIN_MIN": "15",
       "PWD_MIN_LENGTH": "8",
+      "ADVANCE_FLAG": "N",
+      "ADVANCE_HOURS": "24",
       "CHECKIN_PRINT_FLAG": "Y",
       "PRINT_COPIES": "1"
     },
@@ -3512,18 +3650,21 @@ Response `200`:
     },
     "luggage": [
       {
-        "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+        "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
         "customer_id": 1,
         "receipt_no": "U03-00001",
-        "receipt_dt": "2026-11-05",
+        "receipt_dt": "2026-11-18",
         "user_id_in": 3,
         "device_id_in": "POS-HWH-01",
         "shift_id_in": 1,
-        "date_time_in": "2026-11-05 09:46:29",
+        "date_time_in": "2026-11-18 05:16:48",
         "pasn_name": "Suresh Patel",
         "pasn_mob_no": "9876543210",
         "pnr_no": "4521367890",
         "luggage_qty": 2,
+        "extra_lugage_qty": 0,
+        "adv_amt": "0.00",
+        "adv_hours": 0,
         "id_proof_id": 1,
         "id_number": "XXXXXXXX9012",
         "user_id_out": null,
@@ -3534,20 +3675,20 @@ Response `200`:
         "is_deleted": "N",
         "sync_flag": "N",
         "created_by": "howrah.op1",
-        "created_at": "2026-11-05 11:46:29",
+        "created_at": "2026-11-18 07:16:48",
         "updated_by": "howrah.op1",
-        "updated_at": "2026-11-05 11:46:29"
+        "updated_at": "2026-11-18 07:16:48"
       }
     ],
     "has_more": false,
     "next_cursor": null,
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "85b2ff9f-f818-4e76-aa4d-301ea36f066a"
+  "requestId": "3b30b976-324c-4c53-838f-73668f9989b0"
 }
 ```
 
-Next pull with `since=2026-11-05 11:46:29`:
+Next pull with `since=2026-11-18 07:16:48`:
 Response `200`:
 ```json
 {
@@ -3563,9 +3704,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:29",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "superadmin",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "gst": [
@@ -3578,9 +3719,9 @@ Response `200`:
           "is_deleted": "Y",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:29",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "superadmin",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "rates": [
@@ -3590,27 +3731,51 @@ Response `200`:
           "block_hours": 24,
           "first_block_rate": "50.00",
           "next_block_rate": "20.00",
+          "rate_slabs": [
+            {
+              "rate": "50.00",
+              "to_hour": 24,
+              "from_hour": 0
+            },
+            {
+              "rate": "20.00",
+              "to_hour": 48,
+              "from_hour": 24
+            }
+          ],
           "effective_from": "2026-01-01",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:46",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "rate_id": 2,
           "customer_id": 1,
           "block_hours": 24,
-          "first_block_rate": "60.00",
-          "next_block_rate": "25.00",
-          "effective_from": "2027-01-04",
+          "first_block_rate": "30.00",
+          "next_block_rate": "10.00",
+          "rate_slabs": [
+            {
+              "rate": "30.00",
+              "to_hour": 24,
+              "from_hour": 0
+            },
+            {
+              "rate": "10.00",
+              "to_hour": 48,
+              "from_hour": 24
+            }
+          ],
+          "effective_from": "2027-01-17",
           "is_deleted": "Y",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shifts": [
@@ -3623,9 +3788,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "shift_id": 2,
@@ -3636,9 +3801,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shift_assignments": [
@@ -3647,13 +3812,13 @@ Response `200`:
           "customer_id": 1,
           "user_id": 3,
           "shift_id": 1,
-          "effective_from": "2026-11-06",
+          "effective_from": "2026-11-19",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "header_footer": [
@@ -3670,9 +3835,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 2,
@@ -3687,9 +3852,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         "… 1 more item(s) of the same shape"
       ],
@@ -3702,7 +3867,7 @@ Response `200`:
           "user_type": "A",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 3,
@@ -3712,7 +3877,7 @@ Response `200`:
           "user_type": "O",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:48"
         },
         "… 1 more item(s) of the same shape"
       ]
@@ -3744,6 +3909,8 @@ Response `200`:
       "SHIFT_LOGIN_FLAG": "Y",
       "SHIFT_EARLY_LOGIN_MIN": "15",
       "PWD_MIN_LENGTH": "8",
+      "ADVANCE_FLAG": "N",
+      "ADVANCE_HOURS": "24",
       "CHECKIN_PRINT_FLAG": "Y",
       "PRINT_COPIES": "1"
     },
@@ -3755,18 +3922,21 @@ Response `200`:
     },
     "luggage": [
       {
-        "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+        "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
         "customer_id": 1,
         "receipt_no": "U03-00001",
-        "receipt_dt": "2026-11-05",
+        "receipt_dt": "2026-11-18",
         "user_id_in": 3,
         "device_id_in": "POS-HWH-01",
         "shift_id_in": 1,
-        "date_time_in": "2026-11-05 09:46:29",
+        "date_time_in": "2026-11-18 05:16:48",
         "pasn_name": "Suresh Patel",
         "pasn_mob_no": "9876543210",
         "pnr_no": "4521367890",
         "luggage_qty": 2,
+        "extra_lugage_qty": 0,
+        "adv_amt": "0.00",
+        "adv_hours": 0,
         "id_proof_id": 1,
         "id_number": "XXXXXXXX9012",
         "user_id_out": null,
@@ -3777,43 +3947,46 @@ Response `200`:
         "is_deleted": "N",
         "sync_flag": "N",
         "created_by": "howrah.op1",
-        "created_at": "2026-11-05 11:46:29",
+        "created_at": "2026-11-18 07:16:48",
         "updated_by": "howrah.op1",
-        "updated_at": "2026-11-05 11:46:29"
+        "updated_at": "2026-11-18 07:16:48"
       },
       {
-        "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+        "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
         "customer_id": 1,
         "receipt_no": "U03-00002",
-        "receipt_dt": "2026-11-04",
+        "receipt_dt": "2026-11-17",
         "user_id_in": 3,
         "device_id_in": "POS-HWH-01",
         "shift_id_in": 1,
-        "date_time_in": "2026-11-04 09:46:29",
+        "date_time_in": "2026-11-17 05:16:48",
         "pasn_name": "Meera Iyer",
         "pasn_mob_no": "9123456780",
         "pnr_no": "8812345670",
         "luggage_qty": 1,
+        "extra_lugage_qty": 1,
+        "adv_amt": "50.00",
+        "adv_hours": 24,
         "id_proof_id": 3,
         "id_number": "P1234567",
         "user_id_out": 3,
         "device_id_out": "POS-HWH-01",
         "shift_id_out": 1,
-        "date_time_out": "2026-11-05 10:46:29",
+        "date_time_out": "2026-11-18 06:16:48",
         "out_flag": "Y",
         "is_deleted": "N",
         "sync_flag": "N",
         "created_by": "howrah.op1",
-        "created_at": "2026-11-05 11:46:29",
+        "created_at": "2026-11-18 07:16:48",
         "updated_by": "howrah.op1",
-        "updated_at": "2026-11-05 11:46:29"
+        "updated_at": "2026-11-18 07:16:48"
       }
     ],
     "has_more": false,
     "next_cursor": null,
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "914ff8b4-1aaf-4dfa-8d3d-0e1438be5b28"
+  "requestId": "b31d5e71-9394-46a8-b57a-af7eb48ae9c2"
 }
 ```
 
@@ -3833,9 +4006,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:29",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "superadmin",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "gst": [
@@ -3848,9 +4021,9 @@ Response `200`:
           "is_deleted": "Y",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:29",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "superadmin",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "rates": [
@@ -3860,27 +4033,51 @@ Response `200`:
           "block_hours": 24,
           "first_block_rate": "50.00",
           "next_block_rate": "20.00",
+          "rate_slabs": [
+            {
+              "rate": "50.00",
+              "to_hour": 24,
+              "from_hour": 0
+            },
+            {
+              "rate": "20.00",
+              "to_hour": 48,
+              "from_hour": 24
+            }
+          ],
           "effective_from": "2026-01-01",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "superadmin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:46",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "rate_id": 2,
           "customer_id": 1,
           "block_hours": 24,
-          "first_block_rate": "60.00",
-          "next_block_rate": "25.00",
-          "effective_from": "2027-01-04",
+          "first_block_rate": "30.00",
+          "next_block_rate": "10.00",
+          "rate_slabs": [
+            {
+              "rate": "30.00",
+              "to_hour": 24,
+              "from_hour": 0
+            },
+            {
+              "rate": "10.00",
+              "to_hour": 48,
+              "from_hour": 24
+            }
+          ],
+          "effective_from": "2027-01-17",
           "is_deleted": "Y",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shifts": [
@@ -3893,9 +4090,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "shift_id": 2,
@@ -3906,9 +4103,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "shift_assignments": [
@@ -3917,13 +4114,13 @@ Response `200`:
           "customer_id": 1,
           "user_id": 3,
           "shift_id": 1,
-          "effective_from": "2026-11-06",
+          "effective_from": "2026-11-19",
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         }
       ],
       "header_footer": [
@@ -3940,9 +4137,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 2,
@@ -3957,9 +4154,9 @@ Response `200`:
           "is_deleted": "N",
           "sync_flag": "N",
           "created_by": "howrah.admin",
-          "created_at": "2026-11-05 11:46:28",
+          "created_at": "2026-11-18 07:16:47",
           "updated_by": "howrah.admin",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         "… 1 more item(s) of the same shape"
       ],
@@ -3972,7 +4169,7 @@ Response `200`:
           "user_type": "A",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:28"
+          "updated_at": "2026-11-18 07:16:47"
         },
         {
           "id": 3,
@@ -3982,7 +4179,7 @@ Response `200`:
           "user_type": "O",
           "allow_flag": "Y",
           "is_deleted": "N",
-          "updated_at": "2026-11-05 11:46:29"
+          "updated_at": "2026-11-18 07:16:48"
         },
         "… 1 more item(s) of the same shape"
       ]
@@ -4014,6 +4211,8 @@ Response `200`:
       "SHIFT_LOGIN_FLAG": "Y",
       "SHIFT_EARLY_LOGIN_MIN": "15",
       "PWD_MIN_LENGTH": "8",
+      "ADVANCE_FLAG": "N",
+      "ADVANCE_HOURS": "24",
       "CHECKIN_PRINT_FLAG": "Y",
       "PRINT_COPIES": "1"
     },
@@ -4025,18 +4224,21 @@ Response `200`:
     },
     "luggage": [
       {
-        "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+        "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
         "customer_id": 1,
         "receipt_no": "U03-00001",
-        "receipt_dt": "2026-11-05",
+        "receipt_dt": "2026-11-18",
         "user_id_in": 3,
         "device_id_in": "POS-HWH-01",
         "shift_id_in": 1,
-        "date_time_in": "2026-11-05 09:46:29",
+        "date_time_in": "2026-11-18 05:16:48",
         "pasn_name": "Suresh Patel",
         "pasn_mob_no": "9876543210",
         "pnr_no": "4521367890",
         "luggage_qty": 2,
+        "extra_lugage_qty": 0,
+        "adv_amt": "0.00",
+        "adv_hours": 0,
         "id_proof_id": 1,
         "id_number": "XXXXXXXX9012",
         "user_id_out": null,
@@ -4047,16 +4249,16 @@ Response `200`:
         "is_deleted": "N",
         "sync_flag": "N",
         "created_by": "howrah.op1",
-        "created_at": "2026-11-05 11:46:29",
+        "created_at": "2026-11-18 07:16:48",
         "updated_by": "howrah.op1",
-        "updated_at": "2026-11-05 11:46:29"
+        "updated_at": "2026-11-18 07:16:48"
       }
     ],
     "has_more": true,
     "next_cursor": "eyJtIjoiY2hhbmdl…(base64)",
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "5b23cab2-fb02-4e45-bb89-782d29b5387e"
+  "requestId": "bb150eb8-62bf-4acc-8228-57ccb2940b09"
 }
 ```
 
@@ -4072,38 +4274,41 @@ Response `200`:
     "counters": null,
     "luggage": [
       {
-        "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+        "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
         "customer_id": 1,
         "receipt_no": "U03-00002",
-        "receipt_dt": "2026-11-04",
+        "receipt_dt": "2026-11-17",
         "user_id_in": 3,
         "device_id_in": "POS-HWH-01",
         "shift_id_in": 1,
-        "date_time_in": "2026-11-04 09:46:29",
+        "date_time_in": "2026-11-17 05:16:48",
         "pasn_name": "Meera Iyer",
         "pasn_mob_no": "9123456780",
         "pnr_no": "8812345670",
         "luggage_qty": 1,
+        "extra_lugage_qty": 1,
+        "adv_amt": "50.00",
+        "adv_hours": 24,
         "id_proof_id": 3,
         "id_number": "P1234567",
         "user_id_out": 3,
         "device_id_out": "POS-HWH-01",
         "shift_id_out": 1,
-        "date_time_out": "2026-11-05 10:46:29",
+        "date_time_out": "2026-11-18 06:16:48",
         "out_flag": "Y",
         "is_deleted": "N",
         "sync_flag": "N",
         "created_by": "howrah.op1",
-        "created_at": "2026-11-05 11:46:29",
+        "created_at": "2026-11-18 07:16:48",
         "updated_by": "howrah.op1",
-        "updated_at": "2026-11-05 11:46:29"
+        "updated_at": "2026-11-18 07:16:48"
       }
     ],
     "has_more": false,
     "next_cursor": null,
-    "server_time": "2026-11-05 11:46:29"
+    "server_time": "2026-11-18 07:16:48"
   },
-  "requestId": "da842f85-abfc-4c40-9ab9-9b91e1959698"
+  "requestId": "7684ddff-797a-40c1-be36-93d7cbb8987d"
 }
 ```
 
@@ -4126,18 +4331,21 @@ Response `200`:
   "message": "OK",
   "data": [
     {
-      "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+      "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
       "customer_id": 1,
       "receipt_no": "U03-00001",
-      "receipt_dt": "2026-11-05",
+      "receipt_dt": "2026-11-18",
       "user_id_in": 3,
       "device_id_in": "POS-HWH-01",
       "shift_id_in": 1,
-      "date_time_in": "2026-11-05 09:46:29",
+      "date_time_in": "2026-11-18 05:16:48",
       "pasn_name": "Suresh Patel",
       "pasn_mob_no": "9876543210",
       "pnr_no": "4521367890",
       "luggage_qty": 2,
+      "extra_lugage_qty": 0,
+      "adv_amt": "0.00",
+      "adv_hours": 0,
       "id_proof_id": 1,
       "id_number": "XXXXXXXX9012",
       "user_id_out": null,
@@ -4148,9 +4356,9 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.op1",
-      "created_at": "2026-11-05 11:46:29",
+      "created_at": "2026-11-18 07:16:48",
       "updated_by": "howrah.op1",
-      "updated_at": "2026-11-05 11:46:29"
+      "updated_at": "2026-11-18 07:16:48"
     }
   ],
   "meta": {
@@ -4158,7 +4366,7 @@ Response `200`:
     "limit": 50,
     "total": 1
   },
-  "requestId": "bf1ad4e1-7baa-4e43-931a-c8eeddce6520"
+  "requestId": "49378d92-74d4-48e4-ac2f-f7b71d5690dc"
 }
 ```
 
@@ -4172,36 +4380,39 @@ Response `200`:
   "success": true,
   "message": "OK",
   "data": {
-    "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+    "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
     "customer_id": 1,
     "receipt_no": "U03-00002",
-    "receipt_dt": "2026-11-04",
+    "receipt_dt": "2026-11-17",
     "user_id_in": 3,
     "device_id_in": "POS-HWH-01",
     "shift_id_in": 1,
-    "date_time_in": "2026-11-04 09:46:29",
+    "date_time_in": "2026-11-17 05:16:48",
     "pasn_name": "Meera Iyer",
     "pasn_mob_no": "9123456780",
     "pnr_no": "8812345670",
     "luggage_qty": 1,
+    "extra_lugage_qty": 1,
+    "adv_amt": "50.00",
+    "adv_hours": 24,
     "id_proof_id": 3,
     "id_number": "P1234567",
     "user_id_out": 3,
     "device_id_out": "POS-HWH-01",
     "shift_id_out": 1,
-    "date_time_out": "2026-11-05 10:46:29",
+    "date_time_out": "2026-11-18 06:16:48",
     "out_flag": "Y",
     "is_deleted": "N",
     "sync_flag": "N",
     "created_by": "howrah.op1",
-    "created_at": "2026-11-05 11:46:29",
+    "created_at": "2026-11-18 07:16:48",
     "updated_by": "howrah.op1",
-    "updated_at": "2026-11-05 11:46:29",
+    "updated_at": "2026-11-18 07:16:48",
     "receipt": {
-      "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+      "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
       "customer_id": 1,
       "bill_no": "U03-00001",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "user_id": 3,
       "device_id": "POS-HWH-01",
       "shift_id": 1,
@@ -4210,10 +4421,24 @@ Response `200`:
       "block_hours": 24,
       "first_block_rate": "50.00",
       "next_block_rate": "20.00",
+      "rate_slabs": [
+        {
+          "rate": "50.00",
+          "to_hour": 24,
+          "from_hour": 0
+        },
+        {
+          "rate": "20.00",
+          "to_hour": 48,
+          "from_hour": 24
+        }
+      ],
       "grace_minutes": 0,
       "base_amt": "70.00",
       "penal_amt": "0.00",
       "net_amt": "70.00",
+      "adv_amt": "50.00",
+      "bal_amt": "20.00",
       "taxable_amt": "59.32",
       "gst_pct": "18.00",
       "cgst": "5.34",
@@ -4229,12 +4454,12 @@ Response `200`:
       "is_deleted": "N",
       "sync_flag": "N",
       "created_by": "howrah.op1",
-      "created_at": "2026-11-05 11:46:29",
+      "created_at": "2026-11-18 07:16:48",
       "updated_by": "howrah.op1",
-      "updated_at": "2026-11-05 11:46:29"
+      "updated_at": "2026-11-18 07:16:48"
     }
   },
-  "requestId": "21cfed5f-c1a0-42d6-87af-f59009760791"
+  "requestId": "bb0b262c-be5f-41aa-ab3a-70d90a12d2c4"
 }
 ```
 
@@ -4248,7 +4473,7 @@ Response `404`:
   "message": "Luggage not found",
   "code": "NOT_FOUND",
   "data": null,
-  "requestId": "a4030a2b-bcd3-4d1a-b013-ec04b5d90c1d"
+  "requestId": "ca381a07-7c4c-4168-935b-03230b40e591"
 }
 ```
 
@@ -4259,8 +4484,13 @@ Response `404`:
 ```
 minutes      = whole minutes from date_time_in to date_time_out (seconds dropped)
 billable     = max(0, minutes − grace_minutes)                      GRACE_MINUTES, default 0
-days_charged = max(1, ceil(billable / (block_hours × 60)))          24h00m → 1 block, 24h01m → 2
-base_amt     = luggage_qty × (first_block_rate + next_block_rate × (days_charged − 1))
+slabs        = rate_slabs of the rate row: [{from_hour, to_hour, rate}], contiguous from hour 0
+per bag      = Σ rate of every slab with i = 0 or billable > from_hour × 60     (started slabs)
+             + last.rate × ceil((billable − last.to_hour × 60) / ((last.to_hour − last.from_hour) × 60))
+                                                                    when billable > last.to_hour × 60
+days_charged = number of rates added (slabs started + repeats of the last slab)
+base_amt     = luggage_qty × per bag                                 extra bags are free
+adv_amt      = the bag's advance (0 when none); bal_amt = max(0, net_amt − adv_amt)   no refund
 rate row     = latest rate with effective_from ≤ receipt_dt
 GST row      = latest GST with effective_from ≤ bill_dt
 gst_pct      = 0 when gst_flag = N, else the customer's GST_PCT when set,
@@ -4290,8 +4520,15 @@ GST_TYPE = I: igst = gst, cgst = sgst = 0
 - **Send the options you billed with on every bill**: `grace_minutes`, `gst_inclusive`, `penalty_gst_flag`,
   `gst_flag`. The server recomputes with them and stores them, so a later settings change never flags old
   offline bills. Omitted → the customer's settings at the time the bill arrives, then the defaults.
-- Store the rate snapshot (`block_hours`, `first_block_rate`, `next_block_rate`) and `gst_pct` on the bill.
-- No payment at check-in (receipt only); one bill per bag transaction at check-out; pay mode Cash or UPI.
+- Slab examples: 0–24 h ₹30 only → 2 bags × 2 days = 2 × (30 + 30) = ₹120 · 0–24 h ₹30 + 24–48 h ₹10 →
+  2 bags × 3 days = 2 × (30 + 10 + 10) = ₹100 · 0–4 h ₹10 + 4–24 h ₹20 → 3 h ₹10, 5 h ₹30, 25 h ₹50 ·
+  the two-rate tariff 24 h / ₹50 / ₹20 is the slabs 0–24 h ₹50 + 24–48 h ₹20 (same bills as before).
+- Store the snapshot on the bill: `rate_slabs` (plus the two-rate fields if you have them) and `gst_pct`.
+- **Advance** (`ADVANCE_FLAG = Y`): at check-in take `adv_amt` = the bill for `ADVANCE_HOURS` with the same
+  rate and GST setting and save `adv_hours`; print it on the receipt. At check-out `net_amt` is the full bill,
+  `adv_amt` is subtracted and `bal_amt` is collected (Cash or UPI). The GST breakup is printed on the bill
+  only. Reports count the advance on the check-in date and `bal_amt` on the bill date.
+- One bill per bag transaction at check-out; pay mode Cash or UPI.
 
 ### Receipt / bill numbers
 - Format `<user_code>-<5 digits>` (e.g. `U03-00125`; more digits after 99999). Two series per user:
@@ -4346,6 +4583,8 @@ when the bill reaches the server).
 | `SHIFT_LOGIN_FLAG` | Sign-in & security | Y / N | `Y` | customer | yes | Counter users sign in only during their shift. Applies to counter users who have a shift in the roster; admins are not limited. |
 | `SHIFT_EARLY_LOGIN_MIN` | Sign-in & security | 0–120 minutes | `15` | customer | yes | Sign-in opens before the shift. Minutes before the shift starts when counter users may sign in. |
 | `PWD_MIN_LENGTH` | Sign-in & security | 8–32 characters | `8` | customer |  | Shortest password on the device. The server always requires at least 8 characters with a letter and a digit. |
+| `ADVANCE_FLAG` | Check-in | Y / N | `N` | customer |  | Take an advance at check-in. The counter collects the rent for the advance hours at check-in; the bill then asks only for the rest (no refund when the bill is smaller). |
+| `ADVANCE_HOURS` | Check-in | 1–720 hours | `24` | customer |  | Advance covers. Hours of rent collected as the advance. |
 | `CHECKIN_PRINT_FLAG` | Printing | Y / N | `Y` | per user |  | Print a receipt at check-in. Can be set per user below. |
 | `PRINT_COPIES` | Printing | 1–3 copies | `1` | per user |  | Copies per print. Can be set per user below. |
 
@@ -4369,37 +4608,59 @@ Response `200`:
   "message": "OK",
   "data": [
     {
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-17",
+      "bills": 0,
+      "bags": 0,
+      "base_amt": "0.00",
+      "penal_amt": "0.00",
+      "net_amt": "0.00",
+      "adv_amt": "0.00",
+      "bal_amt": "0.00",
+      "adv_collected": "50.00",
+      "cash_amt": "50.00",
+      "upi_amt": "0.00",
+      "collected_amt": "50.00"
+    },
+    {
+      "bill_dt": "2026-11-18",
       "bills": 2,
       "bags": 2,
       "base_amt": "120.00",
       "penal_amt": "0.00",
       "net_amt": "120.00",
+      "adv_amt": "50.00",
+      "bal_amt": "70.00",
+      "adv_collected": "0.00",
       "cash_amt": "50.00",
-      "upi_amt": "70.00"
+      "upi_amt": "20.00",
+      "collected_amt": "70.00"
     }
   ],
   "meta": {
     "page": 1,
     "limit": 50,
-    "total": 1,
+    "total": 2,
     "totals": {
       "bills": 2,
       "bags": 2,
       "base_amt": "120.00",
       "penal_amt": "0.00",
       "net_amt": "120.00",
-      "cash_amt": "50.00",
-      "upi_amt": "70.00"
+      "adv_amt": "50.00",
+      "bal_amt": "70.00",
+      "adv_collected": "50.00",
+      "cash_amt": "100.00",
+      "upi_amt": "20.00",
+      "collected_amt": "120.00"
     },
     "filters": {
       "page": 1,
       "limit": 50,
-      "from": "2026-11-04",
-      "to": "2026-11-05"
+      "from": "2026-11-17",
+      "to": "2026-11-18"
     }
   },
-  "requestId": "02494690-8a4e-4e2c-aa8d-d1e9fb4eb0ed"
+  "requestId": "f6b01b19-a64d-49b4-b3b2-2d96ea32730b"
 }
 ```
 
@@ -4414,11 +4675,11 @@ Response `200`:
   "message": "OK",
   "data": [
     {
-      "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+      "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
       "receipt_no": "U03-00002",
-      "receipt_dt": "2026-11-04",
-      "date_time_in": "2026-11-04 09:46:29",
-      "date_time_in_ist": "2026-11-04 15:16:29",
+      "receipt_dt": "2026-11-17",
+      "date_time_in": "2026-11-17 05:16:48",
+      "date_time_in_ist": "2026-11-17 10:46:48",
       "user_id_in": 3,
       "user_name_in": "Ravi Kumar Singh",
       "shift_id_in": 1,
@@ -4427,19 +4688,22 @@ Response `200`:
       "pasn_mob_no": "9123456780",
       "pnr_no": "8812345670",
       "luggage_qty": 1,
+      "extra_lugage_qty": 1,
+      "adv_amt": "50.00",
+      "adv_hours": 24,
       "id_proof_id": 3,
       "id_proof_name": "Passport",
       "id_number": "P1234567",
       "out_flag": "Y",
-      "date_time_out": "2026-11-05 10:46:29",
-      "date_time_out_ist": "2026-11-05 16:16:29"
+      "date_time_out": "2026-11-18 06:16:48",
+      "date_time_out_ist": "2026-11-18 11:46:48"
     },
     {
-      "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+      "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
       "receipt_no": "U03-00003",
-      "receipt_dt": "2026-11-05",
-      "date_time_in": "2026-11-05 08:46:29",
-      "date_time_in_ist": "2026-11-05 14:16:29",
+      "receipt_dt": "2026-11-18",
+      "date_time_in": "2026-11-18 04:16:48",
+      "date_time_in_ist": "2026-11-18 09:46:48",
       "user_id_in": 3,
       "user_name_in": "Ravi Kumar Singh",
       "shift_id_in": 1,
@@ -4448,12 +4712,15 @@ Response `200`:
       "pasn_mob_no": "9000011111",
       "pnr_no": "",
       "luggage_qty": 1,
+      "extra_lugage_qty": 0,
+      "adv_amt": "0.00",
+      "adv_hours": 0,
       "id_proof_id": 3,
       "id_proof_name": "Passport",
       "id_number": "Z7654321",
       "out_flag": "Y",
-      "date_time_out": "2026-11-05 11:16:29",
-      "date_time_out_ist": "2026-11-05 16:46:29"
+      "date_time_out": "2026-11-18 06:46:48",
+      "date_time_out_ist": "2026-11-18 12:16:48"
     },
     "… 1 more item(s) of the same shape"
   ],
@@ -4463,16 +4730,18 @@ Response `200`:
     "total": 3,
     "totals": {
       "bags_entries": 3,
-      "bags": 4
+      "bags": 4,
+      "extra_bags": 1,
+      "adv_amt": "50.00"
     },
     "filters": {
       "page": 1,
       "limit": 50,
-      "from": "2026-11-04",
-      "to": "2026-11-05"
+      "from": "2026-11-17",
+      "to": "2026-11-18"
     }
   },
-  "requestId": "136c3816-4882-4bbd-b2ad-4b9d66613750"
+  "requestId": "220894ff-b5bc-4799-a00a-6cfa4222c1b6"
 }
 ```
 
@@ -4487,11 +4756,11 @@ Response `200`:
   "message": "OK",
   "data": [
     {
-      "trans_id": "a6ba0d40-1675-4c2d-8ee0-e61d5fdf7d87",
+      "trans_id": "4d7b8931-3a81-48a3-aeb5-d92d46e185ff",
       "receipt_no": "U03-00002",
-      "receipt_dt": "2026-11-04",
-      "date_time_in": "2026-11-04 09:46:29",
-      "date_time_in_ist": "2026-11-04 15:16:29",
+      "receipt_dt": "2026-11-17",
+      "date_time_in": "2026-11-17 05:16:48",
+      "date_time_in_ist": "2026-11-17 10:46:48",
       "user_id_in": 3,
       "user_name_in": "Ravi Kumar Singh",
       "shift_id_in": 1,
@@ -4500,29 +4769,34 @@ Response `200`:
       "pasn_mob_no": "9123456780",
       "pnr_no": "8812345670",
       "luggage_qty": 1,
+      "extra_lugage_qty": 1,
+      "adv_amt": "50.00",
+      "adv_hours": 24,
       "id_proof_id": 3,
       "id_proof_name": "Passport",
       "id_number": "P1234567",
       "out_flag": "Y",
-      "date_time_out": "2026-11-05 10:46:29",
-      "date_time_out_ist": "2026-11-05 16:16:29",
+      "date_time_out": "2026-11-18 06:16:48",
+      "date_time_out_ist": "2026-11-18 11:46:48",
       "user_id_out": 3,
       "user_name_out": "Ravi Kumar Singh",
       "shift_id_out": 1,
       "shift_name_out": "Morning",
       "bill_no": "U03-00001",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "days_charged": 2,
       "net_amt": "70.00",
+      "bill_adv_amt": "50.00",
+      "bal_amt": "20.00",
       "pay_mode": "U",
       "bill_printed": "Y"
     },
     {
-      "trans_id": "6589ceef-14de-430e-a0b8-7b7d28577a90",
+      "trans_id": "dfaafe0e-6c85-4fbe-ac8a-f3dc5bf89434",
       "receipt_no": "U03-00003",
-      "receipt_dt": "2026-11-05",
-      "date_time_in": "2026-11-05 08:46:29",
-      "date_time_in_ist": "2026-11-05 14:16:29",
+      "receipt_dt": "2026-11-18",
+      "date_time_in": "2026-11-18 04:16:48",
+      "date_time_in_ist": "2026-11-18 09:46:48",
       "user_id_in": 3,
       "user_name_in": "Ravi Kumar Singh",
       "shift_id_in": 1,
@@ -4531,20 +4805,25 @@ Response `200`:
       "pasn_mob_no": "9000011111",
       "pnr_no": "",
       "luggage_qty": 1,
+      "extra_lugage_qty": 0,
+      "adv_amt": "0.00",
+      "adv_hours": 0,
       "id_proof_id": 3,
       "id_proof_name": "Passport",
       "id_number": "Z7654321",
       "out_flag": "Y",
-      "date_time_out": "2026-11-05 11:16:29",
-      "date_time_out_ist": "2026-11-05 16:46:29",
+      "date_time_out": "2026-11-18 06:46:48",
+      "date_time_out_ist": "2026-11-18 12:16:48",
       "user_id_out": 4,
       "user_name_out": "Anita Das",
       "shift_id_out": null,
       "shift_name_out": null,
       "bill_no": "U04-00001",
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "days_charged": 1,
       "net_amt": "50.00",
+      "bill_adv_amt": "0.00",
+      "bal_amt": "50.00",
       "pay_mode": "C",
       "bill_printed": "Y"
     }
@@ -4556,16 +4835,19 @@ Response `200`:
     "totals": {
       "bags_entries": 2,
       "bags": 2,
-      "net_amt": "120.00"
+      "extra_bags": 1,
+      "net_amt": "120.00",
+      "adv_amt": "50.00",
+      "bal_amt": "70.00"
     },
     "filters": {
       "page": 1,
       "limit": 50,
-      "from": "2026-11-04",
-      "to": "2026-11-05"
+      "from": "2026-11-17",
+      "to": "2026-11-18"
     }
   },
-  "requestId": "9de16ffa-39d2-4687-a5e6-c2e792e0d6da"
+  "requestId": "86f49b8d-5f10-460f-afce-cf7a4caf6d0d"
 }
 ```
 
@@ -4582,11 +4864,11 @@ Response `200`:
   "message": "OK",
   "data": [
     {
-      "trans_id": "114f0520-b36c-45eb-a1de-3a75caf96ae0",
+      "trans_id": "22f0781e-4366-4ac6-aa22-94f2e9f9adb9",
       "receipt_no": "U03-00001",
-      "receipt_dt": "2026-11-05",
-      "date_time_in": "2026-11-05 09:46:29",
-      "date_time_in_ist": "2026-11-05 15:16:29",
+      "receipt_dt": "2026-11-18",
+      "date_time_in": "2026-11-18 05:16:48",
+      "date_time_in_ist": "2026-11-18 10:46:48",
       "user_id_in": 3,
       "user_name_in": "Ravi Kumar Singh",
       "shift_id_in": 1,
@@ -4595,6 +4877,9 @@ Response `200`:
       "pasn_mob_no": "9876543210",
       "pnr_no": "4521367890",
       "luggage_qty": 2,
+      "extra_lugage_qty": 0,
+      "adv_amt": "0.00",
+      "adv_hours": 0,
       "id_proof_id": 1,
       "id_proof_name": "Aadhaar Card",
       "id_number": "XXXXXXXX9012",
@@ -4608,14 +4893,16 @@ Response `200`:
     "total": 1,
     "totals": {
       "bags_entries": 1,
-      "bags": 2
+      "bags": 2,
+      "extra_bags": 0,
+      "adv_amt": "0.00"
     },
     "filters": {
       "page": 1,
       "limit": 50
     }
   },
-  "requestId": "16a72cd9-cba1-45b8-b2a6-b36b0049796c"
+  "requestId": "bbb34dfa-a91c-4427-814a-164f48afe4dc"
 }
 ```
 
@@ -4630,7 +4917,7 @@ Response `200`:
   "message": "OK",
   "data": [
     {
-      "bill_dt": "2026-11-05",
+      "bill_dt": "2026-11-18",
       "gst_pct": "18.00",
       "bills": 2,
       "taxable_amt": "101.69",
@@ -4655,11 +4942,11 @@ Response `200`:
     "filters": {
       "page": 1,
       "limit": 50,
-      "from": "2026-11-04",
-      "to": "2026-11-05"
+      "from": "2026-11-17",
+      "to": "2026-11-18"
     }
   },
-  "requestId": "21c7c056-732d-41a5-bbe2-556e29517143"
+  "requestId": "96a47a27-982b-4bc7-ab9c-b6a6db4a55cb"
 }
 ```
 
@@ -4684,8 +4971,12 @@ Response `200`:
       "base_amt": "50.00",
       "penal_amt": "0.00",
       "net_amt": "50.00",
+      "adv_amt": "0.00",
+      "bal_amt": "50.00",
+      "adv_collected": "0.00",
       "cash_amt": "50.00",
-      "upi_amt": "0.00"
+      "upi_amt": "0.00",
+      "collected_amt": "50.00"
     },
     {
       "user_id": 3,
@@ -4698,8 +4989,12 @@ Response `200`:
       "base_amt": "70.00",
       "penal_amt": "0.00",
       "net_amt": "70.00",
-      "cash_amt": "0.00",
-      "upi_amt": "70.00"
+      "adv_amt": "50.00",
+      "bal_amt": "20.00",
+      "adv_collected": "50.00",
+      "cash_amt": "50.00",
+      "upi_amt": "20.00",
+      "collected_amt": "70.00"
     }
   ],
   "meta": {
@@ -4712,17 +5007,21 @@ Response `200`:
       "base_amt": "120.00",
       "penal_amt": "0.00",
       "net_amt": "120.00",
-      "cash_amt": "50.00",
-      "upi_amt": "70.00"
+      "adv_amt": "50.00",
+      "bal_amt": "70.00",
+      "adv_collected": "50.00",
+      "cash_amt": "100.00",
+      "upi_amt": "20.00",
+      "collected_amt": "120.00"
     },
     "filters": {
       "page": 1,
       "limit": 50,
-      "from": "2026-11-04",
-      "to": "2026-11-05"
+      "from": "2026-11-17",
+      "to": "2026-11-18"
     }
   },
-  "requestId": "0dde0621-185c-4f4c-a7b4-6637a66e4353"
+  "requestId": "764ed147-1547-4447-ade6-2e560ba93dd5"
 }
 ```
 
@@ -4742,16 +5041,17 @@ Response `200`:
     "total": 0,
     "totals": {
       "bills": 0,
-      "net_amt": "0.00"
+      "net_amt": "0.00",
+      "bal_amt": "0.00"
     },
     "filters": {
       "page": 1,
       "limit": 50,
-      "from": "2026-11-04",
-      "to": "2026-11-05"
+      "from": "2026-11-17",
+      "to": "2026-11-18"
     }
   },
-  "requestId": "763966e1-7ffe-4059-a169-5dc47395217b"
+  "requestId": "6336456c-e4c0-4078-bf66-b10d8d358385"
 }
 ```
 
@@ -4773,14 +5073,16 @@ Response `200`:
   "data": [
     {
       "id": 1,
-      "trans_id": "195a99d7-666d-46f8-8558-3317cc1695fb",
+      "trans_id": "4a1f4596-83cc-4081-8232-2578532f4c82",
       "table_name": "td_receipt",
       "reason": "BILL_WITHOUT_LUGGAGE: no luggage row for this trans_id",
       "payload": {
         "cgst": "5.34",
         "igst": "0.00",
         "sgst": "5.34",
-        "bill_dt": "2026-11-05",
+        "adv_amt": "50.00",
+        "bal_amt": "20.00",
+        "bill_dt": "2026-11-18",
         "bill_no": "U03-00002",
         "gst_pct": "18.00",
         "net_amt": "70.00",
@@ -4790,9 +5092,21 @@ Response `200`:
         "gst_flag": "Y",
         "pay_mode": "U",
         "shift_id": 1,
-        "trans_id": "195a99d7-666d-46f8-8558-3317cc1695fb",
+        "trans_id": "4a1f4596-83cc-4081-8232-2578532f4c82",
         "device_id": "POS-HWH-01",
         "penal_amt": "0.00",
+        "rate_slabs": [
+          {
+            "rate": "50.00",
+            "to_hour": 24,
+            "from_hour": 0
+          },
+          {
+            "rate": "20.00",
+            "to_hour": 48,
+            "from_hour": 24
+          }
+        ],
         "block_hours": 24,
         "luggage_qty": 1,
         "taxable_amt": "59.32",
@@ -4811,8 +5125,8 @@ Response `200`:
       "resolved_flag": "N",
       "resolved_by": null,
       "resolved_at": null,
-      "created_at": "2026-11-05 11:46:29",
-      "created_at_ist": "2026-11-05 17:16:29"
+      "created_at": "2026-11-18 07:16:48",
+      "created_at_ist": "2026-11-18 12:46:48"
     }
   ],
   "meta": {
@@ -4829,7 +5143,7 @@ Response `200`:
       "resolved": "N"
     }
   },
-  "requestId": "eaf6b87a-3d29-45d9-b9d2-916c38340bf6"
+  "requestId": "3d37f51d-35ba-4058-98f8-db7423e43862"
 }
 ```
 
@@ -4845,13 +5159,15 @@ Response `200`:
   "data": {
     "id": 1,
     "customer_id": 1,
-    "trans_id": "195a99d7-666d-46f8-8558-3317cc1695fb",
+    "trans_id": "4a1f4596-83cc-4081-8232-2578532f4c82",
     "table_name": "td_receipt",
     "payload": {
       "cgst": "5.34",
       "igst": "0.00",
       "sgst": "5.34",
-      "bill_dt": "2026-11-05",
+      "adv_amt": "50.00",
+      "bal_amt": "20.00",
+      "bill_dt": "2026-11-18",
       "bill_no": "U03-00002",
       "gst_pct": "18.00",
       "net_amt": "70.00",
@@ -4861,9 +5177,21 @@ Response `200`:
       "gst_flag": "Y",
       "pay_mode": "U",
       "shift_id": 1,
-      "trans_id": "195a99d7-666d-46f8-8558-3317cc1695fb",
+      "trans_id": "4a1f4596-83cc-4081-8232-2578532f4c82",
       "device_id": "POS-HWH-01",
       "penal_amt": "0.00",
+      "rate_slabs": [
+        {
+          "rate": "50.00",
+          "to_hour": 24,
+          "from_hour": 0
+        },
+        {
+          "rate": "20.00",
+          "to_hour": 48,
+          "from_hour": 24
+        }
+      ],
       "block_hours": 24,
       "luggage_qty": 1,
       "taxable_amt": "59.32",
@@ -4881,10 +5209,10 @@ Response `200`:
     "device_id": "POS-HWH-01",
     "resolved_flag": "Y",
     "resolved_by": "howrah.admin",
-    "resolved_at": "2026-11-05 11:46:29",
-    "created_at": "2026-11-05 11:46:29"
+    "resolved_at": "2026-11-18 07:16:48",
+    "created_at": "2026-11-18 07:16:48"
   },
-  "requestId": "e086d478-0baa-4962-9c59-a3af0a4d09ad"
+  "requestId": "0f7813d0-d1df-4537-aa69-ff0581aaf823"
 }
 ```
 
@@ -4896,7 +5224,7 @@ Response `403`:
   "message": "Reports are not enabled for operators",
   "code": "FORBIDDEN",
   "data": null,
-  "requestId": "05c5c65c-23a2-4977-8e28-b8a007970ae6"
+  "requestId": "d6a13e6f-25a5-4120-bc66-38650d23ef2f"
 }
 ```
 
@@ -4908,7 +5236,7 @@ Response `403`:
   "message": "Insufficient role",
   "code": "FORBIDDEN",
   "data": null,
-  "requestId": "e7501622-4636-496d-a61d-45e1abb03c53"
+  "requestId": "f07b3f22-5a39-4a4b-80c1-c0d4a9d51a93"
 }
 ```
 

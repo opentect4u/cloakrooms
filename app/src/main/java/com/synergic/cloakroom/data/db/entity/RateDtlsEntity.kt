@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** Kept for the future sync only. In this phase all rates are read from md_setting. */
+/** The customer's tariff from the server (login / pull): the bill uses the rate of the check-in date. */
 @Entity(tableName = "md_rate_dtls")
 data class RateDtlsEntity(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "rate_id") val rateId: Long = 0,
@@ -15,6 +15,8 @@ data class RateDtlsEntity(
     @ColumnInfo(name = "first_block_rate") val firstBlockRate: Double,
     /** Per bag for each further started block. */
     @ColumnInfo(name = "next_block_rate") val nextBlockRate: Double,
+    /** Price ranges as the server sends them (rate_slabs JSON); null on rows from before version 6. */
+    @ColumnInfo(name = "rate_slabs") val rateSlabs: String? = null,
     /** The bill uses the latest rate with effective_from ≤ receipt_dt (YYYY-MM-DD). */
     @ColumnInfo(name = "effective_from") val effectiveFrom: String,
     @ColumnInfo(name = "is_deleted", defaultValue = "'N'") val isDeleted: String = "N",

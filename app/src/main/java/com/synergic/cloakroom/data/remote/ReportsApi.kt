@@ -26,6 +26,9 @@ data class ReportBagDto(
     @SerialName("luggage_qty") val luggageQty: Int,
     /** 0 when the server does not send it (yet). */
     @SerialName("extra_lugage_qty") val extraLugageQty: Int = 0,
+    /** Advance taken at check-in, and the hours it covered. */
+    @SerialName("adv_amt") val advAmt: String = "0.00",
+    @SerialName("adv_hours") val advHours: Int = 0,
     @SerialName("out_flag") val outFlag: String = "N",
     @SerialName("date_time_out") val dateTimeOut: String? = null,
     @SerialName("user_id_out") val userIdOut: Long? = null,
@@ -33,6 +36,9 @@ data class ReportBagDto(
     @SerialName("bill_no") val billNo: String? = null,
     @SerialName("bill_dt") val billDt: String? = null,
     @SerialName("net_amt") val netAmt: String? = null,
+    /** check-out-register: the advance subtracted on the bill, and the balance collected. */
+    @SerialName("bill_adv_amt") val billAdvAmt: String? = null,
+    @SerialName("bal_amt") val balAmt: String? = null,
     @SerialName("pay_mode") val payMode: String? = null,
     @SerialName("bill_printed") val billPrinted: String? = null,
 )
@@ -69,7 +75,7 @@ class ReportsApi @Inject constructor(private val api: ApiClient) {
 
     suspend fun bagsInStore(q: ReportQuery) = rows("/reports/bags-in-store", q)
 
-    /** Only the totals (bills, bags, base_amt, penal_amt, net_amt, cash_amt, upi_amt). */
+    /** Only the totals (bills, bags, base_amt, penal_amt, net_amt, adv_amt, bal_amt, adv_collected, cash_amt, upi_amt, collected_amt). */
     suspend fun collectionTotals(q: ReportQuery): ReportResult<Unit> = totals("/reports/collection-summary", q)
 
     /** Only the totals (bills, taxable_amt, cgst, sgst, igst, net_amt). */

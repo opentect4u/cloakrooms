@@ -10,7 +10,9 @@ import com.synergic.cloakroom.data.remote.PullLuggageDto
 import com.synergic.cloakroom.data.remote.PushLuggageDto
 import com.synergic.cloakroom.data.remote.PushReceiptDto
 import com.synergic.cloakroom.data.remote.PushRequestDto
+import com.synergic.cloakroom.data.remote.RateSlabDto
 import com.synergic.cloakroom.data.remote.SyncApi
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.auth.SessionProvider
 import com.synergic.cloakroom.domain.auth.UserSession
 import com.synergic.cloakroom.domain.remote.Connectivity
@@ -18,6 +20,7 @@ import com.synergic.cloakroom.domain.remote.ServerException
 import com.synergic.cloakroom.domain.repository.SyncOutcome
 import com.synergic.cloakroom.domain.repository.SyncRepository
 import com.synergic.cloakroom.domain.repository.SyncStatus
+import com.synergic.cloakroom.domain.time.DateTimes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -149,21 +152,36 @@ class SyncManager @Inject constructor(
 
     private fun LuggageInOutEntity.toPush() = PushLuggageDto(
         transId = transId, localVersion = localVersion, receiptNo = receiptNo, receiptDt = receiptDt,
+        // Agreed with the backend (2026-11-18): the app sends UTC, the server converts and answers in IST.
         userIdIn = userIdIn, deviceIdIn = deviceIdIn, shiftIdIn = shiftIdIn, dateTimeIn = dateTimeIn,
         pasnName = pasnName, pasnMobNo = pasnMobNo, pnrNo = pnrNo, luggageQty = luggageQty, extraLugageQty = extraLugageQty,
+        advAmt = advAmt.takeIf { it > 0.0 }?.let { money(it) }, advHours = advHours,
         idProofId = idProofId.takeIf { !idNumber.isNullOrEmpty() }, idNumber = idNumber?.takeIf { idProofId != null && it.isNotEmpty() },
-        userIdOut = userIdOut, deviceIdOut = deviceIdOut, shiftIdOut = shiftIdOut, dateTimeOut = dateTimeOut, outFlag = outFlag,
+        userIdOut = userIdOut, deviceIdOut = deviceIdOut, shiftIdOut = shiftIdOut,
+        dateTimeOut = dateTimeOut, outFlag = outFlag,
     )
 
-    private fun ReceiptEntity.toPush() = PushReceiptDto(
-        transId = transId, localVersion = localVersion, billNo = billNo, billDt = billDt, userId = userId, deviceId = deviceId,
-        shiftId = shiftId, luggageQty = luggageQty, daysCharged = daysCharged, blockHours = blockHours,
-        firstBlockRate = money(firstBlockRate), nextBlockRate = money(nextBlockRate), baseAmt = money(baseAmt),
-        penalAmt = money(penalAmt), netAmt = money(netAmt), taxableAmt = money(taxableAmt), gstPct = money(gstPct),
-        cgst = money(cgst), sgst = money(sgst), igst = money(igst), gstFlag = gstFlag,
-        graceMinutes = graceMinutes, gstInclusive = gstInclusive, penaltyGstFlag = penaltyGstFlag, payMode = payMode,
-        upiRef = upiRef?.takeIf { it.isNotBlank() }, billPrinted = billPrinted,
-    )
+    /**
+     * A bill with its price ranges sends rate_slabs only; a bill made before the slab release has
+     * none and sends the older two-rate fields (§6.2).
+     */
+    private fun ReceiptEntity.toPush(): PushReceiptDto {
+        val slabs = RateSlabs.parse(rateSlabs)?.map { RateSlabDto.of(it) }
+        return PushReceiptDto(
+            transId = transId, localVersion = localVersion, billNo = billNo, billDt = billDt, userId = userId, deviceId = deviceId,
+            shiftId = shiftId, luggageQty = luggageQty, daysCharged = daysCharged,
+            rateSlabs = slabs,
+            blockHours = blockHours.takeIf { slabs == null },
+            firstBlockRate = money(firstBlockRate).takeIf { slabs == null },
+            nextBlockRate = money(nextBlockRate).takeIf { slabs == null },
+            baseAmt = money(baseAmt), penalAmt = money(penalAmt), netAmt = money(netAmt),
+            advAmt = money(advAmt), balAmt = money(balAmt),
+            taxableAmt = money(taxableAmt), gstPct = money(gstPct),
+            cgst = money(cgst), sgst = money(sgst), igst = money(igst), gstFlag = gstFlag,
+            graceMinutes = graceMinutes, gstInclusive = gstInclusive, penaltyGstFlag = penaltyGstFlag, payMode = payMode,
+            upiRef = upiRef?.takeIf { it.isNotBlank() }, billPrinted = billPrinted,
+        )
+    }
 
     /** Stored as REAL (schema); sent as the 2-decimal string the API expects. */
     private fun money(value: Double): String = BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).toPlainString()
@@ -202,7 +220,13 @@ class SyncManager @Inject constructor(
      */
     private suspend fun mergeLuggage(customerId: Long, rows: List<PullLuggageDto>, at: String) = db.withTransaction {
         val dao = db.luggageDao()
-        rows.forEach { r ->
+        rows.forEach { raw ->
+            // The server sends IST timestamps (since 2026-11-18); the phone keeps UTC.
+            val r = raw.copy(
+                dateTimeIn = DateTimes.fromServerText(raw.dateTimeIn),
+                dateTimeOut = raw.dateTimeOut?.let { DateTimes.fromServerText(it) },
+                createdAt = raw.createdAt?.let { DateTimes.fromServerText(it) },
+            )
             val local = dao.get(r.transId)
             if (local == null) {
                 dao.insert(
@@ -211,6 +235,7 @@ class SyncManager @Inject constructor(
                         userIdIn = r.userIdIn, deviceIdIn = r.deviceIdIn, shiftIdIn = r.shiftIdIn, dateTimeIn = r.dateTimeIn,
                         pasnName = r.pasnName, pasnMobNo = r.pasnMobNo, pnrNo = r.pnrNo, luggageQty = r.luggageQty,
                         extraLugageQty = r.extraLugageQty,
+                        advAmt = r.advAmt.toDoubleOrNull() ?: 0.0, advHours = r.advHours,
                         idProofId = r.idProofId, idNumber = r.idNumber, userIdOut = r.userIdOut, deviceIdOut = r.deviceIdOut,
                         shiftIdOut = r.shiftIdOut, dateTimeOut = r.dateTimeOut, outFlag = r.outFlag, isDeleted = r.isDeleted,
                         syncFlag = "Y", createdBy = r.createdBy, createdAt = r.createdAt, updatedBy = SYNC_USER, updatedAt = at,
@@ -220,11 +245,16 @@ class SyncManager @Inject constructor(
             }
             if (local.customerId != customerId) return@forEach
             val takeOut = r.outFlag == "Y" && local.outFlag == "N"
+            // Times already on the phone are never replaced by the server's (a server value can be
+            // off by 5 h 30 m when an older app sent UTC that the server stored as IST).
             val merged = local.copy(
                 deviceIdIn = local.deviceIdIn ?: r.deviceIdIn,
                 shiftIdIn = local.shiftIdIn ?: r.shiftIdIn,
                 // Check-in value, filled once (e.g. a row copied from an older QR without it).
                 extraLugageQty = if (local.extraLugageQty == 0) r.extraLugageQty else local.extraLugageQty,
+                // Advance: filled once while 0 (a row copied from a QR has no advance hours).
+                advAmt = if (local.advAmt == 0.0) r.advAmt.toDoubleOrNull() ?: 0.0 else local.advAmt,
+                advHours = if (local.advHours == 0) r.advHours else local.advHours,
                 idProofId = if (local.idProofId == null && local.idNumber == null) r.idProofId else local.idProofId,
                 idNumber = if (local.idProofId == null && local.idNumber == null) r.idNumber else local.idNumber,
                 userIdOut = if (takeOut) r.userIdOut else local.userIdOut,
@@ -242,7 +272,8 @@ class SyncManager @Inject constructor(
         }
     }
 
-    private fun cursorKey(session: UserSession) = "since_${Tenant.CUSTOMER_ID}_${session.id}"
+    // "v2" (2026-11-18): one full pull after this update, so open bags pulled with the wrong (IST) times are repaired.
+    private fun cursorKey(session: UserSession) = "since_v2_${Tenant.CUSTOMER_ID}_${session.id}"
 
     /** After a login the next pull starts from scratch (all open bags of the customer). */
     fun resetCursor(session: UserSession) = cursors.setSince(cursorKey(session), null)

@@ -1,5 +1,6 @@
 package com.synergic.cloakroom.domain.print
 
+import com.synergic.cloakroom.domain.billing.RateSlab
 import com.synergic.cloakroom.domain.billing.money
 import com.synergic.cloakroom.domain.settings.PayMode
 import com.synergic.cloakroom.domain.time.DateTimes
@@ -30,9 +31,8 @@ data class BillPrint(
     /** Extra bags stored free of charge (printed, not in the amounts). */
     val extraBags: Int = 0,
     val blocks: Int,
-    val blockHours: Int,
-    val firstBlockRate: BigDecimal,
-    val nextBlockRate: BigDecimal,
+    /** Price ranges billed with (td_receipt.rate_slabs, or the older two-rate fields as slabs). */
+    val slabs: List<RateSlab>,
     val baseAmt: BigDecimal,
     val penaltyAmt: BigDecimal,
     val taxableAmt: BigDecimal,
@@ -41,11 +41,15 @@ data class BillPrint(
     val cgst: BigDecimal,
     val sgst: BigDecimal,
     val igst: BigDecimal,
+    /** The full bill. */
     val netAmt: BigDecimal,
+    /** Advance paid at check-in, and the balance collected now (max(0, net − advance)). */
+    val advAmt: BigDecimal = BigDecimal.ZERO,
+    val balAmt: BigDecimal = netAmt,
     val payMode: PayMode,
     /** Logo (md_header_footer L row with out_flag = Y), black-and-white PNG; printed first. */
     val logo: ByteArray? = null,
-    /** UPI payment link for the net amount (UPI bills only); printed as a QR above the footer. */
+    /** UPI payment link for the balance (UPI bills only); printed as a QR above the footer. */
     val upiLink: String? = null,
 )
 
@@ -74,16 +78,14 @@ object BillFormatter {
         p.pair("Time stored", storedTime(b.dateTimeIn, b.dateTimeOut))
         p.divider()
 
-        val h = b.blockHours
-        p.pair("First $h h: ${b.bags} x ${amount(b.firstBlockRate)}", amount(b.firstBlockRate * BigDecimal(b.bags)))
-        if (b.blocks > 1) {
-            val next = b.blocks - 1
-            p.pair(
-                "Next $next x $h h: ${b.bags} x ${amount(b.nextBlockRate)}",
-                amount(b.nextBlockRate * BigDecimal(b.bags) * BigDecimal(next)),
-            )
+        // Owner's layout (2026-11-18): no price-range lines, only the rent and, with an advance,
+        // the advance and the balance right under it.
+        p.pair("Rent", "Rs.${amount(b.baseAmt)}")
+        if (b.advAmt.signum() > 0) {
+            p.pair("Less advance paid", "Rs.${amount(b.advAmt)}")
+            p.pair("BALANCE PAID", "Rs.${amount(b.balAmt)}", bold = true)
+            p.divider()
         }
-        p.pair("Rent", amount(b.baseAmt))
         if (b.penaltyAmt.signum() > 0) p.pair("Penalty", amount(b.penaltyAmt))
         if (b.gstFlag) {
             p.pair("Taxable value", amount(b.taxableAmt))

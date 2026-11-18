@@ -46,4 +46,8 @@ enum class ServerSettingKey(val label: String, val help: String, val kind: Serve
     /** The cloak room's own GST %; absent (no row) = the shared GST table (/gst) of the bill date. */
     GST_PCT("GST %", "Total GST % for this cloak room (0–28)", ServerSettingKind.Decimal(0.0, 28.0), "18.00"),
     ID_MASK_FLAG("Mask ID number", "Store and print only the last 4 digits of the ID number", ServerSettingKind.YesNo, "Y"),
+
+    // Requested from the backend on 2026-11-17 (customer-wide); the server refuses them until added.
+    ADVANCE_FLAG("Advance", "Take the first hours' rent in advance (cash) at check-in", ServerSettingKind.YesNo, "N"),
+    ADVANCE_HOURS("Advance hours", "Hours paid in advance at check-in (whole hours, at least 1)", ServerSettingKind.Number(1, 720), "24"),
 }

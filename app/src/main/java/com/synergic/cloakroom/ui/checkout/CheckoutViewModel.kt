@@ -35,7 +35,7 @@ import java.time.Instant
 import javax.inject.Inject
 
 /** The operator pressed Bill Print or Out Without Bill Print; [net] is the amount to confirm. */
-data class ConfirmCheckout(val printBill: Boolean, val net: BigDecimal, val payMode: PayMode)
+data class ConfirmCheckout(val printBill: Boolean, val net: BigDecimal, val payMode: PayMode, val collect: BigDecimal = net)
 
 data class CheckoutUiState(
     val loading: Boolean = true,
@@ -123,7 +123,7 @@ class CheckoutViewModel @Inject constructor(
         recompute()
         val s = _state.value
         val bill = s.bill ?: return
-        _state.update { it.copy(confirm = ConfirmCheckout(printBill, bill.netAmt, s.payMode), message = null) }
+        _state.update { it.copy(confirm = ConfirmCheckout(printBill, bill.netAmt, s.payMode, bill.balAmt), message = null) }
     }
 
     fun dismissConfirm() = _state.update { it.copy(confirm = null) }
@@ -168,14 +168,14 @@ class CheckoutViewModel @Inject constructor(
         val (bill, error) = when {
             penalty == null -> null to "Enter the penalty as a number."
             else -> try {
-                BillCalculator.calculate(DateTimes.fromDbText(bag.dateTimeIn), s.now, bag.bags, penalty, settings.withTariff(s.tariff)) to null
+                BillCalculator.calculate(DateTimes.fromDbText(bag.dateTimeIn), s.now, bag.bags, penalty, settings.withTariff(s.tariff), bag.advAmt) to null
             } catch (e: BillCalculationException) {
                 null to e.message
             }
         }
         val errors = if (error != null) s.errors + (CheckoutField.PENALTY to error) else s.errors - CheckoutField.PENALTY
         val link = if (bill != null && s.payMode == PayMode.UPI && s.payee != null) {
-            UpiLink.build(s.payee, bill.netAmt, "Cloak room ${bag.receiptNo}")
+            UpiLink.build(s.payee, bill.balAmt, "Cloak room ${bag.receiptNo}")
         } else {
             null
         }

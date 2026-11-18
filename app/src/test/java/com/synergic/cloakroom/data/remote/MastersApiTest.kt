@@ -1,6 +1,7 @@
 package com.synergic.cloakroom.data.remote
 
 import com.synergic.cloakroom.data.FakeSessionStore
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -13,6 +14,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.math.BigDecimal
 
 /** API_GUIDE.md "Customer masters as super admin (S)": where customer_id goes and where it must not. */
 class MastersApiTest {
@@ -56,18 +58,24 @@ class MastersApiTest {
     @Test
     fun `create sends customer_id in the body`() = runBlocking {
         server.enqueue(ok(rate))
-        api.createRate(7, 24, "60.00", "25.00", "2027-04-01")
+        api.createRate(7, RateSlabs.fromTwoRate(24, BigDecimal("60"), BigDecimal("25")), "2027-04-01")
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         val b = body(request)
         assertEquals("7", b["customer_id"].toString())
-        assertEquals("\"60.00\"", b["first_block_rate"].toString())
+        // Only rate_slabs: the server refuses rate_slabs together with the older two-rate fields.
+        assertEquals(
+            """[{"from_hour":0,"to_hour":24,"rate":"60.00"},{"from_hour":24,"to_hour":48,"rate":"25.00"}]""",
+            b["rate_slabs"].toString(),
+        )
+        assertNull(b["first_block_rate"])
+        assertNull(b["block_hours"])
     }
 
     @Test
     fun `update never sends customer_id`() = runBlocking {
         server.enqueue(ok(rate))
-        api.updateRate(2, 24, "60.00", "25.00", "2027-04-01")
+        api.updateRate(2, RateSlabs.fromTwoRate(24, BigDecimal("60"), BigDecimal("25")), "2027-04-01")
         val request = server.takeRequest()
         assertEquals("PATCH", request.method)
         assertEquals("/api/v1/rates/2", request.path)

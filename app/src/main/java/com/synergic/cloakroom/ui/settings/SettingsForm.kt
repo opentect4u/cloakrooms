@@ -1,5 +1,6 @@
 package com.synergic.cloakroom.ui.settings
 
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.settings.SettingDataType
 import com.synergic.cloakroom.domain.settings.SettingDefinition
 import com.synergic.cloakroom.domain.settings.SettingKeys
@@ -70,7 +71,11 @@ object SettingsForm {
     fun edit(definitions: List<SettingDefinition>, drafts: Map<String, String>, name: String, value: String): Map<String, String> {
         val def = definitions.firstOrNull { it.name == name } ?: return drafts
         val result = drafts.toMutableMap()
-        val unchanged = if (def.dataType == SettingDataType.PASSWORD) value.isEmpty() else value == def.value
+        val unchanged = when (def.dataType) {
+            SettingDataType.PASSWORD -> value.isEmpty()
+            SettingDataType.SLABS -> RateSlabs.canonical(value) == RateSlabs.canonical(def.value)
+            else -> value == def.value
+        }
         if (unchanged) result.remove(name) else result[name] = value
         if (def.dataType == SettingDataType.BOOL && value == "N") {
             dependentsOf(name, definitions).forEach { result.remove(it) }
@@ -91,6 +96,7 @@ object SettingsForm {
     fun display(def: SettingDefinition, value: String): String = when (def.dataType) {
         SettingDataType.BOOL -> if (value == "Y") "On" else "Off"
         SettingDataType.ENUM -> def.options.firstOrNull { it.first == value }?.second ?: value
+        SettingDataType.SLABS -> RateSlabs.parse(value)?.let { RateSlabs.describe(it, "₹") } ?: "(not complete)"
         else -> value.ifEmpty { "(empty)" }
     }
 

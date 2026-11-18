@@ -35,6 +35,10 @@ data class LuggageInOutEntity(
     @ColumnInfo(name = "luggage_qty") val luggageQty: Int,
     /** Extra bags stored free of charge: shown on receipts, bills and reports, never billed. */
     @ColumnInfo(name = "extra_lugage_qty", defaultValue = "0") val extraLugageQty: Int = 0,
+    /** Advance paid in cash at check-in (ADVANCE_FLAG = Y): the bill for [advHours] hours; 0 = none. */
+    @ColumnInfo(name = "adv_amt", defaultValue = "0") val advAmt: Double = 0.0,
+    /** ADVANCE_HOURS the advance covered; 0 = none (or unknown on a row copied from a QR). */
+    @ColumnInfo(name = "adv_hours", defaultValue = "0") val advHours: Int = 0,
     /** Optional, but always together with [idNumber] (never in the QR). */
     @ColumnInfo(name = "id_proof_id") val idProofId: Long?,
     @ColumnInfo(name = "id_number") val idNumber: String?,

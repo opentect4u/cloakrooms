@@ -1,12 +1,12 @@
 # Cloak Room Android app: status for the backend agent
 
-Status as of 2026-11-05. App `com.synergic.cloakroom`, versionCode 1 / versionName 0.1.0.
+Status as of 2026-11-18. App `com.synergic.cloakroom`, versionCode 2 / versionName 0.2.0.
 The API contract is `API_GUIDE.md` (repo root). Section numbers below (§) refer to that file.
-Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend: `docs/BACKEND_API_REQUESTS.md`.
+Full decision log: `docs/DECISIONS.md` (#1–#208). Open requests to the backend: `docs/BACKEND_API_REQUESTS.md`.
 
 ## 1. Stack and data
 
-- Kotlin, Jetpack Compose, Hilt, Room (SQLite, **schema version 4**), OkHttp + kotlinx.serialization (no Retrofit).
+- Kotlin, Jetpack Compose, Hilt, Room (SQLite, **schema version 6**), OkHttp + kotlinx.serialization (no Retrofit).
 - Table and column names match the server (`Cloak_Room_Table_Schema.xlsx` and the §3–§6 row shapes), so no mapping is needed. Every table has `sync_flag`, `local_version`, `is_deleted` and the audit columns. Trigger `trg_inout_resync` is present.
 - Money: BigDecimal in the domain layer, REAL in SQLite, **2-decimal strings on the wire** (`"70.00"`).
 - Time: UTC text `YYYY-MM-DD HH:mm:ss`, shown in IST.
@@ -28,7 +28,7 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
 
 ## 3. Billing (§7)
 
-- Uses the rate in force on the **check-in date** (`md_rate_dtls`, latest `effective_from ≤ receipt_dt`) and the GST row in force on the **bill date**. Rates and GST % are snapshotted on `td_receipt`.
+- Uses the rate in force on the **check-in date** (`md_rate_dtls`, latest `effective_from ≤ receipt_dt`, its `rate_slabs`) and the GST row in force on the **bill date**. The slabs, GST %, advance and balance are snapshotted on `td_receipt` (since 2026-11-18).
 - `BillCalculator` matches §7 with the default extra settings (grace 0, GST inclusive, GST on penalty). Tested, e.g. ₹60.50 → 51.27 + 4.62 + 4.61.
 - Device-only options `GRACE_MINUTES`, `GST_INCLUSIVE = N`, `PENALTY_GST_FLAG = N` and `GST_FLAG = N` still work on the phone. Until backend Phase 11 (request A3), such bills are expected to show up as `AMOUNT_MISMATCH`.
 - ID number masking: last 4 characters when the ID type has `mask_flag = Y` **or** `ID_MASK_FLAG = Y`.
@@ -80,6 +80,35 @@ Full decision log: `docs/DECISIONS.md` (#1–#196). Open requests to the backend
   3. `/sync/pull` luggage rows and the report rows (check-in register, bags in store, check-out register): return `extra_lugage_qty`. The app reads 0 when it is missing.
   4. Do not use it in the bill recompute or in the collection totals. Report totals may add a separate extra-bags count if you like; the app sums the rows itself.
   5. The receipt QR (`BACKEND_API_REQUESTS.md` §C) gets an optional key `x` = extra bags, written only when more than 0.
+  6. **Still open on 2026-11-17:** the UAT server does not store `extra_lugage_qty` yet (it is not in `API_GUIDE.md`), so Admin and Super Admin reports show no extra bags. Check-ins with extra bags made before your fix are already marked as synced on the phones, without the count. When you ship steps 1–3, please tell us and **allow a one-time update of `extra_lugage_qty` on an existing row when the server's value is 0** (an exception to write-once). The app will then send those rows once more.
+- 2026-11-17: **Advance settings, two new `md_setting` keys** (decision #204). Please add them to §8 so `POST/PATCH /settings` accepts them and login/pull `settings` return them (the app copies them into each phone's local `md_setting`):
+
+  | Key | Group | Values | Default | Scope | Meaning |
+  |---|---|---|---|---|---|
+  | `ADVANCE_FLAG` | Billing | Y / N | `N` | customer | Take the first hours' rent in advance (cash) at check-in. |
+  | `ADVANCE_HOURS` | Billing | 1–720, whole hours | `24` | customer | Hours paid in advance at check-in. Refuse decimals (e.g. `2.5`) and values below 1. |
+
+  Admin (own customer) and Super Admin (any customer) write them on Settings > Billing, below Block length. Counter users only see them on the Check-in screen. **Until you add the keys, saving them gives the server's validation error** and phones show "Advance: Off". Billing does not use them yet. The planned rule, for later, is: advance = bags × the rent for the first `ADVANCE_HOURS` hours (same block formula as §7), printed on the check-in receipt and paid in cash. At check-out, remaining amount = full bill − advance, never below 0. Example: rates ₹20 / ₹10, 2 bags, `ADVANCE_HOURS = 48`, so advance = 2×20 + 2×10 = ₹60. Out on day 3: bill = 40 + 2×(2×10) = ₹80, remaining = ₹20. We will agree on the `td_luggage_in_out` / `td_receipt` columns for the advance before building that part.
+- 2026-11-18: **Your slab / advance / extra bags release is in the app** (decisions #205–#208, app **versionCode 2**, versionName 0.2.0, SQLite **version 6**). Built against your reply and the updated `API_GUIDE.md`:
+  1. **SQLite** (same names as MySQL): `md_rate_dtls.rate_slabs TEXT`; `td_luggage_in_out.adv_amt REAL DEFAULT 0`, `adv_hours INTEGER DEFAULT 0`; `td_receipt.rate_slabs TEXT`, `adv_amt REAL DEFAULT 0`, `bal_amt REAL DEFAULT 0`. Older bills get `bal_amt = net_amt` (not re-sent).
+  2. **Rates:** login/pull `rate_slabs` is stored and billed from; a row without it is read through its two-rate fields. Settings > Billing has a **Price range** editor (rows from / to / ₹ per bag, Add, Remove). Admin and Super Admin save with `POST /rates` or `PATCH /rates/:id` and **`rate_slabs` only** (never with the older fields). The app applies your limits before sending: start at 0, no gaps, whole hours ≤ 8760, 1–20 slabs, money with ≤ 2 decimals.
+  3. **Slab rule:** `BillCalculator` follows §7 exactly as you wrote it, and your three examples are unit tests (₹120, ₹100, and 3 h ₹10 / 5 h ₹30 / 25 h ₹50). The old tariff 24 h / ₹50 / ₹20 as slabs gives the same bills as before (₹100, ₹50, ₹70, ₹270 tests).
+  4. **Push, luggage:** `extra_lugage_qty`, `adv_amt`, `adv_hours` are sent when more than 0. On upgrade, **every bag with extra bags is pushed once more**, so please fill `extra_lugage_qty` on those rows (your "filled once while still 0" rule covers it).
+  5. **Push, bills:** `rate_slabs` (the slabs billed with), `adv_amt` (= the bag's), `bal_amt` = max(0, net_amt − adv_amt). With `rate_slabs` the older `block_hours` / `first_block_rate` / `next_block_rate` are **left out**. A bill made by the older app version (still waiting on a phone when it updates) has no `rate_slabs` and sends the older fields as before.
+  6. **Advance:** calculated on the phone with the same slabs and `GST_INCLUSIVE` as the bill, for `ADVANCE_HOURS` (no penalty), and only in **cash** (no `adv_pay_mode` needed for now). QR key `a` = adv_amt as a 2-decimal string (`"a":"60.00"`), only when there is an advance. A QR check-out row sends `adv_amt` from the QR and `adv_hours = 0`; the check-in device's push fills `adv_hours` later.
+  7. **Reports and dashboard:** the app reads `adv_amt`, `adv_hours` (registers, bags in store), `bill_adv_amt`, `bal_amt` (check-out register), and `adv_amt`, `bal_amt`, `adv_collected` (collection-summary totals). The admin's dashboard "today's collection" = check-out register `bal_amt` + check-in register `adv_amt`. If `bal_amt` is missing the app falls back to `net_amt`.
+  8. **Mandatory update:** please publish **versionCode 2** as mandatory once this APK is released.
+  Still open with the owner (no app change until decided): advance by UPI (`adv_pay_mode`) and the CA's answer on GST at advance time.
+- 2026-11-18: **Times from the server are now read as IST** (decision #210). We saw pull rows arrive with IST `date_time_in` (a bag pulled at 16:44 IST had `15:31:46`), while `server_time` is still UTC. The app now converts every timestamp it receives (pull, reports, exceptions, users' `session_started_at`) from IST to UTC; a value with `Z` or `+05:30` is read as that zone. Please confirm and update `API_GUIDE.md` §0 and §2, which still say "UTC in and out":
+  1. Are **all** timestamps you return IST now, including `created_at`, `session_started_at`, `last_login`, `synced_at` and the report fields? What are `*_ist` copies now: the same values?
+  2. Is `server_time` (the pull cursor) still UTC? The app passes it back as `since` unchanged.
+  3. **Push:** the app still sends `date_time_in` / `date_time_out` in **UTC**. Please convert them to IST when you store them, or tell us to send IST instead.
+  4. Did you convert the rows already in MySQL to IST? A row left in UTC would now be shown and billed 5 h 30 m early.
+- 2026-11-18 (later): **The app now also pushes times as IST** (decision #211). Bag `US04-00019` (PNR 467GH) was checked in at 18:08:10 IST and pushed as `12:38:10` (UTC); your server stored `12:38:10` unchanged and returned it as IST. Since your server takes what it receives as IST, the app now sends `date_time_in` / `date_time_out` in IST, and the questions about push above no longer need an answer. Please:
+  1. **Fix the rows pushed in UTC after your switch to IST** (by app versionCode 2 builds before this fix, and versionCode 1): add 5 h 30 m to their `date_time_in` / `date_time_out`. Example: `US04-00019` must be `2026-11-18 18:08:10`.
+  2. Treat versionCode 1 pushes as UTC (convert them), or make this build mandatory.
+  3. Update `API_GUIDE.md` §0 / §2: "times are IST in and out, except `server_time` (UTC)". If `server_time` should be IST as well, tell us first, because the app sends it back as the pull cursor.
+- 2026-11-18 (agreed): **you send IST, the app sends UTC** (decision #212). The app pushes `date_time_in` / `date_time_out` in UTC again; please convert them to IST when you store them. This replaces the "app pushes IST" entry above. Please check the rows pushed between about 18:20 and 19:15 IST on 2026-11-18 by the test phone (user suser4, e.g. `US04-00022`, PNR gourab, 18:43:53): those were sent in IST. Also still open: rows sent in UTC that you stored unconverted (e.g. `US04-00019` must be 18:08:10), reports that lose check-ins after 18:30 IST (gourab is missing from the 18-11 register), and `created_at` in pull rows coming as UTC while `date_time_in` is IST.
 
 ## 7. Still waiting on the backend
 

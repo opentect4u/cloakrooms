@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.synergic.cloakroom.data.Tenant
 import com.synergic.cloakroom.data.TestEnv
 import com.synergic.cloakroom.domain.auth.NotAuthorizedException
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.checkin.CheckinInput
 import com.synergic.cloakroom.domain.checkout.CheckoutField
 import com.synergic.cloakroom.domain.print.PrintLine
@@ -16,6 +17,7 @@ import com.synergic.cloakroom.domain.repository.CheckoutRequest
 import com.synergic.cloakroom.domain.repository.CheckoutResult
 import com.synergic.cloakroom.domain.repository.QrLookup
 import com.synergic.cloakroom.domain.settings.PayMode
+import com.synergic.cloakroom.domain.slabs
 import com.synergic.cloakroom.domain.settings.SettingKeys
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -156,7 +158,7 @@ class BillRepositoryTest {
         env.setSettingDirect(SettingKeys.GST_PCT, "12")
         val transId = checkIn()
         env.clock.instant = Instant.parse("2026-11-03T06:31:00Z") // 24 h 01 m: 2 blocks
-        assertEquals(BigDecimal("40.00"), env.bills.tariff(bag(transId).receiptDt).let { t -> t.firstBlockRate!! + t.nextBlockRate!! })
+        assertEquals(RateSlabs.fromTwoRate(24, BigDecimal("30"), BigDecimal("10")), env.bills.tariff(bag(transId).receiptDt).slabs)
 
         val result = checkOut(request(bag(transId), "40.00"))
         assertEquals(CheckoutResult.Saved(transId, "U02-00001", BigDecimal("40.00")), result)
@@ -259,12 +261,12 @@ class BillRepositoryTest {
         val transId = checkIn()
         env.clock.instant = Instant.parse("2026-11-03T06:31:00Z")
         checkOut(request(bag(transId), "70.00"))
-        setSetting(SettingKeys.FIRST_BLOCK_RATE, "100")
+        setSetting(SettingKeys.RATE_SLABS, slabs(Triple(0, 24, "100")))
         setSetting(SettingKeys.GST_PCT, "5")
         val text = env.bills.billDocument(transId)!!.lines.filterIsInstance<PrintLine.Text>().map { it.text }
         assertTrue(text.first { it.startsWith("TOTAL") }.endsWith("Rs.70.00"))
         assertTrue(text.first { it.startsWith("CGST 9%") }.endsWith("5.34"))
-        assertTrue(text.first { it.startsWith("First 24 h: 1 x 50.00") }.endsWith("50.00"))
+        assertTrue(text.first { it.startsWith("Rent") }.endsWith("Rs.70.00"))
     }
 
     @Test

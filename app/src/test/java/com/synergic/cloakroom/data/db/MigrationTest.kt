@@ -238,6 +238,81 @@ class MigrationTest {
     }
 
     @Test
+    fun `5 to 6 adds price ranges and advance, older bills collected in full`() {
+        helper.createDatabase(dbName, 5).apply {
+            SchemaExtras.apply(this)
+            execSQL(
+                """INSERT INTO td_luggage_in_out (trans_id, customer_id, receipt_no, receipt_dt, user_id_in, device_id_in, date_time_in,
+                       pasn_name, pasn_mob_no, pnr_no, luggage_qty, extra_lugage_qty, out_flag, sync_flag, local_version)
+                   VALUES ('t1', 1, 'U02-00001', '2026-11-16', 2, 'dev-A', '2026-11-16 05:00:00', 'Ravi', '9876543210', 'P1', 2, 0, 'Y', 'Y', 1),
+                          ('t2', 1, 'U02-00002', '2026-11-16', 2, 'dev-A', '2026-11-16 05:00:00', 'Sita', '9876543211', 'P2', 1, 2, 'N', 'Y', 1)"""
+            )
+            execSQL(
+                """INSERT INTO td_receipt (trans_id, customer_id, bill_no, bill_dt, user_id, device_id, luggage_qty, days_charged,
+                       net_amt, gst_flag, sync_flag, local_version)
+                   VALUES ('t1', 1, 'U02-00001', '2026-11-17', 2, 'dev-A', 2, 1, 100, 'Y', 'Y', 1)"""
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 6, true, AppDatabase.MIGRATION_5_6)
+        db.query("SELECT net_amt, adv_amt, bal_amt, rate_slabs, sync_flag FROM td_receipt WHERE trans_id = 't1'").use {
+            it.moveToFirst()
+            assertEquals(listOf(100.0, 0.0, 100.0), listOf(it.getDouble(0), it.getDouble(1), it.getDouble(2)))
+            assertTrue("older bill keeps its two-rate snapshot", it.isNull(3))
+            assertEquals("not re-sent", "Y", it.getString(4))
+        }
+        db.query("SELECT trans_id, adv_amt, adv_hours, sync_flag, local_version FROM td_luggage_in_out ORDER BY trans_id").use {
+            it.moveToFirst()
+            assertEquals(listOf("0.0", "0", "Y", "1"), listOf(it.getDouble(1).toString(), it.getInt(2).toString(), it.getString(3), it.getInt(4).toString()))
+            it.moveToNext()
+            assertEquals("a bag with extra bags is sent again", listOf("N", "2"), listOf(it.getString(3), it.getInt(4).toString()))
+        }
+        // SLABS is now an allowed md_setting.data_type.
+        db.execSQL(
+            """INSERT INTO md_setting (customer_id, setting_name, setting_value, setting_type, data_type, sync_flag, local_version, is_deleted)
+               VALUES (1, 'RATE_SLABS', '[]', 'B', 'SLABS', 'N', 1, 'N')"""
+        )
+        val triggers = db.query("SELECT name FROM sqlite_master WHERE type = 'trigger'").use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+        assertEquals(SchemaExtras.CHECKS.size * 2, triggers.count { it.startsWith("chk_") })
+        db.close()
+    }
+
+    @Test
+    fun `6 to 7 puts back times moved 5 h 30 m early by the server`() {
+        helper.createDatabase(dbName, 6).apply {
+            SchemaExtras.apply(this)
+            // t1: checked in here at 12:38:10 UTC, then replaced by the server's 07:08:10 (wrong).
+            // t2: a correct bag (in = created). t3: checked out here, out time moved early.
+            execSQL(
+                """INSERT INTO td_luggage_in_out (trans_id, customer_id, receipt_no, receipt_dt, user_id_in, device_id_in, date_time_in,
+                       pasn_name, pasn_mob_no, pnr_no, luggage_qty, out_flag, date_time_out, sync_flag, local_version, created_at)
+                   VALUES ('t1', 1, 'U04-00019', '2026-11-18', 2, 'dev-A', '2026-11-18 07:08:10', 'A', '9876543210', '467GH', 1, 'N', NULL, 'Y', 1, '2026-11-18 12:38:10'),
+                          ('t2', 1, 'U04-00020', '2026-11-18', 2, 'dev-A', '2026-11-18 12:40:00', 'B', '9876543211', 'P2', 1, 'N', NULL, 'Y', 1, '2026-11-18 12:40:00'),
+                          ('t3', 1, 'U04-00021', '2026-11-18', 2, 'dev-A', '2026-11-18 10:00:00', 'C', '9876543212', 'P3', 1, 'Y', '2026-11-18 06:00:00', 'Y', 1, '2026-11-18 10:00:00')"""
+            )
+            execSQL(
+                """INSERT INTO td_receipt (trans_id, customer_id, bill_no, bill_dt, user_id, device_id, luggage_qty, days_charged,
+                       net_amt, gst_flag, sync_flag, local_version, created_at)
+                   VALUES ('t3', 1, 'U04-00001', '2026-11-18', 2, 'dev-A', 1, 1, 50, 'Y', 'Y', 1, '2026-11-18 11:30:00')"""
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(dbName, 7, true, AppDatabase.MIGRATION_6_7)
+        val times = db.query("SELECT trans_id, date_time_in, date_time_out FROM td_luggage_in_out ORDER BY trans_id").use { c ->
+            buildList { while (c.moveToNext()) add(Triple(c.getString(0), c.getString(1), c.getString(2))) }
+        }
+        assertEquals(
+            listOf(
+                Triple("t1", "2026-11-18 12:38:10", null),
+                Triple("t2", "2026-11-18 12:40:00", null),
+                Triple("t3", "2026-11-18 10:00:00", "2026-11-18 11:30:00"),
+            ),
+            times,
+        )
+        db.close()
+    }
+
+    @Test
     fun `a version-1 phone upgrades straight to the current version`() = runBlocking {
         createVersion1()
         val app = Room.databaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java, dbName)

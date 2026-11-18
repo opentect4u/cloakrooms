@@ -30,7 +30,7 @@ class SettingsFormTest {
         val tabs = SettingsForm.tabs(defs, emptyMap())
         assertEquals(listOf("Billing", "General", "Print"), tabs.map { it.title })
         assertEquals(defs.size - SettingsForm.SHOWN_ELSEWHERE.size, tabs.sumOf { it.fields.size })
-        assertEquals(SettingKeys.FIRST_BLOCK_RATE, tabs[0].fields.first().def.name)
+        assertEquals(SettingKeys.RATE_SLABS, tabs[0].fields.first().def.name)
         assertTrue(tabs.all { it.errorCount == 0 })
     }
 
@@ -75,9 +75,9 @@ class SettingsFormTest {
 
     @Test
     fun `editing back to the saved value is not a change`() {
-        var drafts = SettingsForm.edit(defs, emptyMap(), SettingKeys.BLOCK_HOURS, "12")
-        assertTrue(field(SettingsForm.tabs(defs, drafts), SettingKeys.BLOCK_HOURS).changed)
-        drafts = SettingsForm.edit(defs, drafts, SettingKeys.BLOCK_HOURS, "24")
+        var drafts = SettingsForm.edit(defs, emptyMap(), SettingKeys.GRACE_MINUTES, "12")
+        assertTrue(field(SettingsForm.tabs(defs, drafts), SettingKeys.GRACE_MINUTES).changed)
+        drafts = SettingsForm.edit(defs, drafts, SettingKeys.GRACE_MINUTES, "0")
         assertTrue(drafts.isEmpty())
         assertTrue(SettingsForm.edit(defs, emptyMap(), SettingKeys.REPORT_PWD, "").isEmpty())
     }

@@ -47,7 +47,11 @@ object ReportFormatter {
         }
         p.left("TOTAL", bold = true)
         breakup(p, data.total)
-        p.pair("Collected", "Rs.${amt(data.total.netAmt)}", bold = true)
+        if (data.advanceCollected.signum() > 0 || data.total.advAmt.signum() > 0) {
+            p.pair("Advance at check-in", amt(data.advanceCollected))
+            p.pair("Balance at check-out", amt(data.total.balAmt))
+        }
+        p.pair("Collected", "Rs.${amt(data.totalCollected)}", bold = true)
         if (data.bills.isNotEmpty()) {
             p.divider()
             p.left("Bills", bold = true)
@@ -74,6 +78,10 @@ object ReportFormatter {
         }
         if (l.igst.signum() > 0) p.pair("  IGST", amt(l.igst))
         p.pair("  Amount", amt(l.netAmt))
+        if (l.advAmt.signum() > 0) {
+            p.pair("  Less advance", amt(l.advAmt))
+            p.pair("  Collected", amt(l.balAmt))
+        }
     }
 
     private fun amt(a: BigDecimal) = a.money().toPlainString()

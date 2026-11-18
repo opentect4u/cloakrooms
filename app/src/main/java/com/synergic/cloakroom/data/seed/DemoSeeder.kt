@@ -10,6 +10,7 @@ import com.synergic.cloakroom.data.db.entity.SettingEntity
 import com.synergic.cloakroom.data.db.entity.ShiftEntity
 import com.synergic.cloakroom.data.db.entity.UserEntity
 import com.synergic.cloakroom.data.security.PasswordHasher
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.settings.SettingKeys
 import com.synergic.cloakroom.domain.time.DateTimes
 import com.synergic.cloakroom.domain.time.TimeSource
@@ -47,6 +48,7 @@ class DemoSeeder @Inject constructor(
         db.withTransaction {
             val now = DateTimes.toDbText(time.now())
             splitPrintCopies(now)
+            mergeRateSettings(now)
             val existing = db.settingDao().getScopedRows(Tenant.CUSTOMER_ID, null).map { it.settingName }.toSet()
             val missing = SeedData.settings.withIndex()
                 .filter { it.value.name !in existing }
@@ -82,6 +84,41 @@ class DemoSeeder @Inject constructor(
                     )
                 }
         }
+        if (added.isNotEmpty()) db.settingDao().insertAll(added)
+        return added.size
+    }
+
+    /**
+     * FIRST_BLOCK_RATE / NEXT_BLOCK_RATE / BLOCK_HOURS became the price ranges RATE_SLABS
+     * (2026-11-18). Each scope that still has the old rows gets a RATE_SLABS row with the same
+     * tariff (0–B h first rate, B–2B h next rate, so bills stay the same); the old rows are retired
+     * afterwards. Returns how many rows were added.
+     */
+    private suspend fun mergeRateSettings(now: String): Int {
+        val legacy = listOf(SettingKeys.FIRST_BLOCK_RATE, SettingKeys.NEXT_BLOCK_RATE, SettingKeys.BLOCK_HOURS)
+        val rows = db.settingDao().getActiveByNames(legacy + SettingKeys.RATE_SLABS)
+        val seed = SeedData.settings.first { it.name == SettingKeys.RATE_SLABS }
+        val added = rows.filter { it.settingName != SettingKeys.RATE_SLABS }.groupBy { it.customerId to it.userId }
+            .filterKeys { (customer, user) -> rows.none { it.settingName == SettingKeys.RATE_SLABS && it.customerId == customer && it.userId == user } }
+            .map { (_, scope) ->
+                val values = scope.associate { it.settingName to it.settingValue.trim() }
+                val hours = values[SettingKeys.BLOCK_HOURS]?.toIntOrNull()?.takeIf { it >= 1 }
+                val first = values[SettingKeys.FIRST_BLOCK_RATE]?.toBigDecimalOrNull()
+                val next = values[SettingKeys.NEXT_BLOCK_RATE]?.toBigDecimalOrNull()
+                val tariff = if (hours != null && first != null && next != null) {
+                    RateSlabs.toJson(RateSlabs.fromTwoRate(hours, first, next))
+                } else {
+                    seed.value
+                }
+                val template = scope.first()
+                template.copy(
+                    settingId = 0, settingName = seed.name, settingValue = tariff, settingType = seed.type, label = seed.label,
+                    dataType = seed.dataType, options = seed.options, minValue = seed.min, maxValue = seed.max,
+                    dependsOn = seed.dependsOn, description = seed.description,
+                    sortOrder = SeedData.sortOrderOf(SeedData.settings.indexOf(seed), seed), syncFlag = "N", localVersion = 1,
+                    createdBy = Tenant.SYSTEM_USER, createdAt = now, updatedBy = Tenant.SYSTEM_USER, updatedAt = now,
+                )
+            }
         if (added.isNotEmpty()) db.settingDao().insertAll(added)
         return added.size
     }
@@ -213,7 +250,7 @@ class DemoSeeder @Inject constructor(
         minValue = s.min,
         maxValue = s.max,
         dependsOn = s.dependsOn,
-        sortOrder = (index + 1) * 10,
+        sortOrder = SeedData.sortOrderOf(index, s),
         description = s.description,
         createdBy = Tenant.SYSTEM_USER,
         createdAt = now,

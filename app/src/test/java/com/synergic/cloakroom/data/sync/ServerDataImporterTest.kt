@@ -14,6 +14,8 @@ import com.synergic.cloakroom.data.remote.MastersDto
 import com.synergic.cloakroom.data.remote.RateDto
 import com.synergic.cloakroom.data.remote.ShiftAssignmentDto
 import com.synergic.cloakroom.data.remote.ShiftDto
+import com.synergic.cloakroom.domain.billing.RateSlabs
+import com.synergic.cloakroom.domain.settings.SettingKeys
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
@@ -23,6 +25,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.math.BigDecimal
 
 /** Login copies the server's setup into the phone (step d); the server wins over local demo rows. */
 @RunWith(AndroidJUnit4::class)
@@ -44,7 +47,7 @@ class ServerDataImporterTest {
     private fun masters() = MastersDto(
         idProofs = listOf(IdProofDto(1, "Aadhaar Card", maskFlag = "Y"), IdProofDto(50, "Ration Card")),
         gst = listOf(GstDto(7, "9.00", "9.00", "18.00", "2017-07-01")),
-        rates = listOf(RateDto(3, 1, 12, "40.00", "15.00", "2026-01-01")),
+        rates = listOf(RateDto(3, 1, 12, "40.00", "15.00", effectiveFrom = "2026-01-01")),
         shifts = listOf(ShiftDto(20, 1, "Full day", "08:00:00", "20:00:00")),
         shiftAssignments = listOf(ShiftAssignmentDto(30, 1, user1Id, 20, "2026-01-01")),
         headerFooter = listOf(
@@ -72,9 +75,11 @@ class ServerDataImporterTest {
         val rate = db.rateDao().getAll(1).single { it.isDeleted == "N" }
         assertEquals(12, rate.blockHours)
         assertEquals(40.0, rate.firstBlockRate, 0.0)
-        // Billing reads these settings until step e.
+        // No rate_slabs from this (older) row: its two-rate fields become the price ranges.
+        assertEquals(RateSlabs.fromTwoRate(12, BigDecimal("40"), BigDecimal("15")), RateSlabs.parse(rate.rateSlabs))
+        // Today's rate is also the RATE_SLABS setting (Billing tab, receipt text).
         val billing = db.settingDao().getScopedRows(1, null).filter { it.userId == null }.associate { it.settingName to it.settingValue }
-        assertEquals(listOf("40", "15", "12"), listOf(billing["FIRST_BLOCK_RATE"], billing["NEXT_BLOCK_RATE"], billing["BLOCK_HOURS"]))
+        assertEquals(rate.rateSlabs, billing[SettingKeys.RATE_SLABS])
 
         val shift = db.shiftDao().getActive(1).single()
         assertEquals("Full day" to "08:00", shift.shiftName to shift.fromTime)

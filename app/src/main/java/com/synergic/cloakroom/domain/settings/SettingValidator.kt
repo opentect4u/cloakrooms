@@ -1,5 +1,6 @@
 package com.synergic.cloakroom.domain.settings
 
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import java.math.BigDecimal
 
 /** Checks new setting values against the row's data_type, options, min/max and depends_on. */
@@ -21,6 +22,7 @@ object SettingValidator {
             SettingDataType.ENUM -> if (def.options.any { it.first == v }) null
                 else "Choose one of: ${def.options.joinToString { it.second }}"
             SettingDataType.TEXT, SettingDataType.PASSWORD -> null
+            SettingDataType.SLABS -> RateSlabs.draftProblem(v)
         }
     }
 

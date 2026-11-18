@@ -281,10 +281,12 @@ private fun TariffCard(s: AppSettings) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Current tariff", style = MaterialTheme.typography.titleSmall)
             Text(
-                "₹${s.firstBlockRate.toPlainString()} per bag for the first ${s.blockHours} h, " +
-                    "then ₹${s.nextBlockRate.toPlainString()} per bag for every further ${s.blockHours} h",
+                com.synergic.cloakroom.domain.billing.RateSlabs.describe(s.rateSlabs, "₹"),
                 style = MaterialTheme.typography.bodyMedium,
             )
+            if (s.advanceFlag) {
+                Text("Advance of the first ${s.advanceHours} h is taken at check-in", style = MaterialTheme.typography.bodyMedium)
+            }
             Text(
                 when {
                     !s.gstFlag -> "No GST"

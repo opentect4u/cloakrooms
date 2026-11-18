@@ -33,6 +33,26 @@ object DateTimes {
     /** 'YYYY-MM-DD' in Asia/Kolkata, for receipt_dt and bill_dt. */
     fun localDateText(instant: Instant): String = localDate(instant).toString()
 
+    /**
+     * A timestamp sent by the server → database text (UTC). Since 2026-11-18 the server stores and
+     * returns timestamps (date_time_in / out, created_at, session_started_at…) as **IST** wall time
+     * 'YYYY-MM-DD HH:MM:SS'; a value with an explicit zone ('…Z', '+05:30') is read as that zone.
+     * `server_time` is still UTC and must not go through here. Unreadable text is returned as it is.
+     */
+    fun fromServerText(text: String): String {
+        val t = text.trim()
+        return runCatching {
+            val iso = t.replace(' ', 'T')
+            val hasZone = iso.endsWith("Z") || Regex("T[^+-]*[+-]\\d{2}:\\d{2}$").containsMatchIn(iso)
+            if (hasZone) {
+                toDbText(java.time.OffsetDateTime.parse(iso).toInstant())
+            } else {
+                val local = LocalDateTime.parse(t.replace('T', ' ').substringBefore('.').take(19), DB_FORMAT)
+                toDbText(local.atZone(DISPLAY_ZONE).toInstant())
+            }
+        }.getOrDefault(text)
+    }
+
     /** e.g. "02-11-2026 07:05 PM" (Asia/Kolkata). */
     fun displayText(dbText: String): String =
         fromDbText(dbText).atZone(DISPLAY_ZONE).format(DISPLAY_FORMAT)

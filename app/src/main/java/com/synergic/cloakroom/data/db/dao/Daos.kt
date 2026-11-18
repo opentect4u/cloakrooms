@@ -271,6 +271,14 @@ interface LuggageDao {
     )
     fun observeCheckinCount(customerId: Long, date: String, userId: Long?): Flow<Int>
 
+    /** Advance taken at the check-ins of a local date (cash), by check-in user; [userId] null = all users. */
+    @Query(
+        """SELECT IFNULL(SUM(adv_amt), 0) FROM td_luggage_in_out
+           WHERE customer_id = :customerId AND receipt_dt = :date AND is_deleted = 'N'
+             AND (:userId IS NULL OR user_id_in = :userId)"""
+    )
+    fun observeAdvanceOn(customerId: Long, date: String, userId: Long?): Flow<Double>
+
     /** Check-ins between two local dates (both included), by check-in user and shift; null = all. */
     @Query(
         """SELECT * FROM td_luggage_in_out

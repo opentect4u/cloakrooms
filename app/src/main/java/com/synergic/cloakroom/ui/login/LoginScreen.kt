@@ -80,6 +80,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synergic.cloakroom.R
 import com.synergic.cloakroom.ui.components.ErrorBanner
+import com.synergic.cloakroom.ui.components.appVersionText
 
 /** Brand colours of the login design (teal); the rest of the app keeps its own theme. */
 private object LoginColors {
@@ -300,6 +301,13 @@ private fun LoginForm(
 
         Spacer(Modifier.height(28.dp))
         LoginButton(enabled = canLogin, loading = state.loading, onClick = onLogin)
+        Text(
+            appVersionText(),
+            color = LoginColors.Muted,
+            fontSize = 12.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        )
     }
 }
 

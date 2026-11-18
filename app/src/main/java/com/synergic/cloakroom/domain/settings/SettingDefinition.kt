@@ -1,6 +1,7 @@
 package com.synergic.cloakroom.domain.settings
 
-enum class SettingDataType { BOOL, INT, DECIMAL, TEXT, ENUM, PASSWORD }
+/** SLABS = the price ranges (rate_slabs JSON), edited as rows with an Add button. */
+enum class SettingDataType { BOOL, INT, DECIMAL, TEXT, ENUM, PASSWORD, SLABS }
 
 /** One md_setting row with everything the Settings screen needs to show and validate it. */
 data class SettingDefinition(

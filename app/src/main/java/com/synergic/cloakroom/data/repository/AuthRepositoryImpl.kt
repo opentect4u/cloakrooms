@@ -290,7 +290,7 @@ class AuthRepositoryImpl @Inject constructor(
         ServerException.NETWORK -> "Cannot reach the server. Logging in needs internet."
         ServerException.UNAUTHORIZED -> "Wrong user ID or password."
         ServerException.SESSION_ACTIVE -> {
-            val since = e.details["session_started_at"]?.let { runCatching { DateTimes.displayText(it) }.getOrNull() }
+            val since = e.details["session_started_at"]?.let { runCatching { DateTimes.displayText(DateTimes.fromServerText(it)) }.getOrNull() }
             "Already logged in on another device${since?.let { " since $it" } ?: ""}. Logout there first, or ask an admin to force logout."
         }
         ServerException.SUBSCRIPTION_EXPIRED ->

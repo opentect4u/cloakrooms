@@ -56,6 +56,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.settings.SettingDataType
 import com.synergic.cloakroom.ui.components.AppTopBar
 import com.synergic.cloakroom.ui.components.BigButton
@@ -275,6 +282,11 @@ private fun SettingCard(field: SettingField, onValueChange: (String) -> Unit) {
                     EnumDropdown(field, onValueChange)
                 }
 
+                SettingDataType.SLABS -> {
+                    Text(def.label, style = MaterialTheme.typography.titleMedium)
+                    SlabEditor(field, onValueChange)
+                }
+
                 SettingDataType.PASSWORD -> {
                     Text(def.label, style = MaterialTheme.typography.titleMedium)
                     PasswordField(
@@ -302,6 +314,69 @@ private fun SettingCard(field: SettingField, onValueChange: (String) -> Unit) {
                 Text("Turn on \"${field.parentLabel}\" to change this.", style = MaterialTheme.typography.bodySmall)
             }
         }
+    }
+}
+
+/**
+ * Price ranges (rate slabs): one row per range with "from" (always the previous "to"), "to" and the
+ * price per bag, a remove button, and "Add price range" underneath. Each edit sends the whole list.
+ */
+@Composable
+private fun SlabEditor(field: SettingField, onValueChange: (String) -> Unit) {
+    val rows = RateSlabs.parseDraft(field.value).orEmpty()
+    fun send(newRows: List<RateSlabs.DraftRow>) = onValueChange(RateSlabs.draftToJson(RateSlabs.chain(newRows)))
+    val enabled = field.enabled
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rows.forEachIndexed { i, row ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = row.from,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false,
+                    singleLine = true,
+                    label = { Text("From h") },
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = row.to,
+                    onValueChange = { v -> send(rows.mapIndexed { j, r -> if (j == i) r.copy(to = v.filter { it.isDigit() }.take(4)) else r }) },
+                    enabled = enabled,
+                    singleLine = true,
+                    label = { Text("To h") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = row.rate,
+                    onValueChange = { v -> send(rows.mapIndexed { j, r -> if (j == i) r.copy(rate = v.filter { it.isDigit() || it == '.' }.take(9)) else r }) },
+                    enabled = enabled,
+                    singleLine = true,
+                    label = { Text("₹ per bag") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1.2f),
+                )
+                IconButton(
+                    onClick = { send(rows.filterIndexed { j, _ -> j != i }) },
+                    enabled = enabled && rows.size > 1,
+                ) { Icon(Icons.Default.Delete, contentDescription = "Remove range ${i + 1}") }
+            }
+        }
+        OutlinedButton(
+            onClick = { send(RateSlabs.addRow(rows)) },
+            enabled = enabled && rows.size < RateSlabs.MAX_SLABS,
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(6.dp))
+            Text("Add price range")
+        }
+        val tariff = RateSlabs.parse(field.value)
+        Text(
+            field.error ?: listOfNotNull(field.def.description, tariff?.let { "Now: " + RateSlabs.describe(it, "₹") }).joinToString(" · "),
+            color = if (field.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

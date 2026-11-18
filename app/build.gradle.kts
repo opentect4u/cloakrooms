@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,9 +18,27 @@ android {
         applicationId = "com.synergic.cloakroom"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Release signing key: kept outside the project (never in git). Path and passwords are read
+    // from C:/Users/User/cloakroom-signing/keystore.properties, or the file in the
+    // CLOAKROOM_KEYSTORE_PROPS environment variable. Without it, release builds are unsigned.
+    val keystoreProps = Properties().apply {
+        val file = file(System.getenv("CLOAKROOM_KEYSTORE_PROPS") ?: "C:/Users/User/cloakroom-signing/keystore.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    signingConfigs {
+        if (keystoreProps.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -27,8 +47,9 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"https://cloakroom.synergicdatabank.com\"")
         }
         release {
-            // Set the production URL here before the first release build.
-            buildConfigField("String", "API_BASE_URL", "\"https://api.example.invalid\"")
+            // Production server (2026-11-18: same host as UAT, per the owner).
+            buildConfigField("String", "API_BASE_URL", "\"https://cloakroom.synergicdatabank.com\"")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

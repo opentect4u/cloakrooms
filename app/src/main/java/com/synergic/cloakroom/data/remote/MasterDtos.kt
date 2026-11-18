@@ -1,20 +1,44 @@
 package com.synergic.cloakroom.data.remote
 
+import com.synergic.cloakroom.domain.billing.RateSlab
+import com.synergic.cloakroom.domain.billing.RateSlabs
+import com.synergic.cloakroom.domain.billing.money
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 // Customer masters and settings (API_GUIDE.md §5), field names exactly as on the wire.
 
+/** One price range of a rate (API_GUIDE.md §5 rates, §7). Rate is money as a string ("30.00"). */
+@Serializable
+data class RateSlabDto(
+    @SerialName("from_hour") val fromHour: Int,
+    @SerialName("to_hour") val toHour: Int,
+    val rate: String,
+) {
+    fun toDomain() = RateSlab(fromHour, toHour, rate.toBigDecimal().money())
+
+    companion object {
+        fun of(s: RateSlab) = RateSlabDto(s.fromHour, s.toHour, s.rate.money().toPlainString())
+    }
+}
+
 @Serializable
 data class RateDto(
     @SerialName("rate_id") val rateId: Long,
     @SerialName("customer_id") val customerId: Long,
-    @SerialName("block_hours") val blockHours: Int,
-    @SerialName("first_block_rate") val firstBlockRate: String,
-    @SerialName("next_block_rate") val nextBlockRate: String,
+    /** Older two-rate form, kept by the server in step with [rateSlabs] (first slab length / rates). */
+    @SerialName("block_hours") val blockHours: Int = 24,
+    @SerialName("first_block_rate") val firstBlockRate: String = "0.00",
+    @SerialName("next_block_rate") val nextBlockRate: String = "0.00",
+    /** The tariff; null from a server older than the slab release. */
+    @SerialName("rate_slabs") val rateSlabs: List<RateSlabDto>? = null,
     @SerialName("effective_from") val effectiveFrom: String,
     @SerialName("is_deleted") val isDeleted: String = "N",
-)
+) {
+    /** The price ranges: [rateSlabs], or the two-rate fields as slabs. */
+    fun slabs(): List<RateSlab> = rateSlabs?.takeIf { it.isNotEmpty() }?.map { it.toDomain() }
+        ?: RateSlabs.fromTwoRate(blockHours, firstBlockRate.toBigDecimal(), nextBlockRate.toBigDecimal())
+}
 
 @Serializable
 data class ShiftDto(

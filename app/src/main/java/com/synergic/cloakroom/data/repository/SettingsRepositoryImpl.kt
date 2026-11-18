@@ -8,6 +8,7 @@ import com.synergic.cloakroom.data.db.entity.SettingEntity
 import com.synergic.cloakroom.data.db.entity.SettingLogEntity
 import com.synergic.cloakroom.data.security.PasswordHasher
 import com.synergic.cloakroom.di.ApplicationScope
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.auth.NotAuthorizedException
 import com.synergic.cloakroom.domain.auth.SessionProvider
 import com.synergic.cloakroom.domain.auth.SessionState
@@ -84,7 +85,14 @@ class SettingsRepositoryImpl @Inject constructor(
 
             // An empty PASSWORD field means "keep the current password", so it is not a change.
             val requested = changes
-                .mapValues { (name, value) -> if (dataTypes[name] == SettingDataType.PASSWORD) value else value.trim() }
+                .mapValues { (name, value) ->
+                    when (dataTypes[name]) {
+                        SettingDataType.PASSWORD -> value
+                        // Price ranges are saved in the server's JSON form, whatever the editor sent.
+                        SettingDataType.SLABS -> RateSlabs.canonical(value.trim())
+                        else -> value.trim()
+                    }
+                }
                 .filter { (name, value) ->
                     val row = rows[name] ?: return@filter true
                     if (dataTypes[name] == SettingDataType.PASSWORD) value.isNotEmpty() && !hasher.verify(value, row.settingValue)

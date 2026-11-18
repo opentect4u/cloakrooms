@@ -7,6 +7,10 @@ import com.synergic.cloakroom.data.db.entity.LuggageInOutEntity
 import com.synergic.cloakroom.data.numbering.UserCounterSequence
 import com.synergic.cloakroom.domain.auth.NotAuthorizedException
 import com.synergic.cloakroom.domain.auth.SessionProvider
+import com.synergic.cloakroom.domain.billing.BillCalculator
+import com.synergic.cloakroom.domain.billing.ZERO_MONEY
+import com.synergic.cloakroom.domain.billing.toMoney
+import com.synergic.cloakroom.domain.billing.withTariff
 import com.synergic.cloakroom.domain.checkin.CheckinField
 import com.synergic.cloakroom.domain.checkin.CheckinInput
 import com.synergic.cloakroom.domain.checkin.CheckinValidation
@@ -22,6 +26,7 @@ import com.synergic.cloakroom.domain.repository.CheckinResult
 import com.synergic.cloakroom.domain.repository.IdProof
 import com.synergic.cloakroom.domain.repository.LuggageRepository
 import com.synergic.cloakroom.domain.repository.SettingsRepository
+import com.synergic.cloakroom.domain.settings.AppSettings
 import com.synergic.cloakroom.domain.shift.ShiftResolver
 import com.synergic.cloakroom.domain.shift.ShiftSlot
 import com.synergic.cloakroom.domain.time.DateTimes
@@ -30,6 +35,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -43,6 +49,7 @@ class LuggageRepositoryImpl @Inject constructor(
     private val sequence: UserCounterSequence,
     private val deviceInfo: DeviceInfo,
     private val time: TimeSource,
+    private val tariffs: TariffLookup,
 ) : LuggageRepository {
 
     override fun observeIdProofs(): Flow<List<IdProof>> =
@@ -65,6 +72,7 @@ class LuggageRepositoryImpl @Inject constructor(
                         bags = it.luggageQty,
                         extraBags = it.extraLugageQty,
                         isOut = false,
+                        advAmt = it.advAmt.toMoney(),
                     )
                 }
             }
@@ -91,6 +99,8 @@ class LuggageRepositoryImpl @Inject constructor(
         val now = time.now()
         val nowText = DateTimes.toDbText(now)
         val transId = UUID.randomUUID().toString()
+        // Advance (ADVANCE_FLAG = Y): the bill for ADVANCE_HOURS with today's price ranges, paid now in cash.
+        val advance = advanceAt(now, data.bags, settings)
         val receiptNo = db.withTransaction {
             val number = sequence.next(session.id, session.userCode, CounterType.RECEIPT, settings.receiptReset, now, session.userId)
             db.luggageDao().insert(
@@ -108,6 +118,8 @@ class LuggageRepositoryImpl @Inject constructor(
                     pnrNo = data.pnr,
                     luggageQty = data.bags,
                     extraLugageQty = data.extraBags,
+                    advAmt = advance.toDouble(),
+                    advHours = if (advance.signum() > 0) settings.advanceHours else 0,
                     // ID type and number are stored together or not at all (API_GUIDE.md §6.2).
                     idProofId = data.idProofId.takeIf { it != CheckinValidator.NO_ID_PROOF && data.idNumber.isNotEmpty() },
                     idNumber = data.idNumber.takeIf { data.idProofId != CheckinValidator.NO_ID_PROOF && it.isNotEmpty() },
@@ -148,9 +160,22 @@ class LuggageRepositoryImpl @Inject constructor(
                 mobile = row.pasnMobNo,
                 pnr = row.pnrNo,
                 extraBags = row.extraLugageQty,
+                advAmt = row.advAmt.toMoney(),
             ),
         )
         return CheckinReceiptFormatter.format(receipt, settings)
+    }
+
+    override suspend fun advanceQuote(bags: Int): BigDecimal {
+        val session = sessionProvider.requireLogin()
+        if (bags < 1) return ZERO_MONEY
+        return advanceAt(time.now(), bags, settingsRepository.getSettings(session.id))
+    }
+
+    private suspend fun advanceAt(now: Instant, bags: Int, settings: AppSettings): BigDecimal {
+        if (!settings.advanceFlag) return ZERO_MONEY
+        val today = DateTimes.localDateText(now)
+        return BillCalculator.advance(now, bags, settings.withTariff(tariffs.on(today, today)))
     }
 
     /** Shift by the local clock time (md_shift ranges); null when no shift covers it. */

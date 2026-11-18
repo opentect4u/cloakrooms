@@ -11,15 +11,14 @@ import java.math.BigDecimal
  * the settings' values are used then. A cloak room's own GST % (GST_PCT set) replaces the GST row.
  */
 data class Tariff(
-    val blockHours: Int? = null,
-    val firstBlockRate: BigDecimal? = null,
-    val nextBlockRate: BigDecimal? = null,
+    /** The rate row's price ranges (rate_slabs, or its two-rate fields as slabs). */
+    val slabs: List<RateSlab>? = null,
     val cgstPct: BigDecimal? = null,
     val sgstPct: BigDecimal? = null,
     val igstPct: BigDecimal? = null,
 )
 
-/** [AppSettings] with the tariff's rate and GST % (CGST + SGST for E, IGST for I) put in. */
+/** [AppSettings] with the tariff's price ranges and GST % (CGST + SGST for E, IGST for I) put in. */
 fun AppSettings.withTariff(t: Tariff?): AppSettings {
     if (t == null) return this
     val gst = when (gstType) {
@@ -27,9 +26,7 @@ fun AppSettings.withTariff(t: Tariff?): AppSettings {
         GstType.IGST -> t.igstPct
     }
     return copy(
-        blockHours = t.blockHours ?: blockHours,
-        firstBlockRate = t.firstBlockRate ?: firstBlockRate,
-        nextBlockRate = t.nextBlockRate ?: nextBlockRate,
+        rateSlabs = t.slabs?.takeIf { RateSlabs.problem(it) == null } ?: rateSlabs,
         gstPct = if (gstPctOwn) gstPct else gst ?: gstPct,
     )
 }

@@ -1,6 +1,7 @@
 package com.synergic.cloakroom.domain.repository
 
 import com.synergic.cloakroom.domain.billing.Tariff
+import com.synergic.cloakroom.domain.billing.ZERO_MONEY
 
 import com.synergic.cloakroom.domain.checkout.CheckoutField
 import com.synergic.cloakroom.domain.print.PrintDocument
@@ -24,6 +25,8 @@ data class CheckoutBag(
     val bags: Int,
     /** Extra bags stored free of charge: shown, never billed. */
     val extraBags: Int = 0,
+    /** Advance paid at check-in (subtracted from the bill); 0 when none. */
+    val advAmt: BigDecimal = ZERO_MONEY,
     val idProofName: String?,
     /** Stored (masked) ID number; empty for a bag known only from its QR. */
     val idNumber: String,

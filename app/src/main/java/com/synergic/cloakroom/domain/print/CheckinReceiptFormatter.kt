@@ -1,5 +1,6 @@
 package com.synergic.cloakroom.domain.print
 
+import com.synergic.cloakroom.domain.billing.money
 import com.synergic.cloakroom.domain.qr.ReceiptQr
 import com.synergic.cloakroom.domain.qr.ReceiptQrData
 import com.synergic.cloakroom.domain.settings.AppSettings
@@ -46,11 +47,11 @@ object CheckinReceiptFormatter {
         if (q.extraBags > 0) p.pair("Extra bags (free)", q.extraBags.toString(), bold = true)
         if (r.idProofName != null && r.idNumber.isNotEmpty()) p.pair("ID", "${r.idProofName} ${r.idNumber}")
         p.divider()
-        p.left(
-            "Rate: ${rupees(settings.firstBlockRate)} per bag for the first ${settings.blockHours} h, " +
-                "${rupees(settings.nextBlockRate)} per bag for each further ${settings.blockHours} h."
-        )
-        p.left("Payment at check-out.")
+        if (q.advAmt.signum() > 0) {
+            p.pair("Advance paid (cash)", "Rs.${q.advAmt.money().toPlainString()}", bold = true)
+        } else {
+            p.left("Payment at check-out.")
+        }
         if (settings.qrFlag) {
             p.blank()
             p.qr(ReceiptQr.encode(q))

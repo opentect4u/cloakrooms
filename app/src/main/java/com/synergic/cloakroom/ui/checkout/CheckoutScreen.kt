@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.synergic.cloakroom.domain.billing.BillResult
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.checkout.CheckoutField
 import com.synergic.cloakroom.domain.print.BillFormatter
 import com.synergic.cloakroom.domain.repository.CheckoutBag
@@ -163,7 +164,7 @@ fun CheckoutScreen(
     s.confirm?.let { c ->
         AlertDialog(
             onDismissRequest = viewModel::dismissConfirm,
-            title = { Text("Collect ₹${money(c.net)} by ${if (c.payMode == PayMode.UPI) "UPI" else "cash"}?") },
+            title = { Text("Collect ₹${money(c.collect)} by ${if (c.payMode == PayMode.UPI) "UPI" else "cash"}?") },
             text = {
                 Text(
                     if (c.printBill) "The bag is checked out and the bill is printed."
@@ -191,6 +192,9 @@ private fun BagDetails(bag: CheckoutBag, now: Instant) {
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            if (bag.advAmt.signum() > 0) {
+                Text("Advance paid at check-in: ₹${money(bag.advAmt)}", style = MaterialTheme.typography.bodyLarge)
+            }
             if (bag.idProofName != null && bag.idNumber.isNotEmpty()) {
                 Text("${bag.idProofName} ${bag.idNumber}", style = MaterialTheme.typography.bodyMedium)
             }
@@ -216,12 +220,11 @@ private fun BillCard(b: BillResult) {
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Bill", style = MaterialTheme.typography.titleMedium)
-            Line("${b.blocks} × ${b.blockHours} h for ${b.bags} bag(s)", "")
-            Line("First ${b.blockHours} h: ${b.bags} × ₹${money(b.firstBlockRate)}", money(b.firstBlockRate * BigDecimal(b.bags)))
-            if (b.blocks > 1) {
+            Line("${b.blocks} rate(s) charged for ${b.bags} bag(s)", "")
+            b.charges.forEach { c ->
                 Line(
-                    "Next ${b.blocks - 1} × ${b.blockHours} h: ${b.bags} × ₹${money(b.nextBlockRate)}",
-                    money(b.nextBlockRate * BigDecimal(b.bags) * BigDecimal(b.blocks - 1)),
+                    "${RateSlabs.label(c)}: ${b.bags} × ₹${money(c.slab.rate)}",
+                    money(c.slab.rate * BigDecimal(b.bags) * BigDecimal(c.times)),
                 )
             }
             Line("Rent", money(b.baseAmt))
@@ -246,6 +249,16 @@ private fun BillCard(b: BillResult) {
                     if (b.gstInclusive) "GST included in the rate" else "GST added on top of the rate",
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+            if (b.advAmt.signum() > 0) {
+                Line("Less advance paid at check-in", "− ${money(b.advAmt)}")
+                Row {
+                    Text("COLLECT NOW", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text("₹${money(b.balAmt)}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                }
+                if (b.advAmt > b.netAmt) {
+                    Text("The advance covers the whole bill. Nothing is refunded.", style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }

@@ -11,12 +11,18 @@ import com.synergic.cloakroom.domain.repository.SettingsRepository
 import com.synergic.cloakroom.domain.settings.AppSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 import javax.inject.Inject
 
 data class CheckinForm(
@@ -45,6 +51,22 @@ class CheckinViewModel @Inject constructor(
     val form: StateFlow<CheckinForm> = _form.asStateFlow()
 
     val settings: StateFlow<AppSettings?> = settingsRepository.currentSettings
+
+    private val _advance = MutableStateFlow<BigDecimal?>(null)
+
+    /** Advance to collect now in cash for the bags typed (null while unknown, 0 when the advance is off). */
+    val advance: StateFlow<BigDecimal?> = _advance.asStateFlow()
+
+    init {
+        // Recalculate when the bags or the settings change (the admin may switch the advance on).
+        viewModelScope.launch {
+            combine(_form.map { it.bags }.distinctUntilChanged(), settings.filterNotNull()) { bags, _ -> bags }.collectLatest { bags ->
+                _advance.value = bags.toIntOrNull()?.takeIf { it >= 1 }?.let { n ->
+                    runCatching { luggageRepository.advanceQuote(n) }.getOrNull()
+                }
+            }
+        }
+    }
 
     val idProofs: StateFlow<List<IdProof>> = luggageRepository.observeIdProofs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

@@ -1,5 +1,9 @@
 package com.synergic.cloakroom.domain.qr
 
+import com.synergic.cloakroom.domain.billing.ZERO_MONEY
+import com.synergic.cloakroom.domain.billing.money
+import java.math.BigDecimal
+
 /**
  * What the check-in receipt QR carries (Case 1 in the architecture PDF), so another counter can
  * bill the bag before it has synced. The ID-proof number is never part of it.
@@ -20,13 +24,16 @@ data class ReceiptQrData(
     val pnr: String,
     /** Free extra bags (extra_lugage_qty); 0 on receipts printed before this existed. */
     val extraBags: Int = 0,
+    /** Advance paid at check-in (adv_amt), so another counter subtracts it before sync; 0 when none. */
+    val advAmt: BigDecimal = ZERO_MONEY,
 )
 
 /**
  * Compact JSON with short keys, which keeps the QR small enough to scan easily from 58 mm paper:
  * `{"v":1,"t":trans_id,"r":receipt_no,"d":receipt_dt,"c":customer_id,"u":user_id_in,
- *   "i":date_time_in,"b":bags,"n":name,"m":mobile,"p":pnr,"x":extra_bags}`
- * `x` is only written when there are extra bags, so other receipts keep the same QR as before.
+ *   "i":date_time_in,"b":bags,"n":name,"m":mobile,"p":pnr,"x":extra_bags,"a":"adv_amt"}`
+ * `x` is only written when there are extra bags and `a` (money as a string, "50.00") only when an
+ * advance was paid, so other receipts keep the same QR as before.
  */
 object ReceiptQr {
     const val VERSION = 1L
@@ -44,7 +51,10 @@ object ReceiptQr {
             "n" to d.name,
             "m" to d.mobile,
             "p" to d.pnr,
-        ).apply { if (d.extraBags > 0) put("x", d.extraBags.toLong()) }
+        ).apply {
+            if (d.extraBags > 0) put("x", d.extraBags.toLong())
+            if (d.advAmt.signum() > 0) put("a", d.advAmt.money().toPlainString())
+        }
     )
 
     /** Returns null when the text is not a receipt QR of this app. */
@@ -64,6 +74,7 @@ object ReceiptQr {
                 mobile = m["m"] as String,
                 pnr = m["p"] as String,
                 extraBags = ((m["x"] as Long?) ?: 0L).toInt(),
+                advAmt = (m["a"] as String?)?.toBigDecimal()?.money()?.max(ZERO_MONEY) ?: ZERO_MONEY,
             )
         }.getOrNull()
     }

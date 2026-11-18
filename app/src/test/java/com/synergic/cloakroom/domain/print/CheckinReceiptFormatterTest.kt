@@ -43,7 +43,8 @@ class CheckinReceiptFormatterTest {
             assertTrue("missing: $it", all.contains(it))
         }
         assertTrue(rows.any { it.startsWith("Bags") && it.endsWith("2") })
-        assertTrue(all.contains("Rs.50 per bag for the first 24 h"))
+        assertFalse("no rate line on the receipt", all.contains("Rate:"))
+        assertTrue(all.contains("Payment at check-out."))
     }
 
     @Test

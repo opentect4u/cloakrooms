@@ -1,5 +1,7 @@
 package com.synergic.cloakroom.data.remote
 
+import com.synergic.cloakroom.domain.billing.RateSlab
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
@@ -38,17 +40,21 @@ class MastersApi @Inject constructor(private val api: ApiClient) {
     suspend fun listRates(customerId: Long?): List<RateDto> =
         api.getPage("/rates", RateDto.serializer(), listQuery(customerId, "sort" to "effective_from:desc")).items
 
-    suspend fun createRate(customerId: Long?, blockHours: Int, firstRate: String, nextRate: String, effectiveFrom: String): RateDto =
+    /** POST /rates with `rate_slabs` only (sending the older two-rate fields too returns 400). */
+    suspend fun createRate(customerId: Long?, slabs: List<RateSlab>, effectiveFrom: String): RateDto =
         api.post("/rates", create(customerId) {
-            put("block_hours", blockHours); put("first_block_rate", firstRate); put("next_block_rate", nextRate)
+            put("rate_slabs", slabsJson(slabs))
             put("effective_from", effectiveFrom)
         }, RateDto.serializer())
 
-    suspend fun updateRate(id: Long, blockHours: Int, firstRate: String, nextRate: String, effectiveFrom: String): RateDto =
+    suspend fun updateRate(id: Long, slabs: List<RateSlab>, effectiveFrom: String): RateDto =
         api.patch("/rates/$id", buildJsonObject {
-            put("block_hours", blockHours); put("first_block_rate", firstRate); put("next_block_rate", nextRate)
+            put("rate_slabs", slabsJson(slabs))
             put("effective_from", effectiveFrom)
         }, RateDto.serializer())
+
+    private fun slabsJson(slabs: List<RateSlab>) =
+        ApiClient.json.encodeToJsonElement(ListSerializer(RateSlabDto.serializer()), slabs.map { RateSlabDto.of(it) })
 
     suspend fun deleteRate(id: Long) = api.delete("/rates/$id")
 

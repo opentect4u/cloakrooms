@@ -18,6 +18,7 @@ import com.synergic.cloakroom.data.remote.CustomerDto
 import com.synergic.cloakroom.data.remote.HeaderFooterDto
 import com.synergic.cloakroom.data.remote.MastersDto
 import com.synergic.cloakroom.data.remote.ShiftDto
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.repository.ServerSettingKey
 import com.synergic.cloakroom.domain.settings.SettingKeys
 import javax.inject.Inject
@@ -124,6 +125,7 @@ class ServerDataImporter @Inject constructor(
             RateDtlsEntity(
                 rateId = it.rateId, customerId = customerId, blockHours = it.blockHours,
                 firstBlockRate = it.firstBlockRate.toDouble(), nextBlockRate = it.nextBlockRate.toDouble(),
+                rateSlabs = RateSlabs.toJson(it.slabs()),
                 effectiveFrom = it.effectiveFrom, isDeleted = it.isDeleted, syncFlag = "Y", updatedBy = by, updatedAt = at,
             )
         })
@@ -234,19 +236,17 @@ class ServerDataImporter @Inject constructor(
     }
 
     /**
-     * Billing still reads its rates from md_setting (until step e), so the rate in force today is
-     * copied into the three rate settings, as the Super Admin's Billing tab shows them.
+     * Bills use md_rate_dtls of the check-in date; the rate in force today is also copied into
+     * the RATE_SLABS setting, so the Billing tab, the receipt text and bags without a rate row
+     * (e.g. a check-in date before every rate) use the same price ranges.
      */
     private fun currentRate(customerId: Long, m: MastersDto, serverTime: String): Map<String, String>? {
         val today = serverTime.take(10)
         val rate = m.rates
             .filter { it.customerId == customerId && it.isDeleted == "N" && it.effectiveFrom.take(10) <= today }
             .maxByOrNull { it.effectiveFrom } ?: return null
-        return mapOf(
-            SettingKeys.FIRST_BLOCK_RATE to rate.firstBlockRate.toBigDecimal().stripTrailingZeros().toPlainString(),
-            SettingKeys.NEXT_BLOCK_RATE to rate.nextBlockRate.toBigDecimal().stripTrailingZeros().toPlainString(),
-            SettingKeys.BLOCK_HOURS to rate.blockHours.toString(),
-        )
+        val slabs = rate.slabs().takeIf { RateSlabs.problem(it) == null } ?: return null
+        return mapOf(SettingKeys.RATE_SLABS to RateSlabs.toJson(slabs))
     }
 
     /** §7: the next number is max(local, server) + 1, so the phone keeps the higher last number. */

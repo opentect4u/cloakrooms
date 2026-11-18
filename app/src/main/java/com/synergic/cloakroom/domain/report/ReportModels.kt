@@ -36,6 +36,8 @@ data class CheckinRow(
     val extraBags: Int = 0,
     /** Shift name at check-in, empty when none. */
     val shift: String = "",
+    /** Advance taken in cash at check-in; 0 when none. */
+    val advAmt: BigDecimal = ZERO_MONEY,
 )
 
 /** One bill, counted for the user who made it (td_receipt.user_id, i.e. user_id_out). */
@@ -57,11 +59,16 @@ data class BillRow(
     val cgst: BigDecimal,
     val sgst: BigDecimal,
     val igst: BigDecimal,
+    /** The full bill. */
     val netAmt: BigDecimal,
     val payMode: PayMode,
     val printed: Boolean,
     /** Shift name at billing, empty when none. */
     val shift: String = "",
+    /** Advance subtracted on this bill (paid at check-in). */
+    val advAmt: BigDecimal = ZERO_MONEY,
+    /** Collected at check-out: max(0, net − advance). */
+    val balAmt: BigDecimal = netAmt,
 )
 
 /** Totals of a group of bills (one pay mode, or all). */
@@ -75,7 +82,12 @@ data class CollectionLine(
     val cgst: BigDecimal,
     val sgst: BigDecimal,
     val igst: BigDecimal,
+    /** Full bills. */
     val netAmt: BigDecimal,
+    /** Advance subtracted on these bills (it was collected at check-in). */
+    val advAmt: BigDecimal = ZERO_MONEY,
+    /** Collected at check-out on these bills. */
+    val balAmt: BigDecimal = netAmt,
 ) {
     companion object {
         /** Sums with BigDecimal, so totals are exact to the paisa. */
@@ -89,6 +101,8 @@ data class CollectionLine(
             sgst = rows.sumMoney { it.sgst },
             igst = rows.sumMoney { it.igst },
             netAmt = rows.sumMoney { it.netAmt },
+            advAmt = rows.sumMoney { it.advAmt },
+            balAmt = rows.sumMoney { it.balAmt },
         )
 
         private fun List<BillRow>.sumMoney(pick: (BillRow) -> BigDecimal): BigDecimal =
@@ -108,7 +122,12 @@ data class ReportData(
     val byPayMode: List<CollectionLine> =
         PayMode.entries.map { mode -> CollectionLine.of(mode, bills.filter { it.payMode == mode }) }.filter { it.bills > 0 },
     val total: CollectionLine = CollectionLine.of(null, bills),
+    /** Advance taken in cash at the check-ins of the period (counted on the check-in date). */
+    val advanceCollected: BigDecimal = checkins.fold(ZERO_MONEY) { acc, c -> acc + c.advAmt }.money(),
 ) {
+
+    /** Money taken in the period: balances at check-out + advances at check-in. */
+    val totalCollected: BigDecimal get() = (total.balAmt + advanceCollected).money()
 
     val bagsCheckedIn: Int get() = checkins.sumOf { it.bags }
 

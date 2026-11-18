@@ -5,6 +5,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.synergic.cloakroom.data.Tenant
 import com.synergic.cloakroom.data.TestEnv
 import com.synergic.cloakroom.data.db.entity.SettingEntity
+import com.synergic.cloakroom.data.seed.SeedData
+import com.synergic.cloakroom.domain.billing.RateSlab
+import com.synergic.cloakroom.domain.slabs
 import com.synergic.cloakroom.domain.auth.NotAuthorizedException
 import com.synergic.cloakroom.domain.settings.AppSettings
 import com.synergic.cloakroom.domain.settings.PrinterType
@@ -22,6 +25,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.math.BigDecimal
 
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [34], application = Application::class)
@@ -54,9 +58,9 @@ class SettingsWriteTest {
     fun `normal user cannot write settings`() {
         env.loginOk("user1", "User@123")
         assertThrows(NotAuthorizedException::class.java) {
-            runBlocking { env.settings.updateSettings(mapOf(SettingKeys.FIRST_BLOCK_RATE to "1")) }
+            runBlocking { env.settings.updateSettings(mapOf(SettingKeys.RATE_SLABS to slabs(Triple(0, 24, "1")))) }
         }
-        assertEquals("50", row(SettingKeys.FIRST_BLOCK_RATE).settingValue)
+        assertEquals(SeedData.DEFAULT_RATE_SLABS, row(SettingKeys.RATE_SLABS).settingValue)
         assertTrue("no audit row may be written", logs().isEmpty())
     }
 
@@ -71,34 +75,58 @@ class SettingsWriteTest {
     @Test
     fun `admin writes a setting with sync stamp and audit row`() = runBlocking {
         env.loginOk("admin", "Admin@123")
-        val before = row(SettingKeys.FIRST_BLOCK_RATE)
+        val before = row(SettingKeys.RATE_SLABS)
+        // As the editor sends it: hours may be text, prices without decimals.
+        val draft = """[{"from_hour":0,"to_hour":"24","rate":"60"}]"""
+        val saved = """[{"from_hour":0,"to_hour":24,"rate":"60.00"}]"""
 
-        assertEquals(1, env.settings.updateSettings(mapOf(SettingKeys.FIRST_BLOCK_RATE to " 60 ")))
+        assertEquals(1, env.settings.updateSettings(mapOf(SettingKeys.RATE_SLABS to draft)))
 
-        val after = row(SettingKeys.FIRST_BLOCK_RATE)
-        assertEquals("60", after.settingValue)
+        val after = row(SettingKeys.RATE_SLABS)
+        assertEquals(saved, after.settingValue)
         assertEquals("N", after.syncFlag)
         assertEquals(before.localVersion + 1, after.localVersion)
         assertEquals("admin", after.updatedBy)
 
         val log = logs().single()
-        assertEquals(SettingKeys.FIRST_BLOCK_RATE, log.settingName)
-        assertEquals("50", log.oldValue)
-        assertEquals("60", log.newValue)
+        assertEquals(SettingKeys.RATE_SLABS, log.settingName)
+        assertEquals(SeedData.DEFAULT_RATE_SLABS, log.oldValue)
+        assertEquals(saved, log.newValue)
         assertEquals("admin", log.changedBy)
         assertEquals("2026-11-02 06:30:00", log.changedAt)
 
-        assertEquals(0, "60".toBigDecimal().compareTo(env.settings.getSettings(null).firstBlockRate))
+        assertEquals(listOf(RateSlab(0, 24, BigDecimal("60.00"))), env.settings.getSettings(null).rateSlabs)
     }
 
     @Test
     fun `unchanged values are not saved or logged`() = runBlocking {
         env.loginOk("admin", "Admin@123")
-        assertEquals(0, env.settings.updateSettings(mapOf(SettingKeys.FIRST_BLOCK_RATE to "50")))
+        // The same price list in another spelling is not a change either.
+        assertEquals(0, env.settings.updateSettings(mapOf(SettingKeys.RATE_SLABS to slabs(Triple(0, 24, "50"), Triple(24, 48, "20")))))
         assertTrue(logs().isEmpty())
     }
 
     // ---- Validation ------------------------------------------------------------------------
+
+    @Test
+    fun `advance is off with 24 hours by default and sorts right after the price range`() {
+        env.loginOk("admin", "Admin@123")
+        val s = runBlocking { withTimeout(5_000) { env.settings.currentSettings.first { it != null }!! } }
+        assertFalse(s.advanceFlag)
+        assertEquals(24, s.advanceHours)
+        val order = listOf(SettingKeys.RATE_SLABS, SettingKeys.ADVANCE_FLAG, SettingKeys.ADVANCE_HOURS, SettingKeys.GRACE_MINUTES)
+            .map { row(it).sortOrder }
+        assertEquals(order.sorted(), order)
+        assertEquals(SettingKeys.ADVANCE_FLAG, row(SettingKeys.ADVANCE_HOURS).dependsOn)
+    }
+
+    @Test
+    fun `advance hours must be a whole number of at least 1`() {
+        env.loginOk("admin", "Admin@123")
+        assertEquals("Enter a whole number", errorsOf(mapOf(SettingKeys.ADVANCE_FLAG to "Y", SettingKeys.ADVANCE_HOURS to "2.5"))[SettingKeys.ADVANCE_HOURS])
+        assertEquals("Must be at least 1", errorsOf(mapOf(SettingKeys.ADVANCE_FLAG to "Y", SettingKeys.ADVANCE_HOURS to "0"))[SettingKeys.ADVANCE_HOURS])
+        assertEquals("24", row(SettingKeys.ADVANCE_HOURS).settingValue)
+    }
 
     @Test
     fun `invalid values are refused and nothing is saved`() {
@@ -106,20 +134,20 @@ class SettingsWriteTest {
         val errors = errorsOf(
             mapOf(
                 SettingKeys.GST_PCT to "30",
-                SettingKeys.BLOCK_HOURS to "0",
+                SettingKeys.RATE_SLABS to slabs(Triple(0, 24, "30"), Triple(30, 48, "10")),
                 SettingKeys.CHECKIN_PRINT_COPIES to "1.5",
                 SettingKeys.GST_TYPE to "X",
                 SettingKeys.QR_FLAG to "yes",
-                SettingKeys.FIRST_BLOCK_RATE to "70",
+                SettingKeys.GRACE_MINUTES to "5",
             )
         )
         assertEquals(
-            setOf(SettingKeys.GST_PCT, SettingKeys.BLOCK_HOURS, SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.GST_TYPE, SettingKeys.QR_FLAG),
+            setOf(SettingKeys.GST_PCT, SettingKeys.RATE_SLABS, SettingKeys.CHECKIN_PRINT_COPIES, SettingKeys.GST_TYPE, SettingKeys.QR_FLAG),
             errors.keys,
         )
         assertEquals("Must be at most 28", errors[SettingKeys.GST_PCT])
-        assertEquals("Must be at least 1", errors[SettingKeys.BLOCK_HOURS])
-        assertEquals("50", row(SettingKeys.FIRST_BLOCK_RATE).settingValue)
+        assertEquals("Range 2 must start at 24 hours", errors[SettingKeys.RATE_SLABS])
+        assertEquals("0", row(SettingKeys.GRACE_MINUTES).settingValue)
         assertTrue(logs().isEmpty())
     }
 
@@ -285,7 +313,7 @@ class SettingsWriteTest {
     fun `normal user cannot change other settings through the Print save`() {
         env.loginOk("user1", "User@123")
         assertThrows(NotAuthorizedException::class.java) {
-            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2", SettingKeys.FIRST_BLOCK_RATE to "1")) }
+            runBlocking { env.settings.updatePrintSettings(mapOf(SettingKeys.CHECKIN_PRINT_COPIES to "2", SettingKeys.GRACE_MINUTES to "1")) }
         }
         assertTrue(ownRows(env.userDbId("user1")).isEmpty())
         assertTrue(logs().isEmpty())

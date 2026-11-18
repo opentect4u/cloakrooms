@@ -46,7 +46,7 @@ object SchemaExtras {
                 Triple("md_header_footer", "out_flag", YN),
                 Triple("md_header_footer", "report_flag", YN),
                 Triple("md_setting", "setting_type", listOf("G", "B", "P")),
-                Triple("md_setting", "data_type", listOf("BOOL", "INT", "DECIMAL", "TEXT", "ENUM", "PASSWORD")),
+                Triple("md_setting", "data_type", listOf("BOOL", "INT", "DECIMAL", "TEXT", "ENUM", "PASSWORD", "SLABS")),
                 Triple("td_luggage_in_out", "out_flag", YN),
                 Triple("td_receipt", "gst_flag", YN),
                 Triple("td_receipt", "pay_mode", listOf("C", "U")),

@@ -83,7 +83,8 @@ class AuthRepositoryTest {
             details = mapOf("session_started_at" to "2026-11-02 06:30:00", "device_id" to "******H-01"),
         )
         assertEquals(
-            "Already logged in on another device since 02-11-2026 12:00 PM. Logout there first, or ask an admin to force logout.",
+            // The server sends IST: shown as it is.
+            "Already logged in on another device since 02-11-2026 06:30 AM. Logout there first, or ask an admin to force logout.",
             failureMessage("user1", "User@123"),
         )
         env.authApi.nextError = ServerException(ServerException.SUBSCRIPTION_EXPIRED, "Subscription expired", 403, details = mapOf("renewal_dt" to "2026-10-31"))

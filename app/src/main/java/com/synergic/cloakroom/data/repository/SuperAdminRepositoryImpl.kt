@@ -222,7 +222,8 @@ class SuperAdminRepositoryImpl @Inject constructor(
         userCode = userCode.orEmpty(),
         userType = userType,
         allowed = allowFlag == "Y",
-        sessionStartedAt = sessionStartedAt,
-        lastLogin = lastLogin,
+        // The server sends IST times; screens expect UTC database text.
+        sessionStartedAt = sessionStartedAt?.let { DateTimes.fromServerText(it) },
+        lastLogin = lastLogin?.let { DateTimes.fromServerText(it) },
     )
 }

@@ -118,7 +118,8 @@ class RemoteReportRepository(
                     bagsInStore = inStore.int("bags"),
                     todayCheckins = checkins.int("bags_entries"),
                     todayBills = bills.int("bags_entries"),
-                    todayCollection = if (settings.totalCollectionFlag) amount(bills.money("net_amt")) else null,
+                    // Money taken today: balances at check-out + advances at check-in.
+                    todayCollection = if (settings.totalCollectionFlag) (amount(bills.money(if (bills.totals?.containsKey("bal_amt") == true) "bal_amt" else "net_amt")) + amount(checkins.money("adv_amt"))).money() else null,
                     allUsers = true,
                 )
             }
@@ -190,7 +191,11 @@ class RemoteReportRepository(
             }
             val all = async { api.collectionTotals(q) } to async { api.gstTotals(q) }
             val byPayMode = modes.map { (mode, calls) -> line(mode, calls.first.await(), calls.second.await()) }.filter { it.bills > 0 }
-            ReportData(f, checkins.await(), bills.await(), byPayMode, line(null, all.first.await(), all.second.await()))
+            val totals = all.first.await()
+            ReportData(
+                f, checkins.await(), bills.await(), byPayMode, line(null, totals, all.second.await()),
+                advanceCollected = amount(totals.money("adv_collected")),
+            )
         }
     }
 
@@ -236,6 +241,9 @@ class RemoteReportRepository(
         sgst = amount(g.money("sgst")),
         igst = amount(g.money("igst")),
         netAmt = amount(c.money("net_amt")),
+        advAmt = amount(c.money("adv_amt")),
+        // A server without the advance columns sends no bal_amt: everything was collected at check-out.
+        balAmt = amount(c.money(if (c.totals?.containsKey("bal_amt") == true) "bal_amt" else "net_amt")),
     )
 
     private fun amount(text: String) = BigDecimal(text).money()
@@ -249,19 +257,22 @@ class RemoteReportRepository(
         }
 
     private fun ReportBagDto.toCheckin(codes: Map<Long, String>) = CheckinRow(
-        transId = transId, receiptNo = receiptNo, dateTimeIn = dateTimeIn,
+        transId = transId, receiptNo = receiptNo, dateTimeIn = DateTimes.fromServerText(dateTimeIn),
         userCode = codes[userIdIn] ?: userNameIn.orEmpty(), name = pasnName, mobile = pasnMobNo, pnr = pnrNo,
         bags = luggageQty, extraBags = extraLugageQty, isOut = outFlag == "Y", shift = shiftNameIn.orEmpty(),
+        advAmt = amount(advAmt),
     )
 
     /** check-out-register rows carry only the net amount; the GST breakup is in the totals. */
     private fun ReportBagDto.toBill(codes: Map<Long, String>) = BillRow(
         transId = transId, billNo = billNo.orEmpty(), billDt = billDt.orEmpty(), receiptNo = receiptNo,
-        dateTimeOut = dateTimeOut.orEmpty(), userCode = userIdOut?.let { codes[it] }.orEmpty(), name = pasnName, bags = luggageQty,
+        dateTimeOut = dateTimeOut?.let { DateTimes.fromServerText(it) }.orEmpty(), userCode = userIdOut?.let { codes[it] }.orEmpty(), name = pasnName, bags = luggageQty,
         extraBags = extraLugageQty,
         baseAmt = ZERO, penaltyAmt = ZERO, taxableAmt = ZERO, cgst = ZERO, sgst = ZERO, igst = ZERO,
         netAmt = amount(netAmt ?: "0"), payMode = if (payMode == PayMode.UPI.code) PayMode.UPI else PayMode.CASH,
         printed = billPrinted != "N", shift = shiftNameOut.orEmpty(),
+        advAmt = amount(billAdvAmt ?: "0"),
+        balAmt = amount(balAmt ?: netAmt ?: "0"),
     )
 
     private fun SyncExceptionDto.toRow(): SyncExceptionRow {
@@ -270,7 +281,7 @@ class RemoteReportRepository(
         return SyncExceptionRow(
             id = id, transId = transId, isBill = bill,
             ref = (if (bill) field("bill_no") else field("receipt_no")).orEmpty(),
-            reason = reason, userName = userName.orEmpty(), createdAt = createdAt, resolved = resolvedFlag == "Y",
+            reason = reason, userName = userName.orEmpty(), createdAt = DateTimes.fromServerText(createdAt), resolved = resolvedFlag == "Y",
         )
     }
 

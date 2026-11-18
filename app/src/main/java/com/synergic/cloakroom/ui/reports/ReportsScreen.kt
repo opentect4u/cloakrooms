@@ -299,6 +299,7 @@ private fun CheckinList(rows: List<CheckinRow>) {
                         Text(if (r.isOut) "Out" else "In store")
                     }
                     Text("${r.name} · ${r.mobile} · ${bagText(r.bags, r.extraBags)}")
+                    if (r.advAmt.signum() > 0) Text("Advance ₹${money(r.advAmt)}", style = MaterialTheme.typography.bodySmall)
                     Text("${DateTimes.displayText(r.dateTimeIn)} · ${r.userCode}${shiftSuffix(r.shift)}", style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -318,6 +319,9 @@ private fun BillList(rows: List<BillRow>) {
                         Text("₹${money(b.netAmt)}", fontWeight = FontWeight.Bold)
                     }
                     Text("${b.name} · receipt ${b.receiptNo} · ${bagText(b.bags, b.extraBags)}")
+                    if (b.advAmt.signum() > 0) {
+                        Text("Advance ₹${money(b.advAmt)} · collected now ₹${money(b.balAmt)}", style = MaterialTheme.typography.bodySmall)
+                    }
                     Text(
                         "${DateTimes.displayText(b.dateTimeOut)} · ${b.userCode}${shiftSuffix(b.shift)} · ${if (b.payMode == PayMode.UPI) "UPI" else "Cash"}" +
                             if (b.printed) "" else " · not printed",
@@ -335,6 +339,22 @@ private fun Collection(data: ReportData) {
         if (data.bills.isEmpty()) item { Text("No bills in this period.") }
         items(data.byPayMode) { CollectionCard(if (it.payMode == PayMode.UPI) "UPI" else "Cash", it) }
         item { CollectionCard("Total", data.total) }
+        if (data.advanceCollected.signum() > 0 || data.total.advAmt.signum() > 0) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Money taken", style = MaterialTheme.typography.titleMedium)
+                        Line("Advance at check-in (cash)", money(data.advanceCollected))
+                        Line("Balance at check-out", money(data.total.balAmt))
+                        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                        Row {
+                            Text("Total collected", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text("₹${money(data.totalCollected)}", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -350,10 +370,14 @@ private fun CollectionCard(title: String, l: CollectionLine) {
             Line("CGST", money(l.cgst))
             Line("SGST", money(l.sgst))
             Line("IGST", money(l.igst))
+            if (l.advAmt.signum() > 0) {
+                Line("Bill total", money(l.netAmt))
+                Line("Less advance (paid at check-in)", money(l.advAmt))
+            }
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             Row {
-                Text("Collected", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("₹${money(l.netAmt)}", fontWeight = FontWeight.Bold)
+                Text(if (l.advAmt.signum() > 0) "Collected at check-out" else "Collected", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("₹${money(l.balAmt)}", fontWeight = FontWeight.Bold)
             }
         }
     }

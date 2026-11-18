@@ -1,5 +1,6 @@
 package com.synergic.cloakroom.domain.print
 
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.settings.PayMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,9 +26,7 @@ class BillFormatterTest {
         pnr = "4512345678",
         bags = 1,
         blocks = 2,
-        blockHours = 24,
-        firstBlockRate = BigDecimal("50.00"),
-        nextBlockRate = BigDecimal("20.00"),
+        slabs = RateSlabs.fromTwoRate(24, BigDecimal("50"), BigDecimal("20")),
         baseAmt = BigDecimal("70.00"),
         penaltyAmt = BigDecimal("0.00"),
         taxableAmt = BigDecimal("59.32"),
@@ -53,9 +52,9 @@ class BillFormatterTest {
         listOf("TAX INVOICE", "GSTIN: 19ABCDE1234F1Z5", "U02-00001", "U02-00007", "Ravi Kumar", "Thank you!").forEach {
             assertTrue("missing $it", all.contains(it))
         }
-        assertTrue(row(r, "First 24 h: 1 x 50.00").endsWith("50.00"))
-        assertTrue(row(r, "Next 1 x 24 h: 1 x 20.00").endsWith("20.00"))
-        assertTrue(row(r, "Rent").endsWith("70.00"))
+        assertFalse("no price-range lines", r.any { it.startsWith("0-24 h") || it.startsWith("24-48 h") })
+        assertTrue(row(r, "Rent").endsWith("Rs.70.00"))
+        assertFalse("no advance lines without an advance", r.any { it.startsWith("Less advance") || it.startsWith("BALANCE") })
         assertTrue(row(r, "Taxable value").endsWith("59.32"))
         assertTrue(row(r, "CGST 9%").endsWith("5.34"))
         assertTrue(row(r, "SGST 9%").endsWith("5.34"))

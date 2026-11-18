@@ -10,14 +10,13 @@ import java.math.BigDecimal
 /** §7: the server's rate and GST row replace the settings' values; an own GST % replaces the GST row. */
 class TariffTest {
 
-    private val tariff = Tariff(12, BigDecimal("30.00"), BigDecimal("10.00"), BigDecimal("6.00"), BigDecimal("6.00"), BigDecimal("12.00"))
+    private val serverSlabs = RateSlabs.fromTwoRate(12, BigDecimal("30.00"), BigDecimal("10.00"))
+    private val tariff = Tariff(serverSlabs, BigDecimal("6.00"), BigDecimal("6.00"), BigDecimal("12.00"))
 
     @Test
     fun `rate and CGST plus SGST for intra-state`() {
         val s = settings(GST_PCT to "").withTariff(tariff) // no own GST %
-        assertEquals(12, s.blockHours)
-        assertEquals(BigDecimal("30.00"), s.firstBlockRate)
-        assertEquals(BigDecimal("10.00"), s.nextBlockRate)
+        assertEquals(serverSlabs, s.rateSlabs)
         assertEquals(BigDecimal("12.00"), s.gstPct)
     }
 
@@ -36,5 +35,11 @@ class TariffTest {
         val base = settings()
         assertEquals(base, base.withTariff(Tariff()))
         assertEquals(base, base.withTariff(null))
+    }
+
+    @Test
+    fun `an invalid server price list keeps the settings`() {
+        val base = settings()
+        assertEquals(base.rateSlabs, base.withTariff(Tariff(listOf(RateSlab(4, 24, BigDecimal.TEN)))).rateSlabs)
     }
 }

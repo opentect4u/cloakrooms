@@ -9,6 +9,7 @@ import com.synergic.cloakroom.data.remote.MastersApi
 import com.synergic.cloakroom.data.remote.RateDto
 import com.synergic.cloakroom.data.seed.SeedData
 import com.synergic.cloakroom.domain.auth.NotAuthorizedException
+import com.synergic.cloakroom.domain.billing.RateSlabs
 import com.synergic.cloakroom.domain.auth.SessionProvider
 import com.synergic.cloakroom.domain.auth.UserSession
 import com.synergic.cloakroom.domain.remote.ServerException
@@ -29,7 +30,7 @@ import javax.inject.Singleton
  * One customer's settings on the server: the super admin for any customer, the station admin for
  * their own (same screen, same rules; the server takes an admin's customer from the token). The keys
  * of API_GUIDE.md §8 are read from and saved to the server (`?customer_id=` / body customer_id);
- * the three tariff fields of the Billing tab are the customer's rate (/rates); GST % is the
+ * the price ranges of the Billing tab are the customer's rate (/rates rate_slabs); GST % is the
  * customer's own setting (shown from the shared GST table /gst until one is saved); only the Print
  * tab keys without an API are kept for that customer in this phone's md_setting. Labels, types,
  * limits and tabs come from [SeedData].
@@ -97,7 +98,7 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
                 minValue = s.min,
                 maxValue = s.max,
                 dependsOn = s.dependsOn,
-                sortOrder = (i + 1) * 10,
+                sortOrder = SeedData.sortOrderOf(i, s),
                 description = s.description,
             )
             if (key != null && s.name == SettingKeys.GST_PCT && server[s.name] == null) {
@@ -109,12 +110,7 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
             } else if (s.name in RATE_KEYS) {
                 // The tariff lives in /rates on the server (md_rate_dtls), not in /settings.
                 base.copy(
-                    value = when (s.name) {
-                        SettingKeys.FIRST_BLOCK_RATE -> rate?.firstBlockRate
-                        SettingKeys.NEXT_BLOCK_RATE -> rate?.nextBlockRate
-                        else -> rate?.blockHours?.toString()
-                    } ?: s.value,
-                    maxValue = if (s.name == SettingKeys.BLOCK_HOURS) MAX_BLOCK_HOURS else s.max,
+                    value = rate?.let { RateSlabs.toJson(it.slabs()) } ?: s.value,
                     description = listOfNotNull(
                         s.description,
                         "Saved on the server as the rate from today" + (rate?.let { " (now: from ${it.effectiveFrom})" } ?: ""),
@@ -169,7 +165,11 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
         val by = session.userId
         val definitions = definitions(customerId)
         val typed = changes.mapValues { (name, value) ->
-            if (definitions.firstOrNull { it.name == name }?.dataType == SettingDataType.PASSWORD) value else value.trim()
+            when (definitions.firstOrNull { it.name == name }?.dataType) {
+                SettingDataType.PASSWORD -> value
+                SettingDataType.SLABS -> RateSlabs.canonical(value.trim())
+                else -> value.trim()
+            }
         }
         val errors = SettingValidator.validateChanges(definitions, typed)
         if (errors.isNotEmpty()) throw SettingsValidationException(errors)
@@ -197,12 +197,11 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
         if (rateChanges.isNotEmpty()) {
             val today = today()
             val current = currentRate(customerId, today)
-            val first = money(rateChanges[SettingKeys.FIRST_BLOCK_RATE] ?: current?.firstBlockRate ?: seedValue(SettingKeys.FIRST_BLOCK_RATE))
-            val next = money(rateChanges[SettingKeys.NEXT_BLOCK_RATE] ?: current?.nextBlockRate ?: seedValue(SettingKeys.NEXT_BLOCK_RATE))
-            val hours = (rateChanges[SettingKeys.BLOCK_HOURS] ?: current?.blockHours?.toString() ?: seedValue(SettingKeys.BLOCK_HOURS)).toInt()
+            val slabs = RateSlabs.parse(rateChanges.getValue(SettingKeys.RATE_SLABS))
+                ?: throw SettingsValidationException(mapOf(SettingKeys.RATE_SLABS to "Not a valid price list"))
             try {
-                if (current != null && current.effectiveFrom == today) api.updateRate(current.rateId, hours, first, next, today)
-                else api.createRate(customerId, hours, first, next, today)
+                if (current != null && current.effectiveFrom == today) api.updateRate(current.rateId, slabs, today)
+                else api.createRate(customerId, slabs, today)
             } catch (e: ServerException) {
                 if (e.code == ServerException.VALIDATION_ERROR) {
                     throw SettingsValidationException(mapOf(rateChanges.keys.first() to (e.fieldErrors.values.firstOrNull() ?: e.message.orEmpty())))
@@ -229,7 +228,7 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
                                 customerId = customerId, userId = null, settingName = name, settingValue = value,
                                 settingType = seed.type, label = seed.label, dataType = seed.dataType, options = seed.options,
                                 minValue = seed.min, maxValue = seed.max, dependsOn = seed.dependsOn,
-                                sortOrder = (SeedData.settings.indexOf(seed) + 1) * 10, description = seed.description,
+                                sortOrder = SeedData.sortOrderOf(SeedData.settings.indexOf(seed), seed), description = seed.description,
                                 syncFlag = syncFlag, createdBy = by, createdAt = now, updatedBy = by, updatedAt = now,
                             )
                         )
@@ -254,18 +253,13 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
     /** "18.00" → "18". */
     private fun plainPct(p: java.math.BigDecimal): String = p.stripTrailingZeros().toPlainString()
 
-    private fun seedValue(name: String) = SeedData.settings.first { it.name == name }.value
-
     /** "60" → "60.00", as the API sends money. */
     private fun money(text: String): String = text.trim().toBigDecimal().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
 
     private companion object {
         const val PHONE_ONLY = "Saved on this phone only (no API yet)"
 
-        /** Billing tab fields saved as the customer's rate (/rates), API_GUIDE.md §5. */
-        val RATE_KEYS = setOf(SettingKeys.FIRST_BLOCK_RATE, SettingKeys.NEXT_BLOCK_RATE, SettingKeys.BLOCK_HOURS)
-
-        /** /rates block_hours limit. */
-        const val MAX_BLOCK_HOURS = 720.0
+        /** Billing tab field saved as the customer's rate (/rates rate_slabs), API_GUIDE.md §5. */
+        val RATE_KEYS = setOf(SettingKeys.RATE_SLABS)
     }
 }
