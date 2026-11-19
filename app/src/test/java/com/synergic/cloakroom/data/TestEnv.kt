@@ -5,6 +5,7 @@ import com.synergic.cloakroom.data.db.AppDatabase
 import com.synergic.cloakroom.data.numbering.UserCounterSequence
 import com.synergic.cloakroom.data.repository.AuthRepositoryImpl
 import com.synergic.cloakroom.data.repository.BillRepositoryImpl
+import com.synergic.cloakroom.data.repository.SubscriptionRepositoryImpl
 import com.synergic.cloakroom.data.repository.LuggageRepositoryImpl
 import com.synergic.cloakroom.data.repository.TariffLookup
 import com.synergic.cloakroom.data.repository.MasterRepositoryImpl
@@ -206,9 +207,11 @@ class TestEnv {
     }
 
     /** Built on demand, so it always uses the current session after [restartApp]. */
-    val luggage get() = LuggageRepositoryImpl(db, sessionManager, settings, UserCounterSequence(db), device, clock, TariffLookup(db))
+    val luggage get() = LuggageRepositoryImpl(db, sessionManager, settings, UserCounterSequence(db), device, clock, TariffLookup(db), subscription)
 
-    val bills get() = BillRepositoryImpl(db, sessionManager, settings, UserCounterSequence(db), device, clock, TariffLookup(db))
+    val bills get() = BillRepositoryImpl(db, sessionManager, settings, UserCounterSequence(db), device, clock, TariffLookup(db), subscription)
+
+    val subscription = SubscriptionRepositoryImpl(db, clock)
 
     val masters get() = MasterRepositoryImpl(db, sessionManager, clock)
 

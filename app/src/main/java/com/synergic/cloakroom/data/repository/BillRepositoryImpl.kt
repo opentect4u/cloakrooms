@@ -50,6 +50,7 @@ class BillRepositoryImpl @Inject constructor(
     private val deviceInfo: DeviceInfo,
     private val time: TimeSource,
     private val tariffs: TariffLookup,
+    private val subscription: com.synergic.cloakroom.domain.repository.SubscriptionRepository,
 ) : BillRepository {
 
     override suspend fun search(query: String): List<CheckoutBag> {
@@ -110,6 +111,7 @@ class BillRepositoryImpl @Inject constructor(
         val session = sessionProvider.requireLogin()
         val baseSettings = settingsRepository.getSettings(session.id)
         if (!baseSettings.canWorkCounter(session.userType)) throw NotAuthorizedException("Admins do not check in or check out. A counter user must do it.")
+        subscription.requireActive()
         val now = time.now()
         val nowText = DateTimes.toDbText(now)
         val billDt = DateTimes.localDateText(now)

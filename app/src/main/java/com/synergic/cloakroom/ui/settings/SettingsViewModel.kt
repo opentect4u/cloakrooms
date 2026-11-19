@@ -87,7 +87,11 @@ class SettingsViewModel @Inject constructor(
         } else {
             viewModelScope.launch {
                 val source = if (isAdmin) repository.observeDefinitions() else repository.observePrintDefinitions()
-                source.collect { definitions.value = it }
+                source.collect {
+                    val first = definitions.value == null
+                    definitions.value = it
+                    if (first && isAdmin) drafts.value = SettingsForm.initialDrafts(it)
+                }
             }
         }
     }
@@ -95,7 +99,7 @@ class SettingsViewModel @Inject constructor(
     private fun loadCustomer(id: Long) {
         viewModelScope.launch {
             runCatching { customerSettings.definitions(id) }
-                .onSuccess { definitions.value = it }
+                .onSuccess { definitions.value = it; drafts.value = SettingsForm.initialDrafts(it) }
                 .onFailure { e ->
                     definitions.value = definitions.value ?: emptyList()
                     _message.value = e.message ?: "Could not load the settings."
@@ -110,7 +114,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun discardChanges() {
-        drafts.value = emptyMap()
+        drafts.value = definitions.value?.let { SettingsForm.initialDrafts(it) } ?: emptyMap()
         serverErrors.value = emptyMap()
     }
 

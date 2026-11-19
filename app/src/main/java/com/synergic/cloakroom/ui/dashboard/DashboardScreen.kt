@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,7 +46,10 @@ import com.synergic.cloakroom.domain.report.DashboardData
 import com.synergic.cloakroom.domain.repository.AuthRepository
 import com.synergic.cloakroom.domain.repository.ReportRepository
 import com.synergic.cloakroom.domain.repository.SettingsRepository
+import com.synergic.cloakroom.domain.repository.SubscriptionRepository
 import com.synergic.cloakroom.domain.repository.SyncRepository
+import com.synergic.cloakroom.domain.subscription.Subscription
+import com.synergic.cloakroom.domain.subscription.SubscriptionStatus
 import com.synergic.cloakroom.domain.repository.SyncStatus
 import com.synergic.cloakroom.domain.settings.AppSettings
 import com.synergic.cloakroom.domain.time.DateTimes
@@ -67,7 +71,12 @@ class DashboardViewModel @Inject constructor(
     settingsRepository: SettingsRepository,
     reportRepository: ReportRepository,
     private val syncRepository: SyncRepository,
+    subscriptionRepository: SubscriptionRepository,
 ) : ViewModel() {
+    /** Renewal notice (last 10 days) and the expired block, from md_customer.renewal_dt. */
+    val subscription: StateFlow<SubscriptionStatus> = subscriptionRepository.observeStatus()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubscriptionStatus.Active)
+
     /** Live: changes as soon as a bag goes in or out, or an admin saves settings. */
     val dashboard: StateFlow<DashboardData?> = reportRepository.observeDashboard()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -130,6 +139,8 @@ fun DashboardScreen(
     val pending by viewModel.pending.collectAsStateWithLifecycle()
     val syncStatus by viewModel.syncStatus.collectAsStateWithLifecycle()
     val logoutMessage by viewModel.logoutMessage.collectAsStateWithLifecycle()
+    val subscription by viewModel.subscription.collectAsStateWithLifecycle()
+    val expired = subscription is SubscriptionStatus.Expired
     val showReports = session.isAdmin || settings?.reportFlag == true
 
     Scaffold(
@@ -154,6 +165,7 @@ fun DashboardScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            SubscriptionBanner(subscription)
             UserCard(session, onLogout = { confirmLogout = true })
             SyncCard(pending, syncStatus, onSyncNow = viewModel::syncNow)
 
@@ -162,10 +174,12 @@ fun DashboardScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = onCheckin,
+                        enabled = !expired,
                         modifier = Modifier.weight(1f).heightIn(min = 96.dp),
                     ) { Text("Check-in", style = MaterialTheme.typography.headlineSmall) }
                     Button(
                         onClick = onCheckout,
+                        enabled = !expired,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         modifier = Modifier.weight(1f).heightIn(min = 96.dp),
                     ) { Text("Check-out", style = MaterialTheme.typography.headlineSmall) }
@@ -245,6 +259,32 @@ fun DashboardScreen(
         )
     }
 }
+
+/** Red when the subscription has ended, amber in its last 10 days; nothing otherwise. */
+@Composable
+private fun SubscriptionBanner(status: SubscriptionStatus) {
+    val text = Subscription.notice(status) ?: return
+    val expired = status is SubscriptionStatus.Expired
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (expired) MaterialTheme.colorScheme.errorContainer else WARNING_BG,
+            contentColor = if (expired) MaterialTheme.colorScheme.onErrorContainer else WARNING_FG,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                if (expired) "Subscription expired" else "Renewal due",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+private val WARNING_BG = Color(0xFFFFF3CD)
+private val WARNING_FG = Color(0xFF5C4400)
 
 @Composable
 private fun UserCard(session: UserSession, onLogout: () -> Unit) {

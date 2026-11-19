@@ -107,6 +107,24 @@ class CustomerSettingsRepositoryTest {
     }
 
     @Test
+    fun `advance hours typed by the super admin are replaced by the end of the 1st price range`() = runBlocking {
+        val advanceOn = """{"setting_id":20,"customer_id":7,"user_id":null,"setting_name":"ADVANCE_FLAG","setting_value":"Y","setting_type":"B"}"""
+        val hours = """{"setting_id":21,"customer_id":7,"user_id":null,"setting_name":"ADVANCE_HOURS","setting_value":"6","setting_type":"B"}"""
+        server.enqueue(serverSettings(advanceOn, hours)) // definitions() inside save
+        server.enqueue(rates(oldRate)) // 0–24 ₹50, 24–48 ₹20
+        server.enqueue(gst(gstMaster))
+        server.enqueue(serverSettings(advanceOn, hours)) // rows to update
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"success":true,"data":$hours}"""))
+
+        repo.save(customer, mapOf(SettingKeys.ADVANCE_HOURS to "10"))
+
+        repeat(4) { server.takeRequest() }
+        val patch = server.takeRequest()
+        assertEquals("/api/v1/settings/21", patch.path)
+        assertEquals("""{"setting_value":"24"}""", patch.body.readUtf8())
+    }
+
+    @Test
     fun `grace minutes are saved on the server`() = runBlocking {
         server.enqueue(serverSettings(paperRow)) // definitions() inside save
         server.enqueue(rates(oldRate))

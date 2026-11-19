@@ -99,7 +99,6 @@ object BillFormatter {
         }
         p.divider()
         p.pair("TOTAL", "Rs.${amount(b.netAmt)}", bold = true)
-        if (b.gstFlag && isInclusive(b)) p.left("(GST included in the rate)")
         p.pair("Paid by", if (b.payMode == PayMode.UPI) "UPI" else "Cash")
         if (b.upiLink != null) {
             p.divider()

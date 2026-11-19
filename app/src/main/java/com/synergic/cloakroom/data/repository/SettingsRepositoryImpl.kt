@@ -17,6 +17,7 @@ import com.synergic.cloakroom.domain.settings.AppSettings
 import com.synergic.cloakroom.domain.settings.PrinterType
 import com.synergic.cloakroom.domain.settings.SettingKeys
 import com.synergic.cloakroom.domain.settings.SettingDataType
+import com.synergic.cloakroom.domain.settings.AdvanceRule
 import com.synergic.cloakroom.domain.settings.SettingDefinition
 import com.synergic.cloakroom.domain.settings.SettingValidator
 import com.synergic.cloakroom.domain.settings.SettingsResolver
@@ -84,7 +85,10 @@ class SettingsRepositoryImpl @Inject constructor(
             val dataTypes = definitions.associate { it.name to it.dataType }
 
             // An empty PASSWORD field means "keep the current password", so it is not a change.
-            val requested = changes
+            // Advance hours always follows the 1st price range; a typed value is replaced.
+            val requested = AdvanceRule.apply(definitions, changes.mapValues { (name, value) ->
+                if (dataTypes[name] == SettingDataType.SLABS) RateSlabs.canonical(value.trim()) else value
+            })
                 .mapValues { (name, value) ->
                     when (dataTypes[name]) {
                         SettingDataType.PASSWORD -> value

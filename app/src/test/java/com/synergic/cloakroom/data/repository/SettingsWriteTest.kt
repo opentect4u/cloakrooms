@@ -73,6 +73,19 @@ class SettingsWriteTest {
     }
 
     @Test
+    fun `advance hours always follow the 1st price range, a typed value is replaced`() = runBlocking {
+        env.loginOk("admin", "Admin@123")
+        // Seeded ranges 0–24 / 24–48: switching Advance on sets 24 whatever is typed.
+        env.settings.updateSettings(mapOf(SettingKeys.ADVANCE_FLAG to "Y", SettingKeys.ADVANCE_HOURS to "10"))
+        assertEquals("24", row(SettingKeys.ADVANCE_HOURS).settingValue)
+
+        // A new 1st range 0–12 moves the hours to 12.
+        env.settings.updateSettings(mapOf(SettingKeys.RATE_SLABS to slabs(Triple(0, 12, "30"), Triple(12, 48, "10"))))
+        assertEquals("12", row(SettingKeys.ADVANCE_HOURS).settingValue)
+        assertEquals(12, env.settings.getSettings(null).advanceHours)
+    }
+
+    @Test
     fun `admin writes a setting with sync stamp and audit row`() = runBlocking {
         env.loginOk("admin", "Admin@123")
         val before = row(SettingKeys.RATE_SLABS)
@@ -121,10 +134,10 @@ class SettingsWriteTest {
     }
 
     @Test
-    fun `advance hours must be a whole number of at least 1`() {
+    fun `invalid typed advance hours are not refused but replaced by the 1st range end`() = runBlocking {
         env.loginOk("admin", "Admin@123")
-        assertEquals("Enter a whole number", errorsOf(mapOf(SettingKeys.ADVANCE_FLAG to "Y", SettingKeys.ADVANCE_HOURS to "2.5"))[SettingKeys.ADVANCE_HOURS])
-        assertEquals("Must be at least 1", errorsOf(mapOf(SettingKeys.ADVANCE_FLAG to "Y", SettingKeys.ADVANCE_HOURS to "0"))[SettingKeys.ADVANCE_HOURS])
+        env.settings.updateSettings(mapOf(SettingKeys.ADVANCE_FLAG to "Y", SettingKeys.ADVANCE_HOURS to "2.5"))
+        env.settings.updateSettings(mapOf(SettingKeys.ADVANCE_HOURS to "0"))
         assertEquals("24", row(SettingKeys.ADVANCE_HOURS).settingValue)
     }
 

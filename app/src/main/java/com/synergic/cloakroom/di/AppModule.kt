@@ -154,6 +154,9 @@ abstract class RepositoryModule {
     abstract fun bindReportRepository(impl: ReportRepositoryRouter): ReportRepository
 
     @Binds
+    abstract fun bindSubscriptionRepository(impl: com.synergic.cloakroom.data.repository.SubscriptionRepositoryImpl): com.synergic.cloakroom.domain.repository.SubscriptionRepository
+
+    @Binds
     abstract fun bindMasterRepository(impl: MasterRepositoryImpl): MasterRepository
 
     /** The GC039 / GC039ES printer, chosen by the PRINTER_TYPE setting (falls back to preview). */

@@ -26,6 +26,7 @@ import com.synergic.cloakroom.domain.repository.CheckinResult
 import com.synergic.cloakroom.domain.repository.IdProof
 import com.synergic.cloakroom.domain.repository.LuggageRepository
 import com.synergic.cloakroom.domain.repository.SettingsRepository
+import com.synergic.cloakroom.domain.repository.SubscriptionRepository
 import com.synergic.cloakroom.domain.settings.AppSettings
 import com.synergic.cloakroom.domain.shift.ShiftResolver
 import com.synergic.cloakroom.domain.shift.ShiftSlot
@@ -50,6 +51,7 @@ class LuggageRepositoryImpl @Inject constructor(
     private val deviceInfo: DeviceInfo,
     private val time: TimeSource,
     private val tariffs: TariffLookup,
+    private val subscription: SubscriptionRepository,
 ) : LuggageRepository {
 
     override fun observeIdProofs(): Flow<List<IdProof>> =
@@ -83,6 +85,7 @@ class LuggageRepositoryImpl @Inject constructor(
         val session = sessionProvider.requireLogin()
         val settings = settingsRepository.getSettings(session.id)
         if (!settings.canWorkCounter(session.userType)) throw NotAuthorizedException("Admins do not check in or check out. A counter user must do it.")
+        subscription.requireActive()
 
         val masked = input.idProofId?.let { db.idProofDao().get(it) }?.maskFlag == "Y"
         val data = when (val v = CheckinValidator.validate(input.copy(idProofMasked = masked), settings)) {

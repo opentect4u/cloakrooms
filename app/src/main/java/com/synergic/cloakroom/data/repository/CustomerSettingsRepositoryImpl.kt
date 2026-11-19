@@ -16,6 +16,7 @@ import com.synergic.cloakroom.domain.remote.ServerException
 import com.synergic.cloakroom.domain.repository.CustomerSettingsRepository
 import com.synergic.cloakroom.domain.repository.ServerSettingKey
 import com.synergic.cloakroom.domain.repository.ServerSettingKind
+import com.synergic.cloakroom.domain.settings.AdvanceRule
 import com.synergic.cloakroom.domain.settings.SettingDataType
 import com.synergic.cloakroom.domain.settings.SettingDefinition
 import com.synergic.cloakroom.domain.settings.SettingKeys
@@ -164,13 +165,13 @@ class CustomerSettingsRepositoryImpl @Inject constructor(
         }
         val by = session.userId
         val definitions = definitions(customerId)
-        val typed = changes.mapValues { (name, value) ->
+        val typed = AdvanceRule.apply(definitions, changes.mapValues { (name, value) ->
             when (definitions.firstOrNull { it.name == name }?.dataType) {
                 SettingDataType.PASSWORD -> value
                 SettingDataType.SLABS -> RateSlabs.canonical(value.trim())
                 else -> value.trim()
             }
-        }
+        }) // Advance hours always follows the 1st price range; a typed value is replaced.
         val errors = SettingValidator.validateChanges(definitions, typed)
         if (errors.isNotEmpty()) throw SettingsValidationException(errors)
         // Money keys travel as 2-decimal strings ("500.00"), as the API sends them.

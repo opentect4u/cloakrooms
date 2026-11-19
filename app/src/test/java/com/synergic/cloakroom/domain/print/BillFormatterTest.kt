@@ -61,7 +61,7 @@ class BillFormatterTest {
         assertTrue(row(r, "TOTAL").endsWith("Rs.70.00"))
         assertTrue(row(r, "Time stored").endsWith("24 h 01 m"))
         assertTrue(row(r, "Paid by").endsWith("Cash"))
-        assertTrue(all.contains("(GST included in the rate)"))
+        assertFalse("no GST note under TOTAL", all.contains("GST included in the rate"))
         assertFalse(r.any { it.startsWith("Penalty") })
     }
 

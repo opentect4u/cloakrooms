@@ -1,6 +1,7 @@
 package com.synergic.cloakroom.ui.settings
 
 import com.synergic.cloakroom.domain.billing.RateSlabs
+import com.synergic.cloakroom.domain.settings.AdvanceRule
 import com.synergic.cloakroom.domain.settings.SettingDataType
 import com.synergic.cloakroom.domain.settings.SettingDefinition
 import com.synergic.cloakroom.domain.settings.SettingKeys
@@ -50,7 +51,8 @@ object SettingsForm {
         val errors = SettingValidator.validateChanges(definitions, drafts) + serverErrors
         val groups = GROUP_TITLES.keys + definitions.map { it.group }.filter { it !in GROUP_TITLES }.distinct()
         return groups.mapNotNull { group ->
-            val fields = definitions.filter { it.group == group && it.name !in SHOWN_ELSEWHERE }.sortedBy { it.sortOrder }.map { def ->
+            val fields = definitions.filter { it.group == group && it.name !in SHOWN_ELSEWHERE }.sortedBy { it.sortOrder }.map { shown ->
+                val def = if (shown.name == SettingKeys.ADVANCE_HOURS) advanceHoursLocked(shown, byName, drafts) else shown
                 SettingField(
                     def = def,
                     value = drafts[def.name] ?: if (def.dataType == SettingDataType.PASSWORD) "" else def.value,
@@ -80,7 +82,20 @@ object SettingsForm {
         if (def.dataType == SettingDataType.BOOL && value == "N") {
             dependentsOf(name, definitions).forEach { result.remove(it) }
         }
-        return result
+        return AdvanceRule.apply(definitions, result)
+    }
+
+    /**
+     * Drafts to start the screen with: empty, except ADVANCE_HOURS when the saved value does not
+     * match the 1st price range yet (Save then fixes it).
+     */
+    fun initialDrafts(definitions: List<SettingDefinition>): Map<String, String> = AdvanceRule.apply(definitions, emptyMap())
+
+    /** While Advance is on, Advance hours follows the 1st price range and cannot be typed. */
+    private fun advanceHoursLocked(def: SettingDefinition, byName: Map<String, SettingDefinition>, drafts: Map<String, String>): SettingDefinition {
+        val advanceOn = (drafts[SettingKeys.ADVANCE_FLAG] ?: byName[SettingKeys.ADVANCE_FLAG]?.value) == "Y"
+        if (!advanceOn) return def
+        return def.copy(readOnly = true, readOnlyNote = AdvanceRule.DESCRIPTION + ".")
     }
 
     fun changeLines(definitions: List<SettingDefinition>, drafts: Map<String, String>): List<ChangeLine> =
