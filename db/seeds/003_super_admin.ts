@@ -16,7 +16,7 @@ export const superAdminSeed: Seed = {
       `INSERT INTO md_user
          (customer_id, user_id, user_name, user_code, password_hash, user_type, allow_flag,
           created_by, created_at)
-       VALUES (NULL, ?, 'Synergic Super Admin', NULL, ?, 'S', 'Y', ?, UTC_TIMESTAMP())`,
+       VALUES (NULL, ?, 'Synergic Super Admin', NULL, ?, 'S', 'Y', ?, NOW())`,
       [env.SUPER_ADMIN_USER_ID, await hashPassword(env.SUPER_ADMIN_PASSWORD), SEED_USER],
     );
     return `created "${env.SUPER_ADMIN_USER_ID}" (id ${res.insertId})`;

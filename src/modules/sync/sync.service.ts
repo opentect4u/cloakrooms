@@ -128,7 +128,7 @@ export async function pull(authCtx: RequestContext, q: PullQuery) {
   }
 
   const [clock] = await raw<RowDataPacket[]>(
-    'SELECT UTC_TIMESTAMP() AS now, CAST(? AS DATETIME) - INTERVAL ? SECOND AS from_ts',
+    'SELECT NOW() AS now, CAST(? AS DATETIME) - INTERVAL ? SECOND AS from_ts',
     [q.since ?? '1970-01-01 00:00:00', PULL_OVERLAP_SEC],
   );
   const serverTime = String(clock?.now);

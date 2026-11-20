@@ -5,7 +5,10 @@
  */
 import { toIstDate } from '../core/utils/time';
 
-export type ResetMode = 'D' | 'M' | 'Y';
+export type ResetMode = 'D' | 'M' | 'Y' | 'N';
+
+/** Period key of RECEIPT_RESET = N: one series for ever. */
+export const NEVER_RESET_PERIOD = 'ALL';
 export type Series = 'R' | 'B';
 
 const IST_DATE = /^\d{4}-(0[1-9]|1[0-2])-\d{2}$/;
@@ -13,11 +16,12 @@ const DOC_NO = /^([A-Z0-9]{1,10})-(\d{5,9})$/;
 
 /**
  * Period of an IST calendar date: D → `YYYY-MM-DD`, M → `YYYY-MM`,
- * Y → Indian financial year `FY2026-27` (April–March).
+ * Y → Indian financial year `FY2026-27` (April–March), N (never restart) → `ALL`.
  * TODO(open-point): FY numbering format to be confirmed with the CA.
  */
 export function periodKeyOfDate(mode: ResetMode, istDate: string): string {
   if (!IST_DATE.test(istDate)) throw new RangeError(`Invalid date: ${istDate}`);
+  if (mode === 'N') return NEVER_RESET_PERIOD;
   if (mode === 'D') return istDate;
   if (mode === 'M') return istDate.slice(0, 7);
   const year = Number(istDate.slice(0, 4));
@@ -31,7 +35,7 @@ export function periodKey(mode: ResetMode, at: Date = new Date()): string {
 }
 
 export function isResetMode(v: unknown): v is ResetMode {
-  return v === 'D' || v === 'M' || v === 'Y';
+  return v === 'D' || v === 'M' || v === 'Y' || v === 'N';
 }
 
 /** `U03`, 125 → `U03-00125` (more digits once past 99999). */

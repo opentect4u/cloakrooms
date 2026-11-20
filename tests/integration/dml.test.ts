@@ -22,9 +22,9 @@ afterAll(async () => {
 const shift = (name: string) => ({ shift_name: name, from_time: '06:00', to_time: '14:00' });
 
 describe('DML against MySQL', () => {
-  it('runs every session in UTC', async () => {
+  it('runs every session in IST (migration 009)', async () => {
     const rows = await raw<RowDataPacket[]>('SELECT @@session.time_zone AS tz');
-    expect(rows[0]?.tz).toBe('+00:00');
+    expect(rows[0]?.tz).toBe('+05:30');
   });
 
   it('insert stamps audit columns, sync_flag and the tenant from ctx', async () => {

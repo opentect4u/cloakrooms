@@ -29,7 +29,9 @@ SQLite and synchronises with this API. All paths below are under \`/api/v1\` exc
    then log out.
 5. Other login errors: \`401\` wrong credentials, \`403 FORBIDDEN\` blocked user / inactive customer,
    \`403 SUBSCRIPTION_EXPIRED\`, \`409 USER_LIMIT_REACHED\`, \`426 UPDATE_REQUIRED\` (the sent
-   \`version_code\` is older than a live mandatory release; \`errors.latest\` has the APK).
+   \`version_code\` is older than a live mandatory release; \`errors.latest\` has the APK),
+   \`403 OUTSIDE_SHIFT\` (counter user with a shift in the roster signing in outside it while
+   \`SHIFT_LOGIN_FLAG = Y\`; \`errors\` = \`{ shift_name, from_time, to_time, opens_at }\`, IST).
 6. \`user.must_change_pwd = Y\` (new user / admin reset): every call except \`POST /auth/change-password\`,
    logout and me → \`403 PASSWORD_CHANGE_REQUIRED\` until the password is changed.
 
@@ -52,25 +54,48 @@ and out on device 2 always ends as one row, whatever the push order. A *differen
 A check-out made from the receipt QR before the check-in synced may omit \`device_id_in\`,
 \`shift_id_in\`, \`id_proof_id\`, \`id_number\` (the QR doesn't carry them); the later check-in push fills
 them once. \`id_proof_id\` / \`id_number\` are optional on any row but go together.
+\`extra_lugage_qty\` (extra bags, free), \`adv_amt\` and \`adv_hours\` (advance at check-in) default to 0
+and are filled once while still 0 (a QR row carries the advance in key \`a\`, extra bags in \`x\`);
+after that they never change.
 
 **Bills** carry \`gst_no\` = the customer's GSTIN, stamped by the server when stored (not sent by devices).
 
 **Receipts:** one bill per \`trans_id\`, stored once. The server recomputes every bill; a difference
-keeps the bill and logs \`AMOUNT_MISMATCH\` (with the expected values) for the admin.
+keeps the bill and logs \`AMOUNT_MISMATCH\` (with the expected values) for the admin. A bill
+**without \`rate_slabs\`** (app older than Phase 13) for a tariff the two-rate fields cannot express
+(3+ slabs, or 2 slabs of different lengths) is refused with \`APP_UPDATE_REQUIRED\` (not stored).
 
 **Billing rules the app must mirror exactly:**
-- minutes = whole minutes from \`date_time_in\` to \`date_time_out\` (seconds dropped)
-- days = max(1, ceil(minutes / (block_hours × 60)))   (24h00m → 1, 24h01m → 2)
-- base = qty × (first_block_rate + next_block_rate × (days − 1));  net = base + penal_amt (GST-inclusive)
+- minutes = whole minutes from \`date_time_in\` to \`date_time_out\` (seconds dropped);
+  billable = max(0, minutes − grace_minutes)
+- tariff = the rate row's \`rate_slabs\` [{from_hour, to_hour, rate}], contiguous from hour 0. Per bag:
+  every slab whose start the stay has passed adds its rate (the first slab always:
+  billable > from_hour × 60), and after the last slab ends its rate is added again for every started
+  (to_hour − from_hour); days_charged = number of rates added
+  (0–24 h ₹30 + 24–48 h ₹10: 2 bags × 3 days = 2 × (30 + 10 + 10) = ₹100; 24h00m → 1, 24h01m → 2)
+- base = qty × that per-bag amount (extra bags are free). Send \`rate_slabs\` with the bill; the
+  two-rate fields \`block_hours/first_block_rate/next_block_rate\` are then optional
+- advance: bill \`adv_amt\` = the bag's \`adv_amt\`; \`bal_amt\` = max(0, net − adv_amt) (no refund);
+  net_amt stays the full bill
 - rate row = latest \`effective_from ≤ receipt_dt\`; GST row = latest \`effective_from ≤ bill_dt\`
 - all arithmetic in integer paise; rounding **half-up** to the paisa
-- taxable = round(net × 100 / (100 + gst%)); gst = net − taxable
+- gst% = 0 when \`gst_flag = N\`; else the customer's \`GST_PCT\` when set, else the GST row's rate;
+  taxed = base + (penalty_gst_flag = Y ? penal_amt : 0)
+- \`gst_inclusive = Y\` (default): taxable = round(taxed × 100 / (100 + gst%)); gst = taxed − taxable;
+  net = base + penal_amt
+- \`gst_inclusive = N\`: taxable = taxed; gst = round(taxed × gst% / 100); net = base + penal_amt + gst
+- taxable_amt = taxable (a penalty without GST is not part of it)
 - GST_TYPE E: cgst = round(gst / 2) (odd paisa to CGST), sgst = gst − cgst, gst% = cgst% + sgst%;
   GST_TYPE I: igst = gst, gst% = igst%
 - e.g. ₹70 at 18 % → taxable 59.32, CGST 5.34, SGST 5.34
+- **Snapshot:** send \`grace_minutes\`, \`gst_inclusive\`, \`penalty_gst_flag\` and \`gst_flag\` with each
+  bill (the values you billed with). The server recomputes with them and stores them; omitted
+  fields fall back to the customer's settings (\`GRACE_MINUTES\`, \`GST_INCLUSIVE\`,
+  \`PENALTY_GST_FLAG\`, the billing user's \`GST_FLAG\`), then to the defaults 0 / Y / Y / Y.
 
 **Numbers:** \`<user_code>-<5 digits>\` (e.g. \`U03-00125\`), series R (receipt) and B (bill) per user,
-reset per \`RECEIPT_RESET\` (D day / M month / Y Indian FY \`FY2026-27\`, IST). The response's
+reset per \`RECEIPT_RESET\` (D day / M month / Y Indian FY \`FY2026-27\` / N never → period \`ALL\`;
+IST). The response's
 \`counters\` are the server's last numbers for the current period; the server never lowers them.
 
 ## Sync pull — \`GET /sync/pull\`

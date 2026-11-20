@@ -16,6 +16,7 @@ export type ExceptionCode =
   | 'CHECKOUT_MISSING'
   | 'NO_RATE'
   | 'AMOUNT_MISMATCH'
+  | 'APP_UPDATE_REQUIRED'
   | 'DB_ERROR';
 
 export interface RowResult {

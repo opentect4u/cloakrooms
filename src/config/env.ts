@@ -1,7 +1,13 @@
+import path from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 
-loadDotenv({ quiet: true });
+// The project's .env, whatever the working directory (iisnode may start Node elsewhere). This
+// file is src/config/env.ts (tsx) or dist/config/env.js (build): the root is two levels up.
+loadDotenv({ path: path.resolve(__dirname, '..', '..', '.env'), quiet: true });
+
+/** `\\.\pipe\<name>` — what iisnode passes in PORT. */
+const NAMED_PIPE = /^\\\\[.?]\\pipe\\.+/i;
 
 const PLACEHOLDER_SECRETS = ['change_me_min_32_chars', 'change_me_min_32_chars_too'];
 
@@ -10,7 +16,18 @@ const ttl = z.string().regex(/^\d+[smhd]$/, 'must look like 15m, 12h, 30d');
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+    /** TCP port, or a Windows named pipe (`\\.\pipe\…`) when IIS runs the app through iisnode. */
+    PORT: z
+      .union([z.number(), z.string()])
+      .default('4000')
+      .transform((v, ctx): number | string => {
+        const s = String(v).trim();
+        if (NAMED_PIPE.test(s)) return s;
+        const n = Number(s);
+        if (Number.isInteger(n) && n >= 1 && n <= 65535) return n;
+        ctx.addIssue({ code: 'custom', message: 'must be a port 1–65535 or a named pipe' });
+        return z.NEVER;
+      }),
     /** Bind address: 0.0.0.0 = every network interface (LAN), 127.0.0.1 = this machine only. */
     HOST: z.string().min(1).default('0.0.0.0'),
 
@@ -120,3 +137,5 @@ function loadEnv(): Env {
 export const env: Env = loadEnv();
 export const isProd = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
+/** Started by IIS through iisnode (PORT is a named pipe): iisnode manages the processes. */
+export const underIisnode = typeof env.PORT === 'string';

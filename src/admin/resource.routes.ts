@@ -15,6 +15,7 @@ import { ApiError } from '../core/http/ApiError';
 import { ctxOf } from '../core/middleware/requireRole';
 import { toIstDate } from '../core/utils/time';
 import { verifyCsrf } from './csrf';
+import { slabEditorRows } from './slabForm';
 import { cellOf, inputValues, type Field, type Lookups } from './fields';
 import { flash } from './flash';
 import { formFailure, formValues, runForm, withoutEmpty, type FormFailure } from './forms';
@@ -84,6 +85,7 @@ function mountResource(router: Router, r: Resource, m: Mount) {
         mode,
         fields: formFields(r.fields, lookups, mode),
         values,
+        slabRows: slabEditorRows(values),
         errors: failure?.fields ?? {},
         formError: failure?.form ?? null,
         action: mode === 'create' ? listPath : `${listPath}/${rid}`,
@@ -137,7 +139,8 @@ function mountResource(router: Router, r: Resource, m: Mount) {
     handle(async (req, res) => {
       const s = m.scope(req, res);
       const values = formValues(req.body);
-      const outcome = await runForm(createSchema, withoutEmpty(values), (data) =>
+      const input = r.formInput ? r.formInput(withoutEmpty(values)) : withoutEmpty(values);
+      const outcome = await runForm(createSchema, input, (data) =>
         service.create(s.ctx, data, s.parentId),
       );
       if (!outcome.ok) return renderForm(req, res, 'create', values, outcome.failure);
@@ -153,7 +156,8 @@ function mountResource(router: Router, r: Resource, m: Mount) {
       const rid = idParam(req.params.rid);
       if (rid === null) throw ApiError.notFound();
       const row = await service.get(s.ctx, rid, s.parentId);
-      await renderForm(req, res, 'edit', inputValues(r.fields, row), null, rid);
+      const values = { ...inputValues(r.fields, row), ...(r.rowValues?.(row) ?? {}) };
+      await renderForm(req, res, 'edit', values, null, rid);
     }),
   );
 
@@ -165,7 +169,8 @@ function mountResource(router: Router, r: Resource, m: Mount) {
       const rid = idParam(req.params.rid);
       if (rid === null) throw ApiError.notFound();
       const values = formValues(req.body);
-      const outcome = await runForm(r.crud.schema.update, withoutEmpty(values), (data) =>
+      const input = r.formInput ? r.formInput(withoutEmpty(values)) : withoutEmpty(values);
+      const outcome = await runForm(r.crud.schema.update, input, (data) =>
         service.update(s.ctx, rid, data, s.parentId),
       );
       if (!outcome.ok) return renderForm(req, res, 'edit', values, outcome.failure, rid);

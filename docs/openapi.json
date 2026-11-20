@@ -3,7 +3,7 @@
   "info": {
     "title": "Cloak Room Billing API",
     "version": "0.1.0",
-    "description": "\nBackend of the **Cloak Room Billing** SaaS (Synergic). The Android POS app works offline on\nSQLite and synchronises with this API. All paths below are under `/api/v1` except `/downloads`.\n\n## Conventions\n- **Envelope** — every JSON response: `{ success, message, data, meta?, errors?, code?, requestId }`.\n  Errors carry `success: false`, an UPPER_SNAKE `code` and `data: null`.\n- **Times** — UTC `YYYY-MM-DD HH:mm:ss` in and out. Dates (`receipt_dt`, `bill_dt`, report\n  `from/to`) are **IST** calendar dates. Reports add `*_ist` copies of timestamps.\n- **Money** — decimal strings with 2 places (`\"70.00\"`); never floats.\n- **Lists** — `?page=1&limit=50` (max 200), `?sort=col:asc,col2:desc` (whitelisted), `?search=`;\n  `meta: { page, limit, total }` (+ `totals` on reports).\n- **Tenant** — the customer always comes from the token. A super admin (S) has no customer and\n  passes `customer_id` where a write or report needs one.\n- **Request id** — send `X-Request-Id` to correlate; it is echoed back.\n\n## Auth & sessions\n1. `POST /auth/login` → `accessToken` (~12 h) + `refreshToken` (~30 d) + everything needed offline\n   (user, customer, masters, settings, counters, server_time).\n2. Send `Authorization: Bearer <accessToken>`. On `401 TOKEN_EXPIRED` call `POST /auth/refresh`;\n   **both tokens rotate** — store the new pair, the old ones stop working. Re-using an old refresh\n   token revokes the session (`401 TOKEN_REUSED`).\n3. One active session per user: login from another device → `409 SESSION_ACTIVE`\n   (`errors.session_started_at`, masked `errors.device_id`). Login again from the **same**\n   `device_id` replaces the old session.\n4. `401 SESSION_ENDED` = logged out / replaced / force-logged-out by an admin. A force-logged-out\n   device may still call **only** `POST /sync/push` and `POST /auth/logout`: push pending rows,\n   then log out.\n5. Other login errors: `401` wrong credentials, `403 FORBIDDEN` blocked user / inactive customer,\n   `403 SUBSCRIPTION_EXPIRED`, `409 USER_LIMIT_REACHED`, `426 UPDATE_REQUIRED` (the sent\n   `version_code` is older than a live mandatory release; `errors.latest` has the APK).\n6. `user.must_change_pwd = Y` (new user / admin reset): every call except `POST /auth/change-password`,\n   logout and me → `403 PASSWORD_CHANGE_REQUIRED` until the password is changed.\n\n## Sync push — `POST /sync/push`\nBody `{ luggage: [...], receipts: [...] }` (≤ 5000 each, ≤ 5 MB). Luggage is processed first, then\nreceipts, in transactions of 500 rows. Each row is validated on its own: **a bad row never fails the\nrequest** — it comes back as `EXCEPTION` and is logged for the admin.\n\n- Every row gets a result `{ table, trans_id, local_version, status, reason? }`. **Both ACCEPTED and\n  EXCEPTION mean \"set sync_flag = 'Y'\"** (exceptions are owned by the admin now).\n- `local_version` is echoed back untouched (never stored).\n- Re-pushing the same rows is always safe (idempotent).\n- `customer_id` / `sync_flag` / audit fields in rows are ignored.\n\n**Luggage merge (key `trans_id`, UUID created on the check-in device and printed in the QR):**\ncheck-in fields are write-once; check-out fields (`user_id_out, device_id_out, shift_id_out,\ndate_time_out`) only fill empty values; `out_flag` never goes back from Y. A bag checked in on device 1\nand out on device 2 always ends as one row, whatever the push order. A *different* second check-out →\n`DUPLICATE_CHECKOUT`. ID numbers of proofs with `mask_flag = Y` are stored as `XXXXXXXX` + last 4.\nA check-out made from the receipt QR before the check-in synced may omit `device_id_in`,\n`shift_id_in`, `id_proof_id`, `id_number` (the QR doesn't carry them); the later check-in push fills\nthem once. `id_proof_id` / `id_number` are optional on any row but go together.\n\n**Bills** carry `gst_no` = the customer's GSTIN, stamped by the server when stored (not sent by devices).\n\n**Receipts:** one bill per `trans_id`, stored once. The server recomputes every bill; a difference\nkeeps the bill and logs `AMOUNT_MISMATCH` (with the expected values) for the admin.\n\n**Billing rules the app must mirror exactly:**\n- minutes = whole minutes from `date_time_in` to `date_time_out` (seconds dropped)\n- days = max(1, ceil(minutes / (block_hours × 60)))   (24h00m → 1, 24h01m → 2)\n- base = qty × (first_block_rate + next_block_rate × (days − 1));  net = base + penal_amt (GST-inclusive)\n- rate row = latest `effective_from ≤ receipt_dt`; GST row = latest `effective_from ≤ bill_dt`\n- all arithmetic in integer paise; rounding **half-up** to the paisa\n- taxable = round(net × 100 / (100 + gst%)); gst = net − taxable\n- GST_TYPE E: cgst = round(gst / 2) (odd paisa to CGST), sgst = gst − cgst, gst% = cgst% + sgst%;\n  GST_TYPE I: igst = gst, gst% = igst%\n- e.g. ₹70 at 18 % → taxable 59.32, CGST 5.34, SGST 5.34\n\n**Numbers:** `<user_code>-<5 digits>` (e.g. `U03-00125`), series R (receipt) and B (bill) per user,\nreset per `RECEIPT_RESET` (D day / M month / Y Indian FY `FY2026-27`, IST). The response's\n`counters` are the server's last numbers for the current period; the server never lowers them.\n\n## Sync pull — `GET /sync/pull`\n- First pull: no `since` → all masters + settings + counters + **open** check-ins of the customer.\n- Next pulls: `since` = the `server_time` of the previous completed pull → rows changed since then\n  (soft-deleted rows included, `is_deleted = 'Y'` → hide them). The server re-reads a 2-minute\n  overlap: **dedupe by primary key**.\n- At most `limit` (default/max 1000) luggage rows per response. While `has_more` is true call again\n  with `?cursor=<next_cursor>` only; continuation pages carry luggage only. When `has_more` is false,\n  store `server_time` as the next `since`.\n\n## Rate limits (per minute)\nlogin 10 per IP + user_id · sync 120 per user · general 300 per user · reports 30 per user ·\n3000 per IP overall. Exceeding → `429 RATE_LIMITED` with `RateLimit-*` headers.\n"
+    "description": "\nBackend of the **Cloak Room Billing** SaaS (Synergic). The Android POS app works offline on\nSQLite and synchronises with this API. All paths below are under `/api/v1` except `/downloads`.\n\n## Conventions\n- **Envelope** — every JSON response: `{ success, message, data, meta?, errors?, code?, requestId }`.\n  Errors carry `success: false`, an UPPER_SNAKE `code` and `data: null`.\n- **Times** — UTC `YYYY-MM-DD HH:mm:ss` in and out. Dates (`receipt_dt`, `bill_dt`, report\n  `from/to`) are **IST** calendar dates. Reports add `*_ist` copies of timestamps.\n- **Money** — decimal strings with 2 places (`\"70.00\"`); never floats.\n- **Lists** — `?page=1&limit=50` (max 200), `?sort=col:asc,col2:desc` (whitelisted), `?search=`;\n  `meta: { page, limit, total }` (+ `totals` on reports).\n- **Tenant** — the customer always comes from the token. A super admin (S) has no customer and\n  passes `customer_id` where a write or report needs one.\n- **Request id** — send `X-Request-Id` to correlate; it is echoed back.\n\n## Auth & sessions\n1. `POST /auth/login` → `accessToken` (~12 h) + `refreshToken` (~30 d) + everything needed offline\n   (user, customer, masters, settings, counters, server_time).\n2. Send `Authorization: Bearer <accessToken>`. On `401 TOKEN_EXPIRED` call `POST /auth/refresh`;\n   **both tokens rotate** — store the new pair, the old ones stop working. Re-using an old refresh\n   token revokes the session (`401 TOKEN_REUSED`).\n3. One active session per user: login from another device → `409 SESSION_ACTIVE`\n   (`errors.session_started_at`, masked `errors.device_id`). Login again from the **same**\n   `device_id` replaces the old session.\n4. `401 SESSION_ENDED` = logged out / replaced / force-logged-out by an admin. A force-logged-out\n   device may still call **only** `POST /sync/push` and `POST /auth/logout`: push pending rows,\n   then log out.\n5. Other login errors: `401` wrong credentials, `403 FORBIDDEN` blocked user / inactive customer,\n   `403 SUBSCRIPTION_EXPIRED`, `409 USER_LIMIT_REACHED`, `426 UPDATE_REQUIRED` (the sent\n   `version_code` is older than a live mandatory release; `errors.latest` has the APK),\n   `403 OUTSIDE_SHIFT` (counter user with a shift in the roster signing in outside it while\n   `SHIFT_LOGIN_FLAG = Y`; `errors` = `{ shift_name, from_time, to_time, opens_at }`, IST).\n6. `user.must_change_pwd = Y` (new user / admin reset): every call except `POST /auth/change-password`,\n   logout and me → `403 PASSWORD_CHANGE_REQUIRED` until the password is changed.\n\n## Sync push — `POST /sync/push`\nBody `{ luggage: [...], receipts: [...] }` (≤ 5000 each, ≤ 5 MB). Luggage is processed first, then\nreceipts, in transactions of 500 rows. Each row is validated on its own: **a bad row never fails the\nrequest** — it comes back as `EXCEPTION` and is logged for the admin.\n\n- Every row gets a result `{ table, trans_id, local_version, status, reason? }`. **Both ACCEPTED and\n  EXCEPTION mean \"set sync_flag = 'Y'\"** (exceptions are owned by the admin now).\n- `local_version` is echoed back untouched (never stored).\n- Re-pushing the same rows is always safe (idempotent).\n- `customer_id` / `sync_flag` / audit fields in rows are ignored.\n\n**Luggage merge (key `trans_id`, UUID created on the check-in device and printed in the QR):**\ncheck-in fields are write-once; check-out fields (`user_id_out, device_id_out, shift_id_out,\ndate_time_out`) only fill empty values; `out_flag` never goes back from Y. A bag checked in on device 1\nand out on device 2 always ends as one row, whatever the push order. A *different* second check-out →\n`DUPLICATE_CHECKOUT`. ID numbers of proofs with `mask_flag = Y` are stored as `XXXXXXXX` + last 4.\nA check-out made from the receipt QR before the check-in synced may omit `device_id_in`,\n`shift_id_in`, `id_proof_id`, `id_number` (the QR doesn't carry them); the later check-in push fills\nthem once. `id_proof_id` / `id_number` are optional on any row but go together.\n`extra_lugage_qty` (extra bags, free), `adv_amt` and `adv_hours` (advance at check-in) default to 0\nand are filled once while still 0 (a QR row carries the advance in key `a`, extra bags in `x`);\nafter that they never change.\n\n**Bills** carry `gst_no` = the customer's GSTIN, stamped by the server when stored (not sent by devices).\n\n**Receipts:** one bill per `trans_id`, stored once. The server recomputes every bill; a difference\nkeeps the bill and logs `AMOUNT_MISMATCH` (with the expected values) for the admin. A bill\n**without `rate_slabs`** (app older than Phase 13) for a tariff the two-rate fields cannot express\n(3+ slabs, or 2 slabs of different lengths) is refused with `APP_UPDATE_REQUIRED` (not stored).\n\n**Billing rules the app must mirror exactly:**\n- minutes = whole minutes from `date_time_in` to `date_time_out` (seconds dropped);\n  billable = max(0, minutes − grace_minutes)\n- tariff = the rate row's `rate_slabs` [{from_hour, to_hour, rate}], contiguous from hour 0. Per bag:\n  every slab whose start the stay has passed adds its rate (the first slab always:\n  billable > from_hour × 60), and after the last slab ends its rate is added again for every started\n  (to_hour − from_hour); days_charged = number of rates added\n  (0–24 h ₹30 + 24–48 h ₹10: 2 bags × 3 days = 2 × (30 + 10 + 10) = ₹100; 24h00m → 1, 24h01m → 2)\n- base = qty × that per-bag amount (extra bags are free). Send `rate_slabs` with the bill; the\n  two-rate fields `block_hours/first_block_rate/next_block_rate` are then optional\n- advance: bill `adv_amt` = the bag's `adv_amt`; `bal_amt` = max(0, net − adv_amt) (no refund);\n  net_amt stays the full bill\n- rate row = latest `effective_from ≤ receipt_dt`; GST row = latest `effective_from ≤ bill_dt`\n- all arithmetic in integer paise; rounding **half-up** to the paisa\n- gst% = 0 when `gst_flag = N`; else the customer's `GST_PCT` when set, else the GST row's rate;\n  taxed = base + (penalty_gst_flag = Y ? penal_amt : 0)\n- `gst_inclusive = Y` (default): taxable = round(taxed × 100 / (100 + gst%)); gst = taxed − taxable;\n  net = base + penal_amt\n- `gst_inclusive = N`: taxable = taxed; gst = round(taxed × gst% / 100); net = base + penal_amt + gst\n- taxable_amt = taxable (a penalty without GST is not part of it)\n- GST_TYPE E: cgst = round(gst / 2) (odd paisa to CGST), sgst = gst − cgst, gst% = cgst% + sgst%;\n  GST_TYPE I: igst = gst, gst% = igst%\n- e.g. ₹70 at 18 % → taxable 59.32, CGST 5.34, SGST 5.34\n- **Snapshot:** send `grace_minutes`, `gst_inclusive`, `penalty_gst_flag` and `gst_flag` with each\n  bill (the values you billed with). The server recomputes with them and stores them; omitted\n  fields fall back to the customer's settings (`GRACE_MINUTES`, `GST_INCLUSIVE`,\n  `PENALTY_GST_FLAG`, the billing user's `GST_FLAG`), then to the defaults 0 / Y / Y / Y.\n\n**Numbers:** `<user_code>-<5 digits>` (e.g. `U03-00125`), series R (receipt) and B (bill) per user,\nreset per `RECEIPT_RESET` (D day / M month / Y Indian FY `FY2026-27` / N never → period `ALL`;\nIST). The response's\n`counters` are the server's last numbers for the current period; the server never lowers them.\n\n## Sync pull — `GET /sync/pull`\n- First pull: no `since` → all masters + settings + counters + **open** check-ins of the customer.\n- Next pulls: `since` = the `server_time` of the previous completed pull → rows changed since then\n  (soft-deleted rows included, `is_deleted = 'Y'` → hide them). The server re-reads a 2-minute\n  overlap: **dedupe by primary key**.\n- At most `limit` (default/max 1000) luggage rows per response. While `has_more` is true call again\n  with `?cursor=<next_cursor>` only; continuation pages carry luggage only. When `has_more` is false,\n  store `server_time` as the next `since`.\n\n## Rate limits (per minute)\nlogin 10 per IP + user_id · sync 120 per user · general 300 per user · reports 30 per user ·\n3000 per IP overall. Exceeding → `429 RATE_LIMITED` with `RateLimit-*` headers.\n"
   },
   "servers": [
     {
@@ -47,6 +47,7 @@
               "REPORT_PASSWORD_REQUIRED",
               "PASSWORD_CHANGE_REQUIRED",
               "UPDATE_REQUIRED",
+              "OUTSIDE_SHIFT",
               "NOT_FOUND",
               "CONFLICT",
               "SESSION_ACTIVE",
@@ -393,16 +394,24 @@
           "customer_id": {
             "type": "integer"
           },
+          "rate_slabs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RateSlab"
+            },
+            "description": "Authoritative tariff (Phase 13): every started slab adds its rate, the last repeats"
+          },
           "block_hours": {
-            "type": "integer"
+            "type": "integer",
+            "description": "= first slab length (kept for older apps)"
           },
           "first_block_rate": {
             "type": "string",
-            "description": "Decimal string with 2 places, e.g. `70.00`"
+            "description": "= first slab rate"
           },
           "next_block_rate": {
             "type": "string",
-            "description": "Decimal string with 2 places, e.g. `70.00`"
+            "description": "= second slab rate (first when only one slab)"
           },
           "effective_from": {
             "type": "string",
@@ -444,6 +453,7 @@
         "required": [
           "rate_id",
           "customer_id",
+          "rate_slabs",
           "block_hours",
           "first_block_rate",
           "next_block_rate",
@@ -454,6 +464,26 @@
           "created_at",
           "updated_by",
           "updated_at"
+        ]
+      },
+      "RateSlab": {
+        "type": "object",
+        "properties": {
+          "from_hour": {
+            "type": "integer"
+          },
+          "to_hour": {
+            "type": "integer"
+          },
+          "rate": {
+            "type": "string",
+            "description": "Per bag"
+          }
+        },
+        "required": [
+          "from_hour",
+          "to_hour",
+          "rate"
         ]
       },
       "ShiftRow": {
@@ -766,7 +796,7 @@
           },
           "period_key": {
             "type": "string",
-            "description": "`YYYY-MM-DD`, `YYYY-MM` or `FY2026-27`"
+            "description": "`YYYY-MM-DD`, `YYYY-MM`, `FY2026-27` or `ALL` (RECEIPT_RESET = N)"
           },
           "receipt_last_no": {
             "type": "integer"
@@ -1207,7 +1237,7 @@
           },
           "reason": {
             "type": "string",
-            "description": "`CODE: detail`. Codes: VALIDATION_ERROR, INVALID_REFERENCE, TENANT_MISMATCH, DUPLICATE_RECEIPT_NO, DUPLICATE_CHECKOUT, BILL_WITHOUT_LUGGAGE, DUPLICATE_BILL, DUPLICATE_BILL_NO, CHECKOUT_MISSING, NO_RATE, AMOUNT_MISMATCH, DB_ERROR"
+            "description": "`CODE: detail`. Codes: VALIDATION_ERROR, INVALID_REFERENCE, TENANT_MISMATCH, DUPLICATE_RECEIPT_NO, DUPLICATE_CHECKOUT, BILL_WITHOUT_LUGGAGE, DUPLICATE_BILL, DUPLICATE_BILL_NO, CHECKOUT_MISSING, NO_RATE, AMOUNT_MISMATCH, APP_UPDATE_REQUIRED, DB_ERROR"
           }
         },
         "required": [
@@ -1261,6 +1291,18 @@
           },
           "luggage_qty": {
             "type": "integer"
+          },
+          "extra_lugage_qty": {
+            "type": "integer",
+            "description": "Extra bags stored free, never billed (Phase 13)"
+          },
+          "adv_amt": {
+            "type": "string",
+            "description": "Advance taken at check-in (Phase 13)"
+          },
+          "adv_hours": {
+            "type": "integer",
+            "description": "ADVANCE_HOURS the advance covered"
           },
           "id_proof_id": {
             "type": "integer",
@@ -1342,6 +1384,9 @@
           "pasn_mob_no",
           "pnr_no",
           "luggage_qty",
+          "extra_lugage_qty",
+          "adv_amt",
+          "adv_hours",
           "id_proof_id",
           "id_number",
           "user_id_out",
@@ -1389,7 +1434,8 @@
             "type": "integer"
           },
           "days_charged": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Slab charges counted (repeats included)"
           },
           "block_hours": {
             "type": "integer"
@@ -1402,6 +1448,19 @@
             "type": "string",
             "description": "Decimal string with 2 places, e.g. `70.00`"
           },
+          "rate_slabs": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/RateSlab"
+            },
+            "description": "Slabs the bill was made with (null: before Phase 13)"
+          },
+          "grace_minutes": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Billing option used (null: stored before Phase 11 = 0)"
+          },
           "base_amt": {
             "type": "string",
             "description": "Decimal string with 2 places, e.g. `70.00`"
@@ -1412,7 +1471,15 @@
           },
           "net_amt": {
             "type": "string",
-            "description": "Decimal string with 2 places, e.g. `70.00`"
+            "description": "Full bill"
+          },
+          "adv_amt": {
+            "type": "string",
+            "description": "Advance subtracted on this bill"
+          },
+          "bal_amt": {
+            "type": "string",
+            "description": "Collected at check-out = max(0, net_amt − adv_amt)"
           },
           "taxable_amt": {
             "type": "string",
@@ -1439,7 +1506,28 @@
             "enum": [
               "Y",
               "N"
-            ]
+            ],
+            "description": "N = 0 % GST"
+          },
+          "gst_inclusive": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "Y",
+              "N",
+              null
+            ],
+            "description": "Billing option used (null: before Phase 11 = Y)"
+          },
+          "penalty_gst_flag": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "Y",
+              "N",
+              null
+            ],
+            "description": "Billing option used (null: before Phase 11 = Y)"
           },
           "gst_no": {
             "type": "string",
@@ -1510,15 +1598,21 @@
           "block_hours",
           "first_block_rate",
           "next_block_rate",
+          "rate_slabs",
+          "grace_minutes",
           "base_amt",
           "penal_amt",
           "net_amt",
+          "adv_amt",
+          "bal_amt",
           "taxable_amt",
           "gst_pct",
           "cgst",
           "sgst",
           "igst",
           "gst_flag",
+          "gst_inclusive",
+          "penalty_gst_flag",
           "gst_no",
           "pay_mode",
           "upi_ref",
@@ -1864,7 +1958,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -2005,7 +2099,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -2481,7 +2575,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -2628,7 +2722,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -2740,7 +2834,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -2877,7 +2971,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3005,7 +3099,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3125,7 +3219,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3265,7 +3359,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3398,7 +3492,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3564,7 +3658,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3612,11 +3706,46 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "rate_slabs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from_hour": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 8760
+                        },
+                        "to_hour": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 8760
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "from_hour",
+                        "to_hour",
+                        "rate"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
                   "block_hours": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 720,
-                    "default": 24
+                    "maximum": 720
                   },
                   "first_block_rate": {
                     "anyOf": [
@@ -3650,8 +3779,6 @@
                   }
                 },
                 "required": [
-                  "first_block_rate",
-                  "next_block_rate",
                   "effective_from"
                 ]
               }
@@ -3713,7 +3840,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3835,7 +3962,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -3896,6 +4023,42 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "rate_slabs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "from_hour": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 8760
+                        },
+                        "to_hour": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 8760
+                        },
+                        "rate": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "from_hour",
+                        "to_hour",
+                        "rate"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
                   "block_hours": {
                     "type": "integer",
                     "minimum": 1,
@@ -3985,7 +4148,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4113,7 +4276,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4269,7 +4432,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4401,7 +4564,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4523,7 +4686,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4657,7 +4820,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4785,7 +4948,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -4959,7 +5122,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5094,7 +5257,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5216,7 +5379,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5347,7 +5510,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5475,7 +5638,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5667,7 +5830,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5832,7 +5995,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -5993,7 +6156,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6115,7 +6278,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6268,7 +6431,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6396,7 +6559,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6579,7 +6742,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6641,7 +6804,27 @@
                       "GST_TYPE",
                       "QR_FLAG",
                       "DEFAULT_PAY_MODE",
-                      "PAPER_WIDTH"
+                      "PAPER_WIDTH",
+                      "GST_PCT",
+                      "PENALTY_FLAG",
+                      "PENALTY_MAX_AMT",
+                      "PENALTY_GST_FLAG",
+                      "GRACE_MINUTES",
+                      "GST_INCLUSIVE",
+                      "UPI_ENABLED",
+                      "OUT_WITHOUT_PRINT_FLAG",
+                      "SINGLE_SESSION_FLAG",
+                      "MAX_BAGS_PER_RECEIPT",
+                      "PNR_REQUIRED",
+                      "ID_PROOF_REQUIRED",
+                      "ID_MASK_FLAG",
+                      "SHIFT_LOGIN_FLAG",
+                      "SHIFT_EARLY_LOGIN_MIN",
+                      "PWD_MIN_LENGTH",
+                      "ADVANCE_FLAG",
+                      "ADVANCE_HOURS",
+                      "CHECKIN_PRINT_FLAG",
+                      "PRINT_COPIES"
                     ]
                   },
                   "setting_value": {
@@ -6732,7 +6915,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6854,7 +7037,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -6988,7 +7171,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7116,7 +7299,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7263,7 +7446,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7411,7 +7594,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7533,7 +7716,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7688,7 +7871,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7816,7 +7999,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -7963,7 +8146,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8087,7 +8270,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8209,7 +8392,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8342,7 +8525,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8470,7 +8653,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8559,7 +8742,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8703,7 +8886,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -8894,7 +9077,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -9052,7 +9235,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -9201,7 +9384,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -9334,7 +9517,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -9488,7 +9671,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -9627,7 +9810,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -9803,7 +9986,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10009,7 +10192,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10142,7 +10325,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10351,7 +10534,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10490,7 +10673,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10655,7 +10838,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10823,7 +11006,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -10945,7 +11128,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -11118,7 +11301,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -11246,7 +11429,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -11368,6 +11551,31 @@
                           "minimum": 1,
                           "maximum": 999
                         },
+                        "extra_lugage_qty": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 999,
+                          "default": 0
+                        },
+                        "adv_amt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ],
+                          "default": "0"
+                        },
+                        "adv_hours": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 720,
+                          "default": 0
+                        },
                         "id_proof_id": {
                           "type": "integer",
                           "nullable": true,
@@ -11485,6 +11693,42 @@
                           "minimum": 1,
                           "maximum": 65535
                         },
+                        "rate_slabs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from_hour": {
+                                "type": "integer",
+                                "nullable": true,
+                                "minimum": 0,
+                                "maximum": 8760
+                              },
+                              "to_hour": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 8760
+                              },
+                              "rate": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "from_hour",
+                              "to_hour",
+                              "rate"
+                            ]
+                          },
+                          "minItems": 1,
+                          "maxItems": 20
+                        },
                         "block_hours": {
                           "type": "integer",
                           "minimum": 1,
@@ -11532,6 +11776,27 @@
                           "default": "0"
                         },
                         "net_amt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        },
+                        "adv_amt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ],
+                          "default": "0"
+                        },
+                        "bal_amt": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -11596,8 +11861,27 @@
                           "enum": [
                             "Y",
                             "N"
-                          ],
-                          "default": "N"
+                          ]
+                        },
+                        "grace_minutes": {
+                          "type": "integer",
+                          "nullable": true,
+                          "minimum": 0,
+                          "maximum": 1440
+                        },
+                        "gst_inclusive": {
+                          "type": "string",
+                          "enum": [
+                            "Y",
+                            "N"
+                          ]
+                        },
+                        "penalty_gst_flag": {
+                          "type": "string",
+                          "enum": [
+                            "Y",
+                            "N"
+                          ]
                         },
                         "pay_mode": {
                           "type": "string",
@@ -11628,9 +11912,6 @@
                         "device_id",
                         "luggage_qty",
                         "days_charged",
-                        "block_hours",
-                        "first_block_rate",
-                        "next_block_rate",
                         "base_amt",
                         "net_amt",
                         "taxable_amt",
@@ -11723,7 +12004,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -11914,7 +12195,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -12055,7 +12336,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -12170,7 +12451,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -12342,15 +12623,31 @@
                           },
                           "net_amt": {
                             "type": "string",
-                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                            "description": "Billed (full bills)"
+                          },
+                          "adv_amt": {
+                            "type": "string",
+                            "description": "Advances subtracted on these bills"
+                          },
+                          "bal_amt": {
+                            "type": "string",
+                            "description": "Collected at check-out"
+                          },
+                          "adv_collected": {
+                            "type": "string",
+                            "description": "Advances taken at check-in (cash) on this day"
                           },
                           "cash_amt": {
                             "type": "string",
-                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                            "description": "Cash balances + advances taken"
                           },
                           "upi_amt": {
                             "type": "string",
-                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                            "description": "UPI balances"
+                          },
+                          "collected_amt": {
+                            "type": "string",
+                            "description": "cash_amt + upi_amt = adv_collected + bal_amt"
                           }
                         },
                         "required": [
@@ -12360,8 +12657,12 @@
                           "base_amt",
                           "penal_amt",
                           "net_amt",
+                          "adv_amt",
+                          "bal_amt",
+                          "adv_collected",
                           "cash_amt",
-                          "upi_amt"
+                          "upi_amt",
+                          "collected_amt"
                         ]
                       }
                     },
@@ -12392,15 +12693,31 @@
                                 },
                                 "net_amt": {
                                   "type": "string",
-                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                  "description": "Billed (full bills)"
+                                },
+                                "adv_amt": {
+                                  "type": "string",
+                                  "description": "Advances subtracted on these bills"
+                                },
+                                "bal_amt": {
+                                  "type": "string",
+                                  "description": "Collected at check-out"
+                                },
+                                "adv_collected": {
+                                  "type": "string",
+                                  "description": "Advances taken at check-in (cash) on this day"
                                 },
                                 "cash_amt": {
                                   "type": "string",
-                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                  "description": "Cash balances + advances taken"
                                 },
                                 "upi_amt": {
                                   "type": "string",
-                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                  "description": "UPI balances"
+                                },
+                                "collected_amt": {
+                                  "type": "string",
+                                  "description": "cash_amt + upi_amt = adv_collected + bal_amt"
                                 }
                               },
                               "required": [
@@ -12409,8 +12726,12 @@
                                 "base_amt",
                                 "penal_amt",
                                 "net_amt",
+                                "adv_amt",
+                                "bal_amt",
+                                "adv_collected",
                                 "cash_amt",
-                                "upi_amt"
+                                "upi_amt",
+                                "collected_amt"
                               ]
                             },
                             "filters": {
@@ -12463,7 +12784,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -12650,6 +12971,16 @@
                           "luggage_qty": {
                             "type": "integer"
                           },
+                          "extra_lugage_qty": {
+                            "type": "integer"
+                          },
+                          "adv_amt": {
+                            "type": "string",
+                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                          },
+                          "adv_hours": {
+                            "type": "integer"
+                          },
                           "id_proof_id": {
                             "type": "integer",
                             "nullable": true
@@ -12694,6 +13025,9 @@
                           "pasn_mob_no",
                           "pnr_no",
                           "luggage_qty",
+                          "extra_lugage_qty",
+                          "adv_amt",
+                          "adv_hours",
                           "id_proof_id",
                           "id_proof_name",
                           "id_number",
@@ -12719,11 +13053,20 @@
                                 },
                                 "bags": {
                                   "type": "integer"
+                                },
+                                "extra_bags": {
+                                  "type": "integer"
+                                },
+                                "adv_amt": {
+                                  "type": "string",
+                                  "description": "Decimal string with 2 places, e.g. `70.00`"
                                 }
                               },
                               "required": [
                                 "bags_entries",
-                                "bags"
+                                "bags",
+                                "extra_bags",
+                                "adv_amt"
                               ]
                             },
                             "filters": {
@@ -12776,7 +13119,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -12963,6 +13306,16 @@
                           "luggage_qty": {
                             "type": "integer"
                           },
+                          "extra_lugage_qty": {
+                            "type": "integer"
+                          },
+                          "adv_amt": {
+                            "type": "string",
+                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                          },
+                          "adv_hours": {
+                            "type": "integer"
+                          },
                           "id_proof_id": {
                             "type": "integer",
                             "nullable": true
@@ -13023,6 +13376,16 @@
                             "nullable": true,
                             "description": "Decimal string with 2 places, e.g. `70.00`"
                           },
+                          "bill_adv_amt": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Advance subtracted on the bill"
+                          },
+                          "bal_amt": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                          },
                           "pay_mode": {
                             "type": "string",
                             "nullable": true,
@@ -13056,6 +13419,9 @@
                           "pasn_mob_no",
                           "pnr_no",
                           "luggage_qty",
+                          "extra_lugage_qty",
+                          "adv_amt",
+                          "adv_hours",
                           "id_proof_id",
                           "id_proof_name",
                           "id_number",
@@ -13070,6 +13436,8 @@
                           "bill_dt",
                           "days_charged",
                           "net_amt",
+                          "bill_adv_amt",
+                          "bal_amt",
                           "pay_mode",
                           "bill_printed"
                         ]
@@ -13092,7 +13460,18 @@
                                 "bags": {
                                   "type": "integer"
                                 },
+                                "extra_bags": {
+                                  "type": "integer"
+                                },
                                 "net_amt": {
+                                  "type": "string",
+                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                },
+                                "adv_amt": {
+                                  "type": "string",
+                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                },
+                                "bal_amt": {
                                   "type": "string",
                                   "description": "Decimal string with 2 places, e.g. `70.00`"
                                 }
@@ -13100,7 +13479,10 @@
                               "required": [
                                 "bags_entries",
                                 "bags",
-                                "net_amt"
+                                "extra_bags",
+                                "net_amt",
+                                "adv_amt",
+                                "bal_amt"
                               ]
                             },
                             "filters": {
@@ -13153,7 +13535,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -13328,6 +13710,16 @@
                           "luggage_qty": {
                             "type": "integer"
                           },
+                          "extra_lugage_qty": {
+                            "type": "integer"
+                          },
+                          "adv_amt": {
+                            "type": "string",
+                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                          },
+                          "adv_hours": {
+                            "type": "integer"
+                          },
                           "id_proof_id": {
                             "type": "integer",
                             "nullable": true
@@ -13365,6 +13757,9 @@
                           "pasn_mob_no",
                           "pnr_no",
                           "luggage_qty",
+                          "extra_lugage_qty",
+                          "adv_amt",
+                          "adv_hours",
                           "id_proof_id",
                           "id_proof_name",
                           "id_number",
@@ -13389,11 +13784,20 @@
                                 },
                                 "bags": {
                                   "type": "integer"
+                                },
+                                "extra_bags": {
+                                  "type": "integer"
+                                },
+                                "adv_amt": {
+                                  "type": "string",
+                                  "description": "Decimal string with 2 places, e.g. `70.00`"
                                 }
                               },
                               "required": [
                                 "bags_entries",
-                                "bags"
+                                "bags",
+                                "extra_bags",
+                                "adv_amt"
                               ]
                             },
                             "filters": {
@@ -13446,7 +13850,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -13726,7 +14130,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -13902,15 +14306,31 @@
                           },
                           "net_amt": {
                             "type": "string",
-                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                            "description": "Billed (full bills)"
+                          },
+                          "adv_amt": {
+                            "type": "string",
+                            "description": "Advances subtracted on these bills"
+                          },
+                          "bal_amt": {
+                            "type": "string",
+                            "description": "Collected at check-out"
+                          },
+                          "adv_collected": {
+                            "type": "string",
+                            "description": "Advances taken at check-in (cash) on this day"
                           },
                           "cash_amt": {
                             "type": "string",
-                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                            "description": "Cash balances + advances taken"
                           },
                           "upi_amt": {
                             "type": "string",
-                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                            "description": "UPI balances"
+                          },
+                          "collected_amt": {
+                            "type": "string",
+                            "description": "cash_amt + upi_amt = adv_collected + bal_amt"
                           }
                         },
                         "required": [
@@ -13924,8 +14344,12 @@
                           "base_amt",
                           "penal_amt",
                           "net_amt",
+                          "adv_amt",
+                          "bal_amt",
+                          "adv_collected",
                           "cash_amt",
-                          "upi_amt"
+                          "upi_amt",
+                          "collected_amt"
                         ]
                       }
                     },
@@ -13956,15 +14380,31 @@
                                 },
                                 "net_amt": {
                                   "type": "string",
-                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                  "description": "Billed (full bills)"
+                                },
+                                "adv_amt": {
+                                  "type": "string",
+                                  "description": "Advances subtracted on these bills"
+                                },
+                                "bal_amt": {
+                                  "type": "string",
+                                  "description": "Collected at check-out"
+                                },
+                                "adv_collected": {
+                                  "type": "string",
+                                  "description": "Advances taken at check-in (cash) on this day"
                                 },
                                 "cash_amt": {
                                   "type": "string",
-                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                  "description": "Cash balances + advances taken"
                                 },
                                 "upi_amt": {
                                   "type": "string",
-                                  "description": "Decimal string with 2 places, e.g. `70.00`"
+                                  "description": "UPI balances"
+                                },
+                                "collected_amt": {
+                                  "type": "string",
+                                  "description": "cash_amt + upi_amt = adv_collected + bal_amt"
                                 }
                               },
                               "required": [
@@ -13973,8 +14413,12 @@
                                 "base_amt",
                                 "penal_amt",
                                 "net_amt",
+                                "adv_amt",
+                                "bal_amt",
+                                "adv_collected",
                                 "cash_amt",
-                                "upi_amt"
+                                "upi_amt",
+                                "collected_amt"
                               ]
                             },
                             "filters": {
@@ -14027,7 +14471,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -14195,7 +14639,18 @@
                           "luggage_qty": {
                             "type": "integer"
                           },
+                          "extra_lugage_qty": {
+                            "type": "integer"
+                          },
                           "net_amt": {
+                            "type": "string",
+                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                          },
+                          "adv_amt": {
+                            "type": "string",
+                            "description": "Decimal string with 2 places, e.g. `70.00`"
+                          },
+                          "bal_amt": {
                             "type": "string",
                             "description": "Decimal string with 2 places, e.g. `70.00`"
                           },
@@ -14233,7 +14688,10 @@
                           "shift_id",
                           "device_id",
                           "luggage_qty",
+                          "extra_lugage_qty",
                           "net_amt",
+                          "adv_amt",
+                          "bal_amt",
                           "pay_mode",
                           "upi_ref",
                           "receipt_no",
@@ -14260,11 +14718,16 @@
                                 "net_amt": {
                                   "type": "string",
                                   "description": "Decimal string with 2 places, e.g. `70.00`"
+                                },
+                                "bal_amt": {
+                                  "type": "string",
+                                  "description": "Decimal string with 2 places, e.g. `70.00`"
                                 }
                               },
                               "required": [
                                 "bills",
-                                "net_amt"
+                                "net_amt",
+                                "bal_amt"
                               ]
                             },
                             "filters": {
@@ -14317,7 +14780,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -14589,7 +15052,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -14750,7 +15213,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {
@@ -14986,7 +15449,7 @@
             }
           },
           "403": {
-            "description": "FORBIDDEN (role, tenant or feature not allowed)",
+            "description": "FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT",
             "content": {
               "application/json": {
                 "schema": {

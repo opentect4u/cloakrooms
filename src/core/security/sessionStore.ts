@@ -53,9 +53,7 @@ export async function getSession(
   }
   if (session.status === 'A') {
     // At most once per cache period per worker: cheap activity tracking for stale-session expiry.
-    await raw('UPDATE td_user_session SET last_seen_at = UTC_TIMESTAMP() WHERE session_id = ?', [
-      sessionId,
-    ]);
+    await raw('UPDATE td_user_session SET last_seen_at = NOW() WHERE session_id = ?', [sessionId]);
   }
   cache.set(sessionId, session);
   return session;

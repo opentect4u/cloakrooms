@@ -67,10 +67,10 @@ export async function bumpCounter(
     `INSERT INTO md_user_counter
        (customer_id, user_id, series, period_key, last_no, sync_flag,
         created_by, created_at, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'N', ?, UTC_TIMESTAMP(), ?, UTC_TIMESTAMP()) AS incoming
+     VALUES (?, ?, ?, ?, ?, 'N', ?, NOW(), ?, NOW()) AS incoming
      ON DUPLICATE KEY UPDATE
        updated_by = IF(incoming.last_no > md_user_counter.last_no, incoming.updated_by, md_user_counter.updated_by),
-       updated_at = IF(incoming.last_no > md_user_counter.last_no, UTC_TIMESTAMP(), md_user_counter.updated_at),
+       updated_at = IF(incoming.last_no > md_user_counter.last_no, NOW(), md_user_counter.updated_at),
        sync_flag  = IF(incoming.last_no > md_user_counter.last_no, 'N', md_user_counter.sync_flag),
        last_no    = GREATEST(md_user_counter.last_no, incoming.last_no)`,
     [ctx.customerId, bump.userId, bump.series, bump.periodKey, bump.no, ctx.loginId, ctx.loginId],

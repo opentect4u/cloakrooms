@@ -64,7 +64,7 @@ async function main() {
       CREATE TABLE IF NOT EXISTS schema_migrations (
         version      VARCHAR(100) NOT NULL,
         checksum     CHAR(64)     NOT NULL,
-        applied_at   DATETIME     NOT NULL DEFAULT (UTC_TIMESTAMP()),
+        applied_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         execution_ms INT UNSIGNED NOT NULL DEFAULT 0,
         PRIMARY KEY (version)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`);
@@ -117,7 +117,7 @@ async function main() {
         try {
           await conn.query(file.sql);
           await conn.query(
-            'INSERT INTO schema_migrations (version, checksum, execution_ms) VALUES (?, ?, ?)',
+            'INSERT INTO schema_migrations (version, checksum, applied_at, execution_ms) VALUES (?, ?, NOW(), ?)',
             [file.version, file.checksum, Date.now() - started],
           );
           await conn.commit();

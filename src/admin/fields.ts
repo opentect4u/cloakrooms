@@ -18,7 +18,9 @@ export interface Field {
     | 'select'
     | 'switch'
     | 'textarea'
-    | 'password';
+    | 'password'
+    /** Tariff slab table (rate_slabs); inputs slab_to_<i> / slab_rate_<i>, see slabForm.ts. */
+    | 'slabs';
   options?: readonly (readonly [string, string])[];
   /** Select options from a lookup of the customer (users, shifts, registrations). */
   optionsFrom?: Lookup;
@@ -59,6 +61,8 @@ export interface Column {
   suffix?: string;
   /** Hidden below this breakpoint (keeps phone tables readable). */
   hideBelow?: 'sm' | 'md' | 'lg';
+  /** Computed text instead of the raw value. */
+  format?: (row: Row) => string;
 }
 
 export interface Cell {
@@ -73,6 +77,7 @@ export function cellOf(col: Column, row: Row, lookups: Lookups): Cell {
   const v = row[col.key];
   const kind = col.kind ?? 'text';
   const base = { kind, align: col.align, hideBelow: col.hideBelow };
+  if (col.format) return { ...base, text: col.format(row) || '—' };
   if (v === null || v === undefined || v === '') return { ...base, text: '—' };
   switch (kind) {
     case 'money':

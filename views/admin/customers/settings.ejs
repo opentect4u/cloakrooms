@@ -1,6 +1,6 @@
 <%- include('../partials/shell-start') %>
 <%- include('../partials/customer-head') %>
-<% var setBase = base + '/settings'; var groupIcons = { General: 'gear', Billing: 'receipt-cutoff', Printing: 'printer', Reports: 'bar-chart' }; %>
+<% var setBase = base + '/settings'; var groupIcons = { 'Billing': 'receipt-cutoff', 'Penalty & limits': 'sliders2', 'Check-in': 'box-arrow-in-down', 'Sign-in & security': 'shield-lock', 'Numbers & sync': 'arrow-repeat', 'Printing': 'printer', 'Reports': 'bar-chart' }; %>
 
 <div class="section-head">
   <div>
@@ -12,9 +12,9 @@
 <div class="row g-3 g-xl-4">
   <% groups.forEach(function (g) { %>
     <div class="col-xl-6">
-      <section class="card card-soft h-100" aria-labelledby="g-<%= g.group %>">
+      <section class="card card-soft h-100" aria-labelledby="g-<%= g.group.replace(/[^A-Za-z]/g, '') %>">
         <div class="card-head">
-          <h3 class="card-title" id="g-<%= g.group %>"><i class="bi bi-<%= groupIcons[g.group] %> me-2 text-primary"></i><%= g.group %></h3>
+          <h3 class="card-title" id="g-<%= g.group.replace(/[^A-Za-z]/g, '') %>"><i class="bi bi-<%= groupIcons[g.group] %> me-2 text-primary"></i><%= g.group %></h3>
         </div>
         <ul class="setting-list">
           <% g.items.forEach(function (it) { var input = it.meta.input; var auto = input.kind === 'yn' || input.kind === 'select'; %>
@@ -23,6 +23,12 @@
               <div class="setting-main">
                 <div class="setting-label"><%= it.meta.label %></div>
                 <div class="setting-help"><%= it.meta.help %></div>
+                <% if (it.meta.server || it.defaultText || it.unsetText) { %>
+                  <div class="setting-tags">
+                    <% if (it.meta.server) { %><span class="flag is-on" title="<%= it.meta.server %>"><i class="bi bi-hdd-network"></i>Server</span><% } %>
+                    <% if (it.defaultText) { %><span class="flag">Not set · default <%= it.defaultText %></span><% } else if (it.unsetText) { %><span class="flag"><%= it.unsetText %></span><% } %>
+                  </div>
+                <% } %>
               </div>
               <form class="setting-form" method="post" action="<%= setBase %>/<%= it.name %>"<%- auto ? ' data-autosubmit' : '' %>>
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -38,6 +44,16 @@
                     <% if (!it.isSet) { %><option value="">Not set</option><% } %>
                     <% input.options.forEach(function (o) { %><option value="<%= o[0] %>"<%= it.value === o[0] ? ' selected' : '' %>><%= o[1] %></option><% }) %>
                   </select>
+                <% } else if (input.kind === 'percent') { %>
+                  <div class="input-group input-group-sm">
+                    <input class="form-control" type="text" inputmode="decimal" name="setting_value" value="<%= it.value %>" placeholder="e.g. 18" aria-label="<%= it.meta.label %>" required>
+                    <span class="input-group-text">%</span>
+                  </div>
+                <% } else if (input.kind === 'amount') { %>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">₹</span>
+                    <input class="form-control" type="text" inputmode="decimal" name="setting_value" value="<%= it.value %>" aria-label="<%= it.meta.label %>" required>
+                  </div>
                 <% } else if (input.kind === 'int') { %>
                   <div class="input-group input-group-sm">
                     <input class="form-control" type="number" name="setting_value" value="<%= it.value %>" min="<%= input.min %>" max="<%= input.max %>" aria-label="<%= it.meta.label %>" required>
@@ -114,7 +130,7 @@
         <button class="btn btn-primary" type="submit"><span class="btn-label"><i class="bi bi-plus-lg me-1"></i>Add</span><span class="btn-busy"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></span></button>
       </div>
     </div>
-    <div class="form-text">Values: Y / N for on/off settings; D, M or Y for number restart; C or U for payment mode; 58 or 80 for paper width; minutes or days as numbers.</div>
+    <div class="form-text">Only settings that can differ per user are listed. Values: Y / N for on/off settings; D, M, Y or N for number restart; C or U for payment mode; 58 or 80 for paper width; numbers for counts.</div>
   </form>
 </section>
 <%- include('../partials/shell-end') %>

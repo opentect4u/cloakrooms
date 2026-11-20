@@ -5,7 +5,7 @@
   <div>
     <div class="page-eyebrow"><a href="/admin/customers/<%= bag.customer_id %>"><%= customerName %></a></div>
     <h1 class="page-title mono-title"><%= bag.receipt_no %></h1>
-    <p class="page-sub"><%= bag.pasn_name %> · <%= bag.luggage_qty %> <%= Number(bag.luggage_qty) === 1 ? 'bag' : 'bags' %> · <%= out ? 'Checked out' : 'In store' %></p>
+    <p class="page-sub"><%= bag.pasn_name %> · <%= bag.luggage_qty %> <%= Number(bag.luggage_qty) === 1 ? 'bag' : 'bags' %><% if (Number(bag.extra_lugage_qty)) { %> + <%= bag.extra_lugage_qty %> extra (free)<% } %> · <%= out ? 'Checked out' : 'In store' %></p>
   </div>
   <div class="page-actions">
     <% if (out) { %><span class="pill pill-muted pill-lg"><i class="bi bi-box-arrow-up"></i>Checked out</span><% } else { %><span class="pill pill-success pill-lg"><i class="bi bi-suitcase2"></i>In store</span><% } %>
@@ -21,7 +21,7 @@
           <span class="tl-dot"><i class="bi bi-box-arrow-in-down"></i></span>
           <div>
             <div class="fw-semibold">Checked in</div>
-            <div class="list-sub"><%= dateTimeIst(bag.date_time_in) %> IST · by <%= userName(bag.user_id_in) %><%= shiftName(bag.shift_id_in) ? ' (' + shiftName(bag.shift_id_in) + ')' : '' %><%= bag.device_id_in ? ' · device ' + bag.device_id_in : '' %></div>
+            <div class="list-sub"><%= dateTimeIst(bag.date_time_in) %> IST · by <%= userName(bag.user_id_in) %><%= shiftName(bag.shift_id_in) ? ' (' + shiftName(bag.shift_id_in) + ')' : '' %><%= bag.device_id_in ? ' · device ' + bag.device_id_in : '' %><%= Number(bag.adv_amt) ? ' · advance ' + inr(bag.adv_amt) + ' (' + bag.adv_hours + ' h)' : '' %></div>
           </div>
         </li>
         <li class="tl-item<%= out ? ' is-done' : '' %>">
@@ -44,6 +44,8 @@
         <div><dt>Mobile</dt><dd class="mono"><%= bag.pasn_mob_no || '—' %></dd></div>
         <div><dt>PNR</dt><dd class="mono"><%= bag.pnr_no || '—' %></dd></div>
         <div><dt>ID proof</dt><dd><%= proofName || '—' %><% if (bag.id_number) { %> <span class="mono">· <%= bag.id_number %></span><% } %></dd></div>
+        <div><dt>Extra bags (free)</dt><dd><%= Number(bag.extra_lugage_qty) || '—' %></dd></div>
+        <div><dt>Advance at check-in</dt><dd><%= Number(bag.adv_amt) ? inr(bag.adv_amt) + ' · ' + bag.adv_hours + ' h' : '—' %></dd></div>
         <div><dt>Receipt date</dt><dd><%= date(bag.receipt_dt) %></dd></div>
         <div><dt>Synced</dt><dd><%= dateTimeIst(bag.created_at) %> IST</dd></div>
         <div class="span-all"><dt>Transaction id</dt><dd class="mono small"><%= bag.trans_id %></dd></div>
@@ -61,7 +63,13 @@
         </div>
       <% } else { %>
         <dl class="bill-lines">
-          <div><dt><%= r.luggage_qty %> × <%= r.days_charged %> <%= Number(r.days_charged) === 1 ? 'block' : 'blocks' %> (<%= r.block_hours %> h · <%= inr(r.first_block_rate, true) %> then <%= inr(r.next_block_rate, true) %>)</dt><dd><%= inr(r.base_amt) %></dd></div>
+          <%
+            var slabs = Array.isArray(r.rate_slabs) ? r.rate_slabs : null;
+            var tariff = slabs
+              ? slabs.map(function (s) { return s.from_hour + '–' + s.to_hour + ' h ' + inr(s.rate, true); }).join(' · ')
+              : r.block_hours + ' h · ' + inr(r.first_block_rate, true) + ' then ' + inr(r.next_block_rate, true);
+          %>
+          <div><dt><%= r.luggage_qty %> × <%= r.days_charged %> <%= Number(r.days_charged) === 1 ? 'block' : 'blocks' %> (<%= tariff %>)</dt><dd><%= inr(r.base_amt) %></dd></div>
           <% if (Number(r.penal_amt)) { %><div><dt>Penalty</dt><dd><%= inr(r.penal_amt) %></dd></div><% } %>
           <div class="is-sub"><dt>Taxable value</dt><dd><%= inr(r.taxable_amt) %></dd></div>
           <% if (Number(r.igst)) { %>
@@ -70,7 +78,13 @@
             <div class="is-sub"><dt>CGST <%= Number(r.gst_pct) / 2 %>%</dt><dd><%= inr(r.cgst) %></dd></div>
             <div class="is-sub"><dt>SGST <%= Number(r.gst_pct) / 2 %>%</dt><dd><%= inr(r.sgst) %></dd></div>
           <% } %>
-          <div class="is-total"><dt>Total paid · <%= r.pay_mode === 'U' ? 'UPI' : 'Cash' %></dt><dd><%= inr(r.net_amt) %></dd></div>
+          <% if (Number(r.adv_amt)) { %>
+            <div class="is-total"><dt>Bill total</dt><dd><%= inr(r.net_amt) %></dd></div>
+            <div class="is-sub"><dt>Advance paid at check-in</dt><dd>− <%= inr(r.adv_amt) %></dd></div>
+            <div class="is-total"><dt>Paid at check-out · <%= r.pay_mode === 'U' ? 'UPI' : 'Cash' %></dt><dd><%= inr(r.bal_amt) %></dd></div>
+          <% } else { %>
+            <div class="is-total"><dt>Total paid · <%= r.pay_mode === 'U' ? 'UPI' : 'Cash' %></dt><dd><%= inr(r.net_amt) %></dd></div>
+          <% } %>
         </dl>
         <div class="px-4 pb-4 list-sub">
           <%= r.upi_ref ? 'UPI ref ' + r.upi_ref + ' · ' : '' %>GSTIN <%= r.gst_no || '—' %> · <%= r.bill_printed === 'N' ? 'not printed' : 'printed' %> · by <%= userName(r.user_id) %>

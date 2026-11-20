@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { availableParallelism, networkInterfaces } from 'node:os';
 import { createApp } from './app';
 import { HTTP_TIMEOUTS } from './config/constants';
-import { env, isProd } from './config/env';
+import { env, isProd, underIisnode } from './config/env';
 import { closeDb, db, pingDb } from './core/db/pool';
 import { loadRegistry } from './core/db/registry';
 import { logger } from './core/logger';
@@ -12,12 +12,15 @@ import { onShutdown, runShutdownHooks } from './core/shutdown';
 const SHUTDOWN_MSG = 'shutdown';
 
 function workerCount(): number {
+  // Under iisnode, IIS starts and recycles the Node processes (nodeProcessCountPerApplication).
+  if (underIisnode) return 1;
   if (env.CLUSTER_WORKERS > 0) return env.CLUSTER_WORKERS;
   return isProd ? availableParallelism() : 1;
 }
 
 /** URLs other machines can use; on a wildcard bind that is every non-internal IPv4 address. */
 function listenUrls(): string[] {
+  if (underIisnode) return [`iisnode pipe ${String(env.PORT)}`];
   const wildcard = env.HOST === '0.0.0.0' || env.HOST === '::';
   const hosts = wildcard
     ? Object.values(networkInterfaces())
@@ -57,12 +60,15 @@ async function startWorker(): Promise<void> {
   server.headersTimeout = HTTP_TIMEOUTS.headersMs;
   server.requestTimeout = HTTP_TIMEOUTS.requestMs;
 
-  server.listen(env.PORT, env.HOST, () => {
+  const onListening = () => {
     logger.info(
       { host: env.HOST, port: env.PORT, env: env.NODE_ENV, urls: listenUrls() },
       'server listening',
     );
-  });
+  };
+  // A named pipe (iisnode) has no host; a TCP port binds to HOST.
+  if (typeof env.PORT === 'string') server.listen(env.PORT, onListening);
+  else server.listen(env.PORT, env.HOST, onListening);
 
   let shuttingDown = false;
   const shutdown = (reason: string) => {

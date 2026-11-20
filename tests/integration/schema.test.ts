@@ -300,12 +300,12 @@ describe('constraints', () => {
     ).rejects.toMatchObject({ code: 'ER_NO_REFERENCED_ROW_2' });
   });
 
-  it('td_sync_exception.created_at defaults to UTC now', async () => {
+  it('td_sync_exception.created_at defaults to now (IST session, migration 009)', async () => {
     const [rows] = await conn.query<RowDataPacket[]>(
       `SELECT column_default AS def FROM information_schema.columns
         WHERE table_schema = DATABASE() AND table_name = 'td_sync_exception' AND column_name = 'created_at'`,
     );
-    expect(String(rows[0]?.def).toLowerCase()).toContain('utc_timestamp');
+    expect(String(rows[0]?.def).toLowerCase()).toContain('current_timestamp');
   });
 });
 

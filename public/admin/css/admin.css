@@ -3213,3 +3213,18 @@ td > .online-chip:first-child {
     grid-column: 1 / -1;
   }
 }
+
+.setting-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+/* Tariff slab editor (rows beyond the filled ones open with "Add slab" when JS runs). */
+.slab-editor { border: 0; padding: 0; margin: 0; }
+.slab-editor legend { float: none; width: auto; font-size: inherit; }
+.slab-table { max-width: 560px; }
+.slab-table td, .slab-table th { white-space: nowrap; }
+.slab-table .input-group { min-width: 120px; }
+html.js [data-slab-closed] { display: none; }

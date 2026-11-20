@@ -6,6 +6,20 @@ const base = {
   JWT_REFRESH_SECRET: 'b'.repeat(40),
 };
 
+describe('PORT (TCP port or iisnode named pipe)', () => {
+  it('accepts a port number or a Windows named pipe', () => {
+    expect(parseEnv({ ...base, PORT: '3003' }).PORT).toBe(3003);
+    const pipe = '\\\\.\\pipe\\a1b2c3d4-iisnode';
+    expect(parseEnv({ ...base, PORT: pipe }).PORT).toBe(pipe);
+  });
+
+  it('rejects anything else', () => {
+    expect(() => parseEnv({ ...base, PORT: '0' })).toThrow(/PORT/);
+    expect(() => parseEnv({ ...base, PORT: '70000' })).toThrow(/PORT/);
+    expect(() => parseEnv({ ...base, PORT: 'abc' })).toThrow(/PORT/);
+  });
+});
+
 describe('parseEnv', () => {
   it('applies defaults and parses CORS list', () => {
     const env = parseEnv({ ...base, CORS_ORIGINS: 'http://a.test, http://b.test' });

@@ -594,7 +594,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"block_hours\": 24,\n  \"first_block_rate\": \"first_block_rate\",\n  \"next_block_rate\": \"next_block_rate\",\n  \"effective_from\": \"2026-05-01\",\n  \"customer_id\": 1\n}",
+              "raw": "{\n  \"rate_slabs\": [\n    {\n      \"from_hour\": 1,\n      \"to_hour\": 1,\n      \"rate\": \"rate\"\n    }\n  ],\n  \"block_hours\": 1,\n  \"first_block_rate\": \"first_block_rate\",\n  \"next_block_rate\": \"next_block_rate\",\n  \"effective_from\": \"2026-05-01\",\n  \"customer_id\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -658,7 +658,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"block_hours\": 1,\n  \"first_block_rate\": \"first_block_rate\",\n  \"next_block_rate\": \"next_block_rate\",\n  \"effective_from\": \"2026-05-01\"\n}",
+              "raw": "{\n  \"rate_slabs\": [\n    {\n      \"from_hour\": 1,\n      \"to_hour\": 1,\n      \"rate\": \"rate\"\n    }\n  ],\n  \"block_hours\": 1,\n  \"first_block_rate\": \"first_block_rate\",\n  \"next_block_rate\": \"next_block_rate\",\n  \"effective_from\": \"2026-05-01\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2490,7 +2490,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"luggage\": [\n    {\n      \"trans_id\": \"3f2504e0-4f89-41d3-9a0c-0305e82c3301\",\n      \"local_version\": 1,\n      \"receipt_no\": \"U03-00125\",\n      \"receipt_dt\": \"2026-05-01\",\n      \"user_id_in\": 1,\n      \"device_id_in\": \"device_id_in\",\n      \"shift_id_in\": 1,\n      \"date_time_in\": \"2026-05-01 10:00:00\",\n      \"pasn_name\": \"pasn_name\",\n      \"pasn_mob_no\": \"pasn_mob_no\",\n      \"pnr_no\": \"\",\n      \"luggage_qty\": 1,\n      \"id_proof_id\": 1,\n      \"id_number\": \"id_number\",\n      \"user_id_out\": 1,\n      \"device_id_out\": \"device_id_out\",\n      \"shift_id_out\": 1,\n      \"date_time_out\": \"2026-05-01 10:00:00\",\n      \"out_flag\": \"N\"\n    }\n  ],\n  \"receipts\": [\n    {\n      \"trans_id\": \"3f2504e0-4f89-41d3-9a0c-0305e82c3301\",\n      \"local_version\": 1,\n      \"bill_no\": \"U03-00007\",\n      \"bill_dt\": \"2026-05-01\",\n      \"user_id\": \"superadmin\",\n      \"device_id\": \"android-device-01\",\n      \"shift_id\": 1,\n      \"luggage_qty\": 1,\n      \"days_charged\": 1,\n      \"block_hours\": 1,\n      \"first_block_rate\": \"first_block_rate\",\n      \"next_block_rate\": \"next_block_rate\",\n      \"base_amt\": \"base_amt\",\n      \"penal_amt\": \"0\",\n      \"net_amt\": \"net_amt\",\n      \"taxable_amt\": \"taxable_amt\",\n      \"gst_pct\": \"gst_pct\",\n      \"cgst\": \"cgst\",\n      \"sgst\": \"sgst\",\n      \"igst\": \"igst\",\n      \"gst_flag\": \"N\",\n      \"pay_mode\": \"C\",\n      \"upi_ref\": \"upi_ref\",\n      \"bill_printed\": \"Y\"\n    }\n  ]\n}",
+              "raw": "{\n  \"luggage\": [\n    {\n      \"trans_id\": \"3f2504e0-4f89-41d3-9a0c-0305e82c3301\",\n      \"local_version\": 1,\n      \"receipt_no\": \"U03-00125\",\n      \"receipt_dt\": \"2026-05-01\",\n      \"user_id_in\": 1,\n      \"device_id_in\": \"device_id_in\",\n      \"shift_id_in\": 1,\n      \"date_time_in\": \"2026-05-01 10:00:00\",\n      \"pasn_name\": \"pasn_name\",\n      \"pasn_mob_no\": \"pasn_mob_no\",\n      \"pnr_no\": \"\",\n      \"luggage_qty\": 1,\n      \"extra_lugage_qty\": 0,\n      \"adv_amt\": \"0\",\n      \"adv_hours\": 0,\n      \"id_proof_id\": 1,\n      \"id_number\": \"id_number\",\n      \"user_id_out\": 1,\n      \"device_id_out\": \"device_id_out\",\n      \"shift_id_out\": 1,\n      \"date_time_out\": \"2026-05-01 10:00:00\",\n      \"out_flag\": \"N\"\n    }\n  ],\n  \"receipts\": [\n    {\n      \"trans_id\": \"3f2504e0-4f89-41d3-9a0c-0305e82c3301\",\n      \"local_version\": 1,\n      \"bill_no\": \"U03-00007\",\n      \"bill_dt\": \"2026-05-01\",\n      \"user_id\": \"superadmin\",\n      \"device_id\": \"android-device-01\",\n      \"shift_id\": 1,\n      \"luggage_qty\": 1,\n      \"days_charged\": 1,\n      \"rate_slabs\": [\n        {\n          \"from_hour\": 1,\n          \"to_hour\": 1,\n          \"rate\": \"rate\"\n        }\n      ],\n      \"block_hours\": 1,\n      \"first_block_rate\": \"first_block_rate\",\n      \"next_block_rate\": \"next_block_rate\",\n      \"base_amt\": \"base_amt\",\n      \"penal_amt\": \"0\",\n      \"net_amt\": \"net_amt\",\n      \"adv_amt\": \"0\",\n      \"bal_amt\": \"bal_amt\",\n      \"taxable_amt\": \"taxable_amt\",\n      \"gst_pct\": \"gst_pct\",\n      \"cgst\": \"cgst\",\n      \"sgst\": \"sgst\",\n      \"igst\": \"igst\",\n      \"gst_flag\": \"Y\",\n      \"grace_minutes\": 1,\n      \"gst_inclusive\": \"Y\",\n      \"penalty_gst_flag\": \"Y\",\n      \"pay_mode\": \"C\",\n      \"upi_ref\": \"upi_ref\",\n      \"bill_printed\": \"Y\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"

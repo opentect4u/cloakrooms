@@ -23,8 +23,12 @@ export interface ReportColumn {
   kind?: ReportCell;
   /** Second line under the value (e.g. mobile under the name). */
   sub?: string;
+  /** Wording of the second line (default: the raw value). */
+  subText?: (value: string) => string;
   hideBelow?: 'md' | 'lg';
 }
+
+const extraBags = (n: string) => `+${n} extra (free)`;
 
 export interface ReportDef {
   key: string;
@@ -48,9 +52,11 @@ export interface ReportDef {
 const MONEY_TOTALS = [
   { key: 'bills', label: 'Bills', kind: 'int' as const },
   { key: 'bags', label: 'Bags', kind: 'int' as const },
+  { key: 'net_amt', label: 'Billed', kind: 'money' as const },
+  { key: 'adv_collected', label: 'Advances taken', kind: 'money' as const },
   { key: 'cash_amt', label: 'Cash', kind: 'money' as const },
   { key: 'upi_amt', label: 'UPI', kind: 'money' as const },
-  { key: 'net_amt', label: 'Net collection', kind: 'money' as const },
+  { key: 'collected_amt', label: 'Collected', kind: 'money' as const },
 ];
 
 export const REPORTS: ReportDef[] = [
@@ -67,9 +73,11 @@ export const REPORTS: ReportDef[] = [
       { key: 'bags', label: 'Bags', kind: 'int' },
       { key: 'base_amt', label: 'Rent', kind: 'money', hideBelow: 'lg' },
       { key: 'penal_amt', label: 'Penalty', kind: 'money', hideBelow: 'lg' },
+      { key: 'net_amt', label: 'Billed', kind: 'money', hideBelow: 'md' },
+      { key: 'adv_collected', label: 'Advance in', kind: 'money', hideBelow: 'lg' },
       { key: 'cash_amt', label: 'Cash', kind: 'money', hideBelow: 'md' },
       { key: 'upi_amt', label: 'UPI', kind: 'money', hideBelow: 'md' },
-      { key: 'net_amt', label: 'Net', kind: 'money' },
+      { key: 'collected_amt', label: 'Collected', kind: 'money' },
     ],
     totals: MONEY_TOTALS,
     run: reports.collectionSummary as ReportDef['run'],
@@ -86,9 +94,11 @@ export const REPORTS: ReportDef[] = [
       { key: 'shift_name', label: 'Shift' },
       { key: 'bills', label: 'Bills', kind: 'int' },
       { key: 'bags', label: 'Bags', kind: 'int', hideBelow: 'md' },
+      { key: 'net_amt', label: 'Billed', kind: 'money', hideBelow: 'md' },
+      { key: 'adv_collected', label: 'Advance in', kind: 'money', hideBelow: 'lg' },
       { key: 'cash_amt', label: 'Cash', kind: 'money', hideBelow: 'md' },
       { key: 'upi_amt', label: 'UPI', kind: 'money', hideBelow: 'md' },
-      { key: 'net_amt', label: 'Net', kind: 'money' },
+      { key: 'collected_amt', label: 'Collected', kind: 'money' },
     ],
     totals: MONEY_TOTALS,
     run: reports.userShiftCollection as ReportDef['run'],
@@ -105,7 +115,14 @@ export const REPORTS: ReportDef[] = [
       { key: 'date_time_in_ist', label: 'Checked in', kind: 'istTime' },
       { key: 'pasn_name', label: 'Passenger', sub: 'pasn_mob_no' },
       { key: 'pnr_no', label: 'PNR', hideBelow: 'lg' },
-      { key: 'luggage_qty', label: 'Bags', kind: 'int' },
+      {
+        key: 'luggage_qty',
+        label: 'Bags',
+        kind: 'int',
+        sub: 'extra_lugage_qty',
+        subText: extraBags,
+      },
+      { key: 'adv_amt', label: 'Advance', kind: 'money', hideBelow: 'md' },
       { key: 'id_proof_name', label: 'ID proof', sub: 'id_number', hideBelow: 'lg' },
       { key: 'user_name_in', label: 'By', sub: 'shift_name_in', hideBelow: 'md' },
       { key: 'out_flag', label: 'Status', kind: 'bagStatus' },
@@ -113,6 +130,8 @@ export const REPORTS: ReportDef[] = [
     totals: [
       { key: 'bags_entries', label: 'Check-ins', kind: 'int' },
       { key: 'bags', label: 'Bags', kind: 'int' },
+      { key: 'extra_bags', label: 'Extra bags (free)', kind: 'int' },
+      { key: 'adv_amt', label: 'Advances', kind: 'money' },
     ],
     run: reports.checkInRegister as ReportDef['run'],
   },
@@ -127,16 +146,26 @@ export const REPORTS: ReportDef[] = [
       { key: 'receipt_no', label: 'Receipt', kind: 'code', sub: 'bill_no' },
       { key: 'date_time_out_ist', label: 'Checked out', kind: 'istTime' },
       { key: 'pasn_name', label: 'Passenger', sub: 'pasn_mob_no' },
-      { key: 'luggage_qty', label: 'Bags', kind: 'int' },
+      {
+        key: 'luggage_qty',
+        label: 'Bags',
+        kind: 'int',
+        sub: 'extra_lugage_qty',
+        subText: extraBags,
+      },
       { key: 'days_charged', label: 'Days', kind: 'int', hideBelow: 'md' },
       { key: 'user_name_out', label: 'By', sub: 'shift_name_out', hideBelow: 'lg' },
       { key: 'pay_mode', label: 'Paid by', kind: 'payMode', hideBelow: 'md' },
       { key: 'net_amt', label: 'Net', kind: 'money' },
+      { key: 'bill_adv_amt', label: 'Advance', kind: 'money', hideBelow: 'lg' },
+      { key: 'bal_amt', label: 'Collected', kind: 'money', hideBelow: 'md' },
     ],
     totals: [
       { key: 'bags_entries', label: 'Check-outs', kind: 'int' },
       { key: 'bags', label: 'Bags', kind: 'int' },
       { key: 'net_amt', label: 'Net billed', kind: 'money' },
+      { key: 'adv_amt', label: 'Advances used', kind: 'money' },
+      { key: 'bal_amt', label: 'Collected', kind: 'money' },
     ],
     run: reports.checkOutRegister as ReportDef['run'],
   },
@@ -153,12 +182,21 @@ export const REPORTS: ReportDef[] = [
       { key: 'minutes_stored', label: 'Stored for', kind: 'duration' },
       { key: 'pasn_name', label: 'Passenger', sub: 'pasn_mob_no' },
       { key: 'pnr_no', label: 'PNR', hideBelow: 'lg' },
-      { key: 'luggage_qty', label: 'Bags', kind: 'int' },
+      {
+        key: 'luggage_qty',
+        label: 'Bags',
+        kind: 'int',
+        sub: 'extra_lugage_qty',
+        subText: extraBags,
+      },
+      { key: 'adv_amt', label: 'Advance', kind: 'money', hideBelow: 'md' },
       { key: 'user_name_in', label: 'By', hideBelow: 'md' },
     ],
     totals: [
       { key: 'bags_entries', label: 'Receipts', kind: 'int' },
       { key: 'bags', label: 'Bags', kind: 'int' },
+      { key: 'extra_bags', label: 'Extra bags (free)', kind: 'int' },
+      { key: 'adv_amt', label: 'Advances held', kind: 'money' },
     ],
     run: reports.bagsInStore as ReportDef['run'],
   },
@@ -203,10 +241,12 @@ export const REPORTS: ReportDef[] = [
       { key: 'user_name', label: 'By', hideBelow: 'md' },
       { key: 'pay_mode', label: 'Paid by', kind: 'payMode', hideBelow: 'md' },
       { key: 'net_amt', label: 'Net', kind: 'money' },
+      { key: 'bal_amt', label: 'Collected', kind: 'money', hideBelow: 'md' },
     ],
     totals: [
       { key: 'bills', label: 'Bills', kind: 'int' },
       { key: 'net_amt', label: 'Net', kind: 'money' },
+      { key: 'bal_amt', label: 'Collected', kind: 'money' },
     ],
     run: reports.unprintedBills as ReportDef['run'],
   },
@@ -239,7 +279,8 @@ export interface Formatted {
 
 export function formatCell(col: ReportColumn, row: Record<string, unknown>): Formatted {
   const v = row[col.key];
-  const sub = col.sub && row[col.sub] ? String(row[col.sub]) : undefined;
+  const raw = col.sub && row[col.sub] ? String(row[col.sub]) : undefined;
+  const sub = raw !== undefined && col.subText ? col.subText(raw) : raw;
   if (v === null || v === undefined || v === '') return { text: '—', sub };
   const s = String(v);
   switch (col.kind) {

@@ -14,7 +14,11 @@ import { env } from '../../src/config/env';
 import { closeDb, db } from '../../src/core/db/pool';
 import { loadRegistry } from '../../src/core/db/registry';
 import { addDays, toIstDate, toUtcString } from '../../src/core/utils/time';
+import { SETTING_META } from '../../src/admin/settingsMeta';
+import { fromPaise, toPaise } from '../../src/core/utils/money';
 import { computeBill } from '../../src/domain/billing';
+import { balancePaise } from '../../src/domain/slabs';
+import { SETTING_NAMES, SETTING_RULES } from '../../src/modules/settings/settings.schema';
 
 const app = createApp();
 const API = '/api/v1';
@@ -149,7 +153,13 @@ it('generates docs/FRONTEND_API_GUIDE.md', async () => {
   await call('rate_update', 'patch', `/rates/${defaultRateId}`, { token: A, body: { effective_from: '2026-01-01' } });
   const futureRate = await call('rate_create', 'post', '/rates', {
     token: A,
-    body: { block_hours: 24, first_block_rate: '60.00', next_block_rate: '25.00', effective_from: addDays(today, 60) },
+    body: {
+      effective_from: addDays(today, 60),
+      rate_slabs: [
+        { from_hour: 0, to_hour: 24, rate: '30.00' },
+        { from_hour: 24, to_hour: 48, rate: '10.00' },
+      ],
+    },
   });
   await call('rate_delete', 'delete', `/rates/${futureRate.body.data.rate_id}`, { token: A });
 
@@ -266,6 +276,9 @@ it('generates docs/FRONTEND_API_GUIDE.md', async () => {
     pasn_mob_no: '9123456780',
     pnr_no: '8812345670',
     luggage_qty: 1,
+    extra_lugage_qty: 1,
+    adv_amt: '50.00',
+    adv_hours: 24,
     id_proof_id: passportId,
     id_number: 'P1234567',
     user_id_out: op1Id,
@@ -293,7 +306,12 @@ it('generates docs/FRONTEND_API_GUIDE.md', async () => {
     shift_id: shiftId,
     luggage_qty: 1,
     ...bill,
+    adv_amt: '50.00',
+    bal_amt: fromPaise(balancePaise(toPaise(bill.net_amt), toPaise('50.00'))),
     gst_flag: 'Y',
+    grace_minutes: 0,
+    gst_inclusive: 'Y',
+    penalty_gst_flag: 'Y',
     pay_mode: 'U',
     upi_ref: '432198765012',
     bill_printed: 'Y',
@@ -374,6 +392,9 @@ it('generates docs/FRONTEND_API_GUIDE.md', async () => {
       gst_type: 'E',
     }),
     gst_flag: 'Y',
+    grace_minutes: 0,
+    gst_inclusive: 'Y',
+    penalty_gst_flag: 'Y',
     pay_mode: 'C',
     upi_ref: null,
     bill_printed: 'Y',
@@ -572,6 +593,31 @@ function crudBlock(o: {
   ].join('\n');
 }
 
+/** §8 table built from the code (SETTING_RULES + panel labels), so it never drifts. */
+function settingsTable(): string {
+  const code = (s: string) => '`' + s + '`';
+  const rows = SETTING_NAMES.map((name) => {
+    const rule = SETTING_RULES[name];
+    const meta = SETTING_META[name];
+    const input = meta.input;
+    let values: string;
+    if (input.kind === 'yn') values = 'Y / N';
+    else if (input.kind === 'select') values = input.options.map(([v, l]) => `${code(v)} ${l}`).join(', ');
+    else if (input.kind === 'int') values = `${input.min}–${input.max}${input.suffix ? ' ' + input.suffix : ''}`;
+    else if (input.kind === 'amount') values = '0.00–99999.99';
+    else if (input.kind === 'percent') values = '0.00–28.00 (%)';
+    else values = '4–64 characters';
+    const def = rule.default === null ? '—' : code(rule.default);
+    const scope = rule.scope === 'customer' ? 'customer' : 'per user';
+    return `| ${code(name)} | ${meta.group} | ${values} | ${def} | ${scope} | ${meta.server ? 'yes' : ''} | ${meta.label}. ${meta.help} |`;
+  });
+  return [
+    '| Key | Group | Values | Default | Scope | Server | Meaning |',
+    '|---|---|---|---|---|---|---|',
+    ...rows,
+  ].join('\n');
+}
+
 function render(c: Record<string, Call>) {
   const pull = c.pull_first?.response as { data?: { server_time?: string } } | undefined;
   return `# Cloak Room Billing API — Frontend Integration Guide
@@ -640,6 +686,7 @@ Error (\`data\` is always \`null\`; \`code\` tells you what happened; \`errors\`
 | 403 | \`SUBSCRIPTION_EXPIRED\` | Customer subscription ended (\`errors.renewal_dt\`) → block login, ask to contact Synergic |
 | 403 | \`REPORT_PASSWORD_REQUIRED\` | Report password needed/wrong → prompt, send \`X-Report-Password\` header |
 | 403 | \`PASSWORD_CHANGE_REQUIRED\` | \`user.must_change_pwd = Y\` → show the change-password screen (\`POST /auth/change-password\`) |
+| 403 | \`OUTSIDE_SHIFT\` | login of a counter user outside their shift (\`SHIFT_LOGIN_FLAG = Y\`); \`errors = { shift_name, from_time, to_time, opens_at }\` (IST \`HH:mm\`) → "Sign-in opens at …" |
 | 404 | \`NOT_FOUND\` | Missing, or belongs to another customer |
 | 409 | \`CONFLICT\` | Duplicate unique value (\`errors.key\`, e.g. \`md_user.uq_user_code\`) |
 | 409 | \`SESSION_ACTIVE\` | User already logged in on another device (\`errors.session_started_at\`, masked \`errors.device_id\`) |
@@ -852,12 +899,11 @@ ${crudBlock({
   base: '/api/v1/rates',
   pk: 'rate_id',
   auth: { read: 'A, S', write: 'A, S' },
-  notes: 'Versioned by `effective_from`: the bill uses the latest rate with `effective_from ≤ receipt_dt`. One row per date per customer (`409` on duplicates). A new customer gets 24 h / ₹50 / ₹20 automatically.',
+  notes: 'Versioned by `effective_from`: the bill uses the latest rate with `effective_from ≤ receipt_dt`. One row per date per customer (`409` on duplicates). A new customer gets 0–24 h ₹50 + 24–48 h ₹20 automatically. `rate_slabs` is the tariff (§7); send it, or the older two-rate fields (then the server builds the slabs). The server keeps both forms in step: `block_hours` = first slab length, `first_block_rate` / `next_block_rate` = first / second slab rate.',
   sortable: 'effective_from, rate_id (default effective_from desc)',
   createBody: [
-    ['block_hours', 'integer 1–720, default 24'],
-    ['first_block_rate', 'money, per bag for the first block'],
-    ['next_block_rate', 'money, per bag for each further started block'],
+    ['rate_slabs', 'array of `{from_hour, to_hour, rate}` (1–20): first from 0, each starts where the previous ends, hours whole numbers ≤ 8760, rate money per bag'],
+    ['block_hours, first_block_rate, next_block_rate', 'older two-rate form, only without `rate_slabs` (both rates required, block_hours default 24)'],
     ['effective_from', '`YYYY-MM-DD`'],
   ],
   updateNote: 'Any of the create fields.',
@@ -1156,13 +1202,16 @@ Luggage row fields (\`customer_id\`, \`sync_flag\`, audit fields are ignored if 
 | \`device_id_in\` | required when \`out_flag = N\`; may be omitted/null on a QR check-out row |
 | \`shift_id_in\` | nullable |
 | \`pasn_name\` (≤ 200), \`pasn_mob_no\` (≤ 15), \`pnr_no\` (≤ 20, may be empty), \`luggage_qty\` (1–999) | passenger / bags |
+| \`extra_lugage_qty\` (0–999, default 0) | extra bags stored **free**, never billed (QR key \`x\`) |
+| \`adv_amt\` (money, default 0), \`adv_hours\` (0–720, default 0) | advance taken at check-in and the \`ADVANCE_HOURS\` it covered (QR key \`a\` = adv_amt) |
 | \`id_proof_id\`, \`id_number\` (≤ 50) | ID proof — both or neither (null when none was taken, or on a QR check-out row); masked by the server when \`mask_flag = Y\` |
 | \`user_id_out\`, \`device_id_out\`, \`shift_id_out\`, \`date_time_out\` | check-out (null while in store) |
 | \`out_flag\` | \`N\` in store / \`Y\` checked out (then the 3 out fields + date_time_out are required) |
 
 Receipt (bill) row fields: \`trans_id\`, \`local_version\`, \`bill_no\` (bill series), \`bill_dt\` (IST),
-\`user_id\`, \`device_id\`, \`shift_id\`, \`luggage_qty\`, \`days_charged\`, \`block_hours\`, \`first_block_rate\`,
-\`next_block_rate\` (the rate snapshot used), \`base_amt\`, \`penal_amt\`, \`net_amt\`, \`taxable_amt\`, \`gst_pct\`,
+\`user_id\`, \`device_id\`, \`shift_id\`, \`luggage_qty\`, \`days_charged\`, \`rate_slabs\` (the slabs used; then
+\`block_hours\`, \`first_block_rate\`, \`next_block_rate\` are optional), \`base_amt\`, \`penal_amt\`, \`net_amt\`
+(full bill), \`adv_amt\` (the bag's advance, default 0), \`bal_amt\` (max(0, net_amt − adv_amt)), \`taxable_amt\`, \`gst_pct\`,
 \`cgst\`, \`sgst\`, \`igst\`, \`gst_flag\`, \`pay_mode\` (\`C\`/\`U\`), \`upi_ref\` (nullable), \`bill_printed\`
 (\`N\` = "Out Without Bill Print", the bill is still recorded). Do not send \`gst_no\`: the server stamps the
 customer's current GSTIN on the bill when it stores it (old bills keep the GSTIN they were made with).
@@ -1174,12 +1223,15 @@ customer's current GSTIN on the bill when it stores it (old bills keep the GSTIN
 - Luggage merge: check-in fields are write-once; check-out fields only fill empty values; \`out_flag\`
   never goes back from \`Y\`. Push order between devices does not matter. Re-pushing is safe.
 - Bills are stored once per \`trans_id\`; the server recomputes the bill (§7). A difference keeps the bill
-  and logs \`AMOUNT_MISMATCH\`.
+  and logs \`AMOUNT_MISMATCH\`. A bill without \`rate_slabs\` (app older than the slab release) for a tariff
+  the two-rate fields cannot express is refused with \`APP_UPDATE_REQUIRED\` (not stored).
+- \`extra_lugage_qty\`, \`adv_amt\`, \`adv_hours\` are filled once while still 0 (QR row first, or a row
+  synced before the app sent them), then never change.
 - The response \`counters\` are the server’s last receipt/bill numbers of the current period for this user.
 
 \`reason\` codes on \`EXCEPTION\`: \`VALIDATION_ERROR\`, \`INVALID_REFERENCE\` (user/shift/ID proof not of this
 customer), \`TENANT_MISMATCH\`, \`DUPLICATE_RECEIPT_NO\`, \`DUPLICATE_CHECKOUT\` (a different second check-out),
-\`BILL_WITHOUT_LUGGAGE\`, \`DUPLICATE_BILL\`, \`DUPLICATE_BILL_NO\`, \`CHECKOUT_MISSING\`, \`NO_RATE\`,
+\`BILL_WITHOUT_LUGGAGE\`, \`DUPLICATE_BILL\`, \`DUPLICATE_BILL_NO\`, \`CHECKOUT_MISSING\`, \`NO_RATE\`, \`APP_UPDATE_REQUIRED\`,
 \`AMOUNT_MISMATCH\`, \`DB_ERROR\`.
 
 Sample (bag 1 still in store with an Aadhaar number, bag 2 checked out and billed, plus a bill for an
@@ -1269,49 +1321,77 @@ ${sample('not_found', { request: false })}
 
 \`\`\`
 minutes      = whole minutes from date_time_in to date_time_out (seconds dropped)
-days_charged = max(1, ceil(minutes / (block_hours × 60)))          24h00m → 1 block, 24h01m → 2
-base_amt     = luggage_qty × (first_block_rate + next_block_rate × (days_charged − 1))
-net_amt      = base_amt + penal_amt                                (GST-INCLUSIVE total collected)
+billable     = max(0, minutes − grace_minutes)                      GRACE_MINUTES, default 0
+slabs        = rate_slabs of the rate row: [{from_hour, to_hour, rate}], contiguous from hour 0
+per bag      = Σ rate of every slab with i = 0 or billable > from_hour × 60     (started slabs)
+             + last.rate × ceil((billable − last.to_hour × 60) / ((last.to_hour − last.from_hour) × 60))
+                                                                    when billable > last.to_hour × 60
+days_charged = number of rates added (slabs started + repeats of the last slab)
+base_amt     = luggage_qty × per bag                                 extra bags are free
+adv_amt      = the bag's advance (0 when none); bal_amt = max(0, net_amt − adv_amt)   no refund
 rate row     = latest rate with effective_from ≤ receipt_dt
 GST row      = latest GST with effective_from ≤ bill_dt
-gst_pct      = cgst_pct + sgst_pct  (GST_TYPE = E)   |   igst_pct  (GST_TYPE = I)
-taxable_amt  = round(net_amt × 100 / (100 + gst_pct))
-gst          = net_amt − taxable_amt
+gst_pct      = 0 when gst_flag = N, else the customer's GST_PCT when set,
+               else cgst_pct + sgst_pct (GST_TYPE = E) | igst_pct (GST_TYPE = I) of the GST row
+taxed        = base_amt + (penalty_gst_flag = Y ? penal_amt : 0)    PENALTY_GST_FLAG, default Y
+
+gst_inclusive = Y (GST_INCLUSIVE, default):
+  taxable_amt = round(taxed × 100 / (100 + gst_pct))
+  gst         = taxed − taxable_amt
+  net_amt     = base_amt + penal_amt                                 total collected
+gst_inclusive = N (GST added on top):
+  taxable_amt = taxed
+  gst         = round(taxed × gst_pct / 100)
+  net_amt     = base_amt + penal_amt + gst
+
 GST_TYPE = E: cgst = round(gst / 2), sgst = gst − cgst, igst = 0   (odd paisa goes to CGST)
 GST_TYPE = I: igst = gst, cgst = sgst = 0
 \`\`\`
 - Do all arithmetic in **integer paise** (₹1 = 100). \`round\` = **half-up** to the paisa.
-- Examples: 2 min × 2 bags → ₹100 · 24h00m × 1 → ₹50 · 24h01m × 1 → ₹70 · 50 h × 3 → ₹270 ·
+- A penalty without GST is **not** part of \`taxable_amt\`: net = taxable + GST + untaxed penalty.
+- Examples (defaults): 2 min × 2 bags → ₹100 · 24h00m × 1 → ₹50 · 24h01m × 1 → ₹70 · 50 h × 3 → ₹270 ·
   ₹70 at 18 % → taxable 59.32, CGST 5.34, SGST 5.34 · ₹60.50 at 18 % → 51.27, CGST 4.62, SGST 4.61.
-- Store the rate snapshot (\`block_hours\`, \`first_block_rate\`, \`next_block_rate\`) and \`gst_pct\` on the bill.
-- No payment at check-in (receipt only); one bill per bag transaction at check-out; pay mode Cash or UPI.
+- Examples (options): 24h10m with 15 grace minutes → 1 block (₹50) · GST on top, ₹50 at 18 % → taxable 50.00,
+  CGST 4.50, SGST 4.50, net 59.00 · on top with ₹10 penalty → taxable 60.00, GST 10.80, net 70.80 · on top,
+  penalty without GST → taxable 50.00, GST 9.00, net 69.00 · inclusive ₹70 + ₹10 penalty without GST →
+  taxable 59.32, CGST 5.34, SGST 5.34, net 80.00 · \`gst_flag = N\` → 0 % GST, taxable = net.
+- **Send the options you billed with on every bill**: \`grace_minutes\`, \`gst_inclusive\`, \`penalty_gst_flag\`,
+  \`gst_flag\`. The server recomputes with them and stores them, so a later settings change never flags old
+  offline bills. Omitted → the customer's settings at the time the bill arrives, then the defaults.
+- Slab examples: 0–24 h ₹30 only → 2 bags × 2 days = 2 × (30 + 30) = ₹120 · 0–24 h ₹30 + 24–48 h ₹10 →
+  2 bags × 3 days = 2 × (30 + 10 + 10) = ₹100 · 0–4 h ₹10 + 4–24 h ₹20 → 3 h ₹10, 5 h ₹30, 25 h ₹50 ·
+  the two-rate tariff 24 h / ₹50 / ₹20 is the slabs 0–24 h ₹50 + 24–48 h ₹20 (same bills as before).
+- Store the snapshot on the bill: \`rate_slabs\` (plus the two-rate fields if you have them) and \`gst_pct\`.
+- **Advance** (\`ADVANCE_FLAG = Y\`): at check-in take \`adv_amt\` = the bill for \`ADVANCE_HOURS\` with the same
+  rate and GST setting and save \`adv_hours\`; print it on the receipt. At check-out \`net_amt\` is the full bill,
+  \`adv_amt\` is subtracted and \`bal_amt\` is collected (Cash or UPI). The GST breakup is printed on the bill
+  only. Reports count the advance on the check-in date and \`bal_amt\` on the bill date.
+- One bill per bag transaction at check-out; pay mode Cash or UPI.
 
 ### Receipt / bill numbers
 - Format \`<user_code>-<5 digits>\` (e.g. \`U03-00125\`; more digits after 99999). Two series per user:
   receipts (check-in) and bills (check-out). The series belongs to the **user**, not the device.
 - Reset by \`RECEIPT_RESET\`: \`D\` daily (period \`YYYY-MM-DD\`), \`M\` monthly (\`YYYY-MM\`), \`Y\` Indian
-  financial year (\`FY2026-27\`, April–March); periods use the IST date.
+  financial year (\`FY2026-27\`, April–March), \`N\` never (one period \`ALL\`); periods use the IST date.
 - Next number = max(local last number, server \`counters.*_last_no\` for the current \`period_key\`) + 1.
   Login, pull and push return \`counters\`; the server never lowers them.
 
 ---
 
-## 8. Settings keys (customer-wide, optionally overridden per user)
+## 8. Settings keys
 
-| Key | Values | Meaning |
-|---|---|---|
-| \`REPORT_FLAG\` | Y/N | operators may open reports |
-| \`REPORT_PWD_FLAG\` | Y/N | reports need the report password (\`X-Report-Password\` header) |
-| \`REPORT_PWD\` | 4–64 chars | the report password (stored hashed, returned as \`********\`, never sent to devices) |
-| \`TOTAL_COLLECTION_FLAG\` | Y/N | show total collection (business meaning pending) |
-| \`RECEIPT_RESET\` | D/M/Y | numbering reset period (default Y) |
-| \`SYNC_INTERVAL_MIN\` | 15–1440 | background sync interval in minutes |
-| \`FORCE_ONLINE_DAYS\` | 0–365 | days the device may work offline before it must go online (0 = off) |
-| \`GST_FLAG\` | Y/N | print the GST breakup on the bill |
-| \`GST_TYPE\` | E/I | E intra-state (CGST+SGST) / I inter-state (IGST) |
-| \`QR_FLAG\` | Y/N | print the QR (trans_id) on receipts |
-| \`DEFAULT_PAY_MODE\` | C/U | preselected pay mode |
-| \`PAPER_WIDTH\` | 58/80 | printer paper width (mm) |
+Values travel as strings. **Scope** "customer" = only the customer-wide row exists (a per-user value is
+refused with \`400\`); "per user" = a user's own row overrides the customer-wide one. Login and pull
+send \`settings\` for the signed-in user with **every key**: the stored value, else the default. Keys
+without a default are absent until set: \`GST_PCT\` (absent = use the \`md_gst\` rate of the bill date)
+and \`REPORT_PWD\` (never sent to devices). "Server" = the server itself uses the value (everything else
+is stored, validated and synced for the app). Roles A and S write settings with \`POST/PATCH /settings\`;
+\`SINGLE_SESSION_FLAG\` only S (\`403\` for A). \`SINGLE_SESSION_FLAG = N\` lets a user of that station be
+signed in on several devices at once (no \`409 SESSION_ACTIVE\`); every session still takes a seat of
+\`user_limit\`. \`GST_PCT\` set → bills are checked with that rate instead of \`md_gst\` (the value in force
+when the bill reaches the server).
+
+${settingsTable()}
 
 ---
 

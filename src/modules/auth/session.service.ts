@@ -51,7 +51,7 @@ export async function endSessions(
   if (!sessions.length) return [];
   const ids = sessions.map((s) => s.session_id);
   await raw(
-    `UPDATE td_user_session SET status = ?, ended_at = UTC_TIMESTAMP(), ended_by = ?
+    `UPDATE td_user_session SET status = ?, ended_at = NOW(), ended_by = ?
       WHERE session_id IN (?) AND status <> 'L'`,
     [status, endedBy, ids],
     conn,
@@ -90,9 +90,9 @@ export async function expireStaleSessions(
     'customerId' in scope ? ['customer_id', scope.customerId] : ['user_id', scope.userId];
   await raw(
     `UPDATE td_user_session
-        SET status = 'L', ended_at = UTC_TIMESTAMP(), ended_by = 'system:expired'
+        SET status = 'L', ended_at = NOW(), ended_by = 'system:expired'
       WHERE ${col} = ? AND status = 'A'
-        AND COALESCE(last_seen_at, started_at) < UTC_TIMESTAMP() - INTERVAL ? SECOND`,
+        AND COALESCE(last_seen_at, started_at) < NOW() - INTERVAL ? SECOND`,
     [value, ttlSeconds(env.JWT_REFRESH_TTL)],
     conn,
   );

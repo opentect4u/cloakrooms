@@ -260,4 +260,31 @@
   });
   toLatest();
   window.addEventListener('resize', toLatest);
+  // Tariff slab editor: each slab starts where the previous one ends; "Add slab" reveals a row.
+  document.querySelectorAll('[data-slab-editor]').forEach(function (editor) {
+    var rows = Array.prototype.slice.call(editor.querySelectorAll('[data-slab-row]'));
+    var addBtn = editor.querySelector('[data-slab-add]');
+    function refresh() {
+      var from = 0;
+      rows.forEach(function (row) {
+        row.querySelector('[data-slab-from]').textContent = String(from);
+        var to = row.querySelector('[data-slab-to]').value;
+        if (/^\d+$/.test(to)) from = Number(to);
+      });
+      addBtn.hidden = !rows.some(function (row) {
+        return row.hasAttribute('data-slab-closed');
+      });
+    }
+    addBtn.addEventListener('click', function () {
+      var next = rows.find(function (row) {
+        return row.hasAttribute('data-slab-closed');
+      });
+      if (!next) return;
+      next.removeAttribute('data-slab-closed');
+      next.querySelector('[data-slab-to]').focus();
+      refresh();
+    });
+    editor.addEventListener('input', refresh);
+    refresh();
+  });
 })();

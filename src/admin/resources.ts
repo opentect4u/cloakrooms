@@ -4,7 +4,6 @@
  */
 import type { CrudConfig } from '../core/crud/crudFactory';
 import type { Row } from '../core/db/dml';
-import { toPaise, fromPaise } from '../core/utils/money';
 import { toIstDate } from '../core/utils/time';
 import { paymentsCrud, registrationsCrud } from '../modules/customers/customers.routes';
 import { gstCrud } from '../modules/gst/gst.routes';
@@ -14,7 +13,7 @@ import { ratesCrud } from '../modules/rates/rates.routes';
 import { shiftAssignmentsCrud } from '../modules/shift-assignments/shift-assignments.routes';
 import { shiftsCrud } from '../modules/shifts/shifts.routes';
 import { YES_NO, type Column, type Field, type Lookup } from './fields';
-import { inr } from './viewHelpers';
+import { slabExample, slabFormInput, slabFormValues, slabSummary } from './slabForm';
 
 export interface Badge {
   label: string;
@@ -48,6 +47,10 @@ export interface Resource {
   hint?: (row: Row) => string;
   deleteWarning?: string;
   limit?: number;
+  /** Form values → API input (e.g. the tariff slab rows → rate_slabs). */
+  formInput?: (values: Record<string, string>) => Record<string, unknown>;
+  /** Extra form values from a stored row (beyond the plain fields). */
+  rowValues?: (row: Row) => Record<string, string>;
 }
 
 const ynSwitch = (name: string, label: string, help?: string): Field => ({
@@ -57,16 +60,6 @@ const ynSwitch = (name: string, label: string, help?: string): Field => ({
   help,
   col: 'col-sm-4',
 });
-
-/** Tariff example: total for one bag over 1, 2 and 3 blocks. */
-function tariffHint(row: Row): string {
-  const first = toPaise(String(row.first_block_rate));
-  const next = toPaise(String(row.next_block_rate));
-  const hrs = Number(row.block_hours);
-  return [1, 2, 3]
-    .map((d) => `${d * hrs} h ${inr(fromPaise(first + next * (d - 1)), true)}`)
-    .join(' · ');
-}
 
 /** Row in force today = latest effective_from ≤ today; later ones are scheduled. */
 function rateBadges(row: Row, rows: Row[], today: string): Badge[] {
@@ -89,14 +82,12 @@ export const RESOURCES: Resource[] = [
     singular: 'tariff',
     icon: 'currency-rupee',
     blurb:
-      'Per-bag rates, versioned by date. A bill uses the tariff in force on its check-in date; amounts include GST.',
+      'Per-bag price slabs, versioned by date. Every started slab adds its price; after the last slab its price repeats for each further slab length. A bill uses the tariff in force on its check-in date; amounts include GST.',
     crud: ratesCrud,
     scope: 'tenant',
     columns: [
       { key: 'effective_from', label: 'Effective from', kind: 'date' },
-      { key: 'block_hours', label: 'Block', kind: 'text', suffix: 'h' },
-      { key: 'first_block_rate', label: 'First block', kind: 'money' },
-      { key: 'next_block_rate', label: 'Each further block', kind: 'money' },
+      { key: 'rate_slabs', label: 'Price slabs (per bag)', format: slabSummary },
     ],
     fields: [
       {
@@ -108,40 +99,25 @@ export const RESOURCES: Resource[] = [
         help: 'Check-ins from this date use this tariff.',
       },
       {
-        name: 'block_hours',
-        label: 'Block length',
-        type: 'number',
-        min: 1,
-        max: 720,
-        suffix: 'hours',
+        name: 'rate_slabs',
+        label: 'Price slabs (per bag)',
+        type: 'slabs',
         required: true,
-        col: 'col-sm-6',
-      },
-      {
-        name: 'first_block_rate',
-        label: 'First block (per bag)',
-        type: 'money',
-        prefix: '₹',
-        required: true,
-        col: 'col-sm-6',
-      },
-      {
-        name: 'next_block_rate',
-        label: 'Each further started block',
-        type: 'money',
-        prefix: '₹',
-        required: true,
-        col: 'col-sm-6',
+        col: 'col-12',
+        help: 'Each slab starts where the previous one ends. Example: up to 24 h ₹30, then up to 48 h ₹10 → 3 days cost ₹30 + ₹10 + ₹10 per bag.',
       },
     ],
     defaults: () => ({
       effective_from: toIstDate(),
-      block_hours: '24',
-      first_block_rate: '50.00',
-      next_block_rate: '20.00',
+      slab_to_1: '24',
+      slab_rate_1: '50.00',
+      slab_to_2: '48',
+      slab_rate_2: '20.00',
     }),
+    formInput: slabFormInput,
+    rowValues: slabFormValues,
     badges: rateBadges,
-    hint: tariffHint,
+    hint: slabExample,
     emptyTitle: 'No tariff yet',
     emptyText: 'Add a tariff so devices can bill check-outs.',
     deleteWarning:

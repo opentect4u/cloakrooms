@@ -194,7 +194,7 @@ describe('push: Case 1 (in on device 1, out on device 2 via QR) → one cloud ro
       statuses(await push(d2, { luggage: [checkOut(bag)], receipts: [bill(bag.trans_id)] })),
     ).toEqual(['ACCEPTED', 'ACCEPTED']);
     await raw(
-      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 00:00:00' WHERE trans_id = ?",
+      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 05:30:00' WHERE trans_id = ?",
       [bag.trans_id],
     );
 
@@ -269,7 +269,7 @@ describe('push: Case 1 (in on device 1, out on device 2 via QR) → one cloud ro
 
     // Fill-once: a re-push (even with other values) changes nothing any more.
     await raw(
-      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 00:00:00' WHERE trans_id = ?",
+      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 05:30:00' WHERE trans_id = ?",
       [bag.trans_id],
     );
     await push(d1, { luggage: [{ ...bag, device_id_in: 'other', id_proof_id: passportId }] });
@@ -297,7 +297,7 @@ describe('push: Case 2 and idempotency', () => {
     const bag = checkIn();
     await push(d1, { luggage: [bag] });
     await raw(
-      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 00:00:00', sync_flag = 'Y' WHERE trans_id = ?",
+      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 05:30:00', sync_flag = 'Y' WHERE trans_id = ?",
       [bag.trans_id],
     );
 
@@ -330,10 +330,10 @@ describe('push: Case 2 and idempotency', () => {
     const b = bill(bag.trans_id);
     await push(d2, { luggage: [out], receipts: [b] });
     await raw(
-      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 00:00:00' WHERE trans_id = ?",
+      "UPDATE td_luggage_in_out SET updated_at = '2026-01-01 05:30:00' WHERE trans_id = ?",
       [bag.trans_id],
     );
-    await raw("UPDATE td_receipt SET updated_at = '2026-01-01 00:00:00' WHERE trans_id = ?", [
+    await raw("UPDATE td_receipt SET updated_at = '2026-01-01 05:30:00' WHERE trans_id = ?", [
       bag.trans_id,
     ]);
     const counter = await fetchOne('md_user_counter', { user_id: u2.id, series: 'B' }, superAdmin);
@@ -671,6 +671,8 @@ describe('push: batch size', () => {
   }, 60_000);
 });
 
+// Raw SQL literals are the STORED value (IST, migration 009): '2026-01-01 05:30:00' in the table is
+// 2026-01-01 00:00:00 UTC through the API / DML layer.
 describe('pull', () => {
   it('first pull: masters, settings, counters and all open check-ins of the tenant only', async () => {
     const cust = await seedCustomer();
@@ -715,10 +717,9 @@ describe('pull', () => {
       { flag: 'I' },
       adminOf(cust),
     );
-    await raw(
-      "UPDATE md_shift SET is_deleted = 'Y', updated_at = UTC_TIMESTAMP() WHERE shift_id = ?",
-      [shift.insertId],
-    );
+    await raw("UPDATE md_shift SET is_deleted = 'Y', updated_at = NOW() WHERE shift_id = ?", [
+      shift.insertId,
+    ]);
 
     const next = await request(app)
       .get(`/api/v1/sync/pull?since=${encodeURIComponent(cursor)}`)
@@ -748,7 +749,7 @@ describe('pull', () => {
     });
     // Same updated_at second for every row: the keyset must still walk them all.
     await raw(
-      "UPDATE td_luggage_in_out SET updated_at = '2026-06-01 00:00:00' WHERE customer_id = ?",
+      "UPDATE td_luggage_in_out SET updated_at = '2026-06-01 05:30:00' WHERE customer_id = ?",
       [cust],
     );
 

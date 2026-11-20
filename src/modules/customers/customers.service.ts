@@ -1,5 +1,6 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import { DEFAULT_RATE, DEFAULT_SETTINGS } from '../../config/defaults';
+import { rateCreateData } from '../rates/rates.schema';
 import type { RequestContext } from '../../core/context';
 import {
   fetch,
@@ -33,7 +34,7 @@ export async function applyCustomerDefaults(
   }
   await save(
     'md_rate_dtls',
-    { ...DEFAULT_RATE, customer_id: customerId, effective_from: toIstDate() },
+    rateCreateData({ ...DEFAULT_RATE, customer_id: customerId, effective_from: toIstDate() }),
     { flag: 'I' },
     ctx,
     conn,

@@ -5,6 +5,8 @@
  *   E (intra-state): cgst = round2(gst / 2), sgst = gst − cgst, igst = 0
  *   I (inter-state): igst = gst, cgst = sgst = 0
  *
+ * GST on top (GST_INCLUSIVE = N, Phase 11): gst = round2(taxable × gst% / 100), same split.
+ *
  * round2 = half-up to the paisa. Percentages carry ≤ 2 decimals and are handled in hundredths
  * of a percent (18.00 % → 1800), so no step ever uses a float.
  */
@@ -39,14 +41,26 @@ export function gstPctFor(rates: GstRates, type: GstType): string {
     : fromPaise(toPaise(rates.cgst_pct) + toPaise(rates.sgst_pct));
 }
 
+/** Splits a total GST amount by type (E: odd paisa to CGST). */
+function byType(taxable: number, gst: number, type: GstType): GstSplit {
+  if (type === 'I') return { taxable, gst, cgst: 0, sgst: 0, igst: gst };
+  const cgst = roundDiv(gst, 2);
+  return { taxable, gst, cgst, sgst: gst - cgst, igst: 0 };
+}
+
+/** GST added on top of a taxable amount (GST-exclusive pricing). */
+export function addGst(taxablePaise: number, gstPct: string, type: GstType): GstSplit {
+  if (!Number.isSafeInteger(taxablePaise) || taxablePaise < 0) {
+    throw new RangeError(`Invalid taxable amount (paise): ${taxablePaise}`);
+  }
+  return byType(taxablePaise, roundDiv(taxablePaise * toPaise(gstPct), 10_000), type);
+}
+
 export function splitGst(netPaise: number, gstPct: string, type: GstType): GstSplit {
   if (!Number.isSafeInteger(netPaise) || netPaise < 0) {
     throw new RangeError(`Invalid net amount (paise): ${netPaise}`);
   }
   const pct = toPaise(gstPct); // hundredths of a percent
   const taxable = roundDiv(netPaise * 10_000, 10_000 + pct);
-  const gst = netPaise - taxable;
-  if (type === 'I') return { taxable, gst, cgst: 0, sgst: 0, igst: gst };
-  const cgst = roundDiv(gst, 2);
-  return { taxable, gst, cgst, sgst: gst - cgst, igst: 0 };
+  return byType(taxable, netPaise - taxable, type);
 }

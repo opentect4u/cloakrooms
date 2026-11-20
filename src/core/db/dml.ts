@@ -11,6 +11,7 @@ import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql
 import { PAGINATION } from '../../config/constants';
 import type { RequestContext } from '../context';
 import { ApiError } from '../http/ApiError';
+import { toDbParams } from './dbTime';
 import { db } from './pool';
 import { assertColumn, getTable, quoteId, type TableMeta } from './registry';
 
@@ -217,7 +218,7 @@ export function buildInsert(meta: TableMeta, data: Row, ctx: RequestContext): Bu
   const stamp = (column: string) => {
     if (!meta.columns.has(column)) return;
     cols.push(quoteId(column));
-    values.push('UTC_TIMESTAMP()');
+    values.push('NOW()');
   };
 
   const tenantForced = meta.columns.has('customer_id') && ctx.userType !== 'S';
@@ -258,7 +259,7 @@ function auditSet(meta: TableMeta, ctx: RequestContext, sets: string[], params: 
     sets.push('`updated_by` = ?');
     params.push(ctx.loginId);
   }
-  if (meta.columns.has('updated_at')) sets.push('`updated_at` = UTC_TIMESTAMP()');
+  if (meta.columns.has('updated_at')) sets.push('`updated_at` = NOW()');
 }
 
 export function buildUpdate(
@@ -322,9 +323,12 @@ export async function fetch<T extends Row = Row>(
   conn: Executor = db,
 ): Promise<{ rows: T[]; total: number }> {
   const built = buildSelect(getTable(table), opts, ctx);
-  const [rows] = await conn.query<RowDataPacket[]>(built.sql, built.params);
+  const [rows] = await conn.query<RowDataPacket[]>(built.sql, toDbParams(built.params));
   if (!built.count) return { rows: rows as T[], total: rows.length };
-  const [countRows] = await conn.query<RowDataPacket[]>(built.count.sql, built.count.params);
+  const [countRows] = await conn.query<RowDataPacket[]>(
+    built.count.sql,
+    toDbParams(built.count.params),
+  );
   return { rows: rows as T[], total: Number(countRows[0]?.total ?? 0) };
 }
 
@@ -337,7 +341,10 @@ export async function fetchOne<T extends Row = Row>(
 ): Promise<T | null> {
   const meta = getTable(table);
   const built = buildSelect(meta, { ...opts, where }, ctx);
-  const [rows] = await conn.query<RowDataPacket[]>(`${built.sql} LIMIT 1`, built.params);
+  const [rows] = await conn.query<RowDataPacket[]>(
+    `${built.sql} LIMIT 1`,
+    toDbParams(built.params),
+  );
   return (rows[0] as T | undefined) ?? null;
 }
 
@@ -351,7 +358,7 @@ export async function save(
   const meta = getTable(table);
   const built =
     opts.flag === 'I' ? buildInsert(meta, data, ctx) : buildUpdate(meta, data, opts.where, ctx);
-  const [res] = await conn.query<ResultSetHeader>(built.sql, built.params);
+  const [res] = await conn.query<ResultSetHeader>(built.sql, toDbParams(built.params));
   return { insertId: res.insertId, affectedRows: res.affectedRows };
 }
 
@@ -362,7 +369,7 @@ export async function softDelete(
   conn: Executor = db,
 ): Promise<number> {
   const built = buildSoftDelete(getTable(table), where, ctx);
-  const [res] = await conn.query<ResultSetHeader>(built.sql, built.params);
+  const [res] = await conn.query<ResultSetHeader>(built.sql, toDbParams(built.params));
   return res.affectedRows;
 }
 
@@ -376,6 +383,6 @@ export async function raw<T = RowDataPacket[]>(
 ): Promise<T> {
   if (FORBIDDEN_RAW.test(sql)) throw new Error('Hard deletes are forbidden; use softDelete');
   // Arrays bind positional `?`, objects bind `:named` placeholders (pool has namedPlaceholders).
-  const [result] = await conn.query(sql, params as unknown[]);
+  const [result] = await conn.query(sql, toDbParams(params as unknown[]));
   return result as T;
 }

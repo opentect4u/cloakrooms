@@ -18,7 +18,7 @@ export const idProofsSeed: Seed = {
     for (const [name, mask] of ID_PROOFS) {
       const [res] = await conn.query<ResultSetHeader>(
         `INSERT INTO md_id_proof (id_proof_name, mask_flag, created_by, created_at)
-         SELECT ?, ?, ?, UTC_TIMESTAMP() FROM DUAL
+         SELECT ?, ?, ?, NOW() FROM DUAL
          WHERE NOT EXISTS (SELECT 1 FROM md_id_proof WHERE id_proof_name = ?)`,
         [name, mask, SEED_USER, name],
       );

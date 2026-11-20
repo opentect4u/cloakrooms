@@ -129,12 +129,21 @@ export const customerSummary = z.object({
 
 // ------------------------------------------------------------------ masters
 
+export const rateSlab = z.object({
+  from_hour: id,
+  to_hour: id,
+  rate: money.describe('Per bag'),
+}).openapi('RateSlab');
+
 export const rateRow = z.object({
   rate_id: id,
   customer_id: id,
-  block_hours: id,
-  first_block_rate: money,
-  next_block_rate: money,
+  rate_slabs: z
+    .array(rateSlab)
+    .describe('Authoritative tariff (Phase 13): every started slab adds its rate, the last repeats'),
+  block_hours: id.describe('= first slab length (kept for older apps)'),
+  first_block_rate: money.describe('= first slab rate'),
+  next_block_rate: money.describe('= second slab rate (first when only one slab)'),
   effective_from: day,
   ...audit,
 }).openapi('RateRow');
@@ -219,7 +228,7 @@ export const mastersSnapshot = z.object({
 
 export const counters = z.object({
   reset: z.enum(['D', 'M', 'Y']),
-  period_key: z.string().describe('`YYYY-MM-DD`, `YYYY-MM` or `FY2026-27`'),
+  period_key: z.string().describe('`YYYY-MM-DD`, `YYYY-MM`, `FY2026-27` or `ALL` (RECEIPT_RESET = N)'),
   receipt_last_no: id,
   bill_last_no: id,
 }).openapi('Counters');
@@ -273,6 +282,9 @@ export const luggageRow = z.object({
   pasn_mob_no: z.string(),
   pnr_no: z.string(),
   luggage_qty: id,
+  extra_lugage_qty: id.describe('Extra bags stored free, never billed (Phase 13)'),
+  adv_amt: money.describe('Advance taken at check-in (Phase 13)'),
+  adv_hours: id.describe('ADVANCE_HOURS the advance covered'),
   id_proof_id: id.nullable().describe('null while only a QR check-out has synced, or no ID was taken'),
   id_number: z.string().nullable().describe('Masked (`XXXXXXXX1234`) when the ID proof has mask_flag Y'),
   user_id_out: id.nullable(),
@@ -292,19 +304,25 @@ export const receiptRow = z.object({
   device_id: z.string(),
   shift_id: id.nullable(),
   luggage_qty: id,
-  days_charged: id,
+  days_charged: id.describe('Slab charges counted (repeats included)'),
   block_hours: id,
   first_block_rate: money,
   next_block_rate: money,
+  rate_slabs: z.array(rateSlab).nullable().describe('Slabs the bill was made with (null: before Phase 13)'),
+  grace_minutes: id.nullable().describe('Billing option used (null: stored before Phase 11 = 0)'),
   base_amt: money,
   penal_amt: money,
-  net_amt: money,
+  net_amt: money.describe('Full bill'),
+  adv_amt: money.describe('Advance subtracted on this bill'),
+  bal_amt: money.describe('Collected at check-out = max(0, net_amt − adv_amt)'),
   taxable_amt: money,
   gst_pct: money,
   cgst: money,
   sgst: money,
   igst: money,
-  gst_flag: yn,
+  gst_flag: yn.describe('N = 0 % GST'),
+  gst_inclusive: yn.nullable().describe('Billing option used (null: before Phase 11 = Y)'),
+  penalty_gst_flag: yn.nullable().describe('Billing option used (null: before Phase 11 = Y)'),
   gst_no: z.string().nullable().describe('Customer GSTIN stamped by the server when the bill was stored'),
   pay_mode: z.enum(['C', 'U']),
   upi_ref: z.string().nullable(),
@@ -323,7 +341,7 @@ export const pushResult = z.object({
     .string()
     .optional()
     .describe(
-      '`CODE: detail`. Codes: VALIDATION_ERROR, INVALID_REFERENCE, TENANT_MISMATCH, DUPLICATE_RECEIPT_NO, DUPLICATE_CHECKOUT, BILL_WITHOUT_LUGGAGE, DUPLICATE_BILL, DUPLICATE_BILL_NO, CHECKOUT_MISSING, NO_RATE, AMOUNT_MISMATCH, DB_ERROR',
+      '`CODE: detail`. Codes: VALIDATION_ERROR, INVALID_REFERENCE, TENANT_MISMATCH, DUPLICATE_RECEIPT_NO, DUPLICATE_CHECKOUT, BILL_WITHOUT_LUGGAGE, DUPLICATE_BILL, DUPLICATE_BILL_NO, CHECKOUT_MISSING, NO_RATE, AMOUNT_MISMATCH, APP_UPDATE_REQUIRED, DB_ERROR',
     ),
 }).openapi('PushResult');
 
@@ -345,15 +363,21 @@ export const pullData = z.object({
 
 // ------------------------------------------------------------------ reports
 
+/** Bills on their bill_dt, advances on their check-in date (Phase 13). */
 const receiptTotals = {
   bills: id,
   bags: id,
   base_amt: money,
   penal_amt: money,
-  net_amt: money,
-  cash_amt: money,
-  upi_amt: money,
+  net_amt: money.describe('Billed (full bills)'),
+  adv_amt: money.describe('Advances subtracted on these bills'),
+  bal_amt: money.describe('Collected at check-out'),
+  adv_collected: money.describe('Advances taken at check-in (cash) on this day'),
+  cash_amt: money.describe('Cash balances + advances taken'),
+  upi_amt: money.describe('UPI balances'),
+  collected_amt: money.describe('cash_amt + upi_amt = adv_collected + bal_amt'),
 };
+const luggageTotals = { bags_entries: id, bags: id, extra_bags: id, adv_amt: money };
 
 export const reportMeta = (totals: z.ZodType) =>
   pageMeta.extend({ totals, filters: z.record(z.string(), z.unknown()) });
@@ -372,6 +396,9 @@ const luggageReportBase = {
   pasn_mob_no: z.string(),
   pnr_no: z.string(),
   luggage_qty: id,
+  extra_lugage_qty: id,
+  adv_amt: money,
+  adv_hours: id,
   id_proof_id: id.nullable(),
   id_proof_name: z.string().nullable(),
   id_number: z.string().nullable(),
@@ -417,7 +444,10 @@ export const reports = {
       shift_id: id.nullable(),
       device_id: z.string(),
       luggage_qty: id,
+      extra_lugage_qty: id,
       net_amt: money,
+      adv_amt: money,
+      bal_amt: money,
       pay_mode: z.enum(['C', 'U']),
       upi_ref: z.string().nullable(),
       receipt_no: z.string(),
@@ -425,11 +455,11 @@ export const reports = {
       pasn_mob_no: z.string(),
       synced_at_ist: ist,
     }),
-    totals: z.object({ bills: id, net_amt: money }),
+    totals: z.object({ bills: id, net_amt: money, bal_amt: money }),
   },
   checkIn: {
     row: z.object({ ...luggageReportBase, date_time_out: utcN, date_time_out_ist: ist.nullable() }),
-    totals: z.object({ bags_entries: id, bags: id }),
+    totals: z.object(luggageTotals),
   },
   checkOut: {
     row: z.object({
@@ -444,14 +474,23 @@ export const reports = {
       bill_dt: day.nullable(),
       days_charged: id.nullable(),
       net_amt: money.nullable(),
+      bill_adv_amt: money.nullable().describe('Advance subtracted on the bill'),
+      bal_amt: money.nullable(),
       pay_mode: z.enum(['C', 'U']).nullable(),
       bill_printed: yn.nullable(),
     }),
-    totals: z.object({ bags_entries: id, bags: id, net_amt: money }),
+    totals: z.object({
+      bags_entries: id,
+      bags: id,
+      extra_bags: id,
+      net_amt: money,
+      adv_amt: money,
+      bal_amt: money,
+    }),
   },
   bagsInStore: {
     row: z.object({ ...luggageReportBase, minutes_stored: id }),
-    totals: z.object({ bags_entries: id, bags: id }),
+    totals: z.object(luggageTotals),
   },
   exceptions: {
     row: z.object({

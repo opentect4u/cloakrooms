@@ -74,13 +74,13 @@ async function seedTenant() {
   for (let k = 1; k <= CUSTOMERS; k++) {
     const [c] = await conn.query<mysql.ResultSetHeader>(
       `INSERT INTO md_customer (customer_name, customer_addr, pin_code, mobile_no, renewal_dt, user_limit, created_by, created_at, updated_at)
-       VALUES (?, 'Platform 1', '700001', '9000000000', '2099-12-31', ?, 'load', UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+       VALUES (?, 'Platform 1', '700001', '9000000000', '2099-12-31', ?, 'load', NOW(), NOW())`,
       [`Load Station ${k}`, USERS],
     );
     customerIds.push(c.insertId);
     await conn.query(
       `INSERT INTO md_rate_dtls (customer_id, block_hours, first_block_rate, next_block_rate, effective_from, created_at, updated_at)
-       VALUES (?, 24, 50, 20, '2020-01-01', UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+       VALUES (?, 24, 50, 20, '2020-01-01', NOW(), NOW())`,
       [c.insertId],
     );
   }
@@ -91,7 +91,7 @@ async function seedTenant() {
     const code = `L${i}`;
     const [u] = await conn.query<mysql.ResultSetHeader>(
       `INSERT INTO md_user (customer_id, user_id, user_name, user_code, password_hash, user_type, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'O', UTC_TIMESTAMP(), UTC_TIMESTAMP())`,
+       VALUES (?, ?, ?, ?, ?, 'O', NOW(), NOW())`,
       [customerIds[(i - 1) % CUSTOMERS], userId, `Load ${i}`, code, hash],
     );
     users.push({ id: u.insertId, userId, code });

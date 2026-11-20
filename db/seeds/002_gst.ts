@@ -9,7 +9,7 @@ export const gstSeed: Seed = {
   async run(conn) {
     const [res] = await conn.query<ResultSetHeader>(
       `INSERT INTO md_gst (cgst_pct, sgst_pct, igst_pct, effective_from, created_by, created_at)
-       SELECT ?, ?, ?, ?, ?, UTC_TIMESTAMP() FROM DUAL
+       SELECT ?, ?, ?, ?, ?, NOW() FROM DUAL
        WHERE NOT EXISTS (SELECT 1 FROM md_gst WHERE effective_from = ?)`,
       [GST.cgst_pct, GST.sgst_pct, GST.igst_pct, GST.effective_from, SEED_USER, GST.effective_from],
     );

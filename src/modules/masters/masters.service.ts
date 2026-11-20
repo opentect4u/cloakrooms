@@ -5,6 +5,12 @@
 import type { RequestContext } from '../../core/context';
 import { serializeRow } from '../../core/crud/crudFactory';
 import { fetch, type Executor, type OrderBy, type Row, type Where } from '../../core/db/dml';
+import {
+  isSettingName,
+  SETTING_NAMES,
+  SETTING_RULES,
+  settingDefault,
+} from '../settings/settings.schema';
 
 export interface MastersSnapshot {
   id_proofs: Row[];
@@ -95,7 +101,12 @@ export async function loadMasters(
 /** Never sent to devices. */
 const SECRET_SETTINGS = new Set(['REPORT_PWD']);
 
-/** Customer-wide settings overlaid with the user's own overrides → `{ NAME: value }`. */
+/**
+ * `{ NAME: value }` for the signed-in user: defaults of every whitelisted key, overlaid with the
+ * customer-wide rows, then the user's own overrides (only for per-user keys). Keys without a
+ * default (GST_PCT = "use md_gst", REPORT_PWD) stay absent until set; rows of keys no longer
+ * whitelisted are ignored.
+ */
 export async function loadSettings(
   ctx: RequestContext,
   conn?: Executor,
@@ -107,9 +118,19 @@ export async function loadSettings(
     fetch('md_setting', { where: { user_id: ctx.userId }, columns }, ctx, conn),
   ]);
   const settings: Record<string, string> = {};
-  for (const r of [...base.rows, ...own.rows]) {
-    const name = String(r.setting_name);
-    if (!SECRET_SETTINGS.has(name)) settings[name] = String(r.setting_value);
+  for (const name of SETTING_NAMES) {
+    const d = settingDefault(name);
+    if (d !== null) settings[name] = d;
   }
+  const apply = (rows: Record<string, unknown>[], perUserOnly: boolean) => {
+    for (const r of rows) {
+      const name = String(r.setting_name);
+      if (!isSettingName(name) || SECRET_SETTINGS.has(name)) continue;
+      if (perUserOnly && SETTING_RULES[name].scope !== 'user') continue;
+      settings[name] = String(r.setting_value);
+    }
+  };
+  apply(base.rows, false);
+  apply(own.rows, true);
   return settings;
 }

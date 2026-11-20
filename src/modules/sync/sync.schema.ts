@@ -8,6 +8,7 @@ import {
   uuid,
   ynEnum,
 } from '../../core/validation/fragments';
+import { rateSlabs } from '../rates/rates.schema';
 
 /** Rows are validated one by one (a bad row becomes an EXCEPTION, it never blocks the batch). */
 export const MAX_ROWS_PER_TABLE = 5000;
@@ -45,6 +46,11 @@ export const luggageRow = z
     pasn_mob_no: z.string().trim().min(1).max(15),
     pnr_no: z.string().trim().max(20).default(''),
     luggage_qty: z.coerce.number().int().min(1).max(999),
+    /** Extra bags stored free, never billed (Phase 13). Filled once while 0 (QR key x). */
+    extra_lugage_qty: z.coerce.number().int().min(0).max(999).default(0),
+    /** Advance taken at check-in and the ADVANCE_HOURS it covered (Phase 13, QR key a). */
+    adv_amt: money.default('0'),
+    adv_hours: z.coerce.number().int().min(0).max(720).default(0),
     /** Both or neither (ID proof is not in the QR; ID_PROOF_REQUIRED is enforced on the device). */
     id_proof_id: nullable(positiveId),
     id_number: nullable(z.string().trim().min(1).max(50)),
@@ -91,32 +97,57 @@ export const luggageRow = z
   });
 export type LuggageRow = z.infer<typeof luggageRow>;
 
-export const receiptRow = z.object({
-  trans_id: uuid,
-  local_version: localVersion,
-  bill_no: z.string().trim().min(1).max(20),
-  bill_dt: dateOnly,
-  user_id: positiveId,
-  device_id: z.string().trim().min(1).max(100),
-  shift_id: nullable(positiveId),
-  luggage_qty: z.coerce.number().int().min(1).max(999),
-  days_charged: z.coerce.number().int().min(1).max(65_535),
-  block_hours: z.coerce.number().int().min(1).max(720),
-  first_block_rate: money,
-  next_block_rate: money,
-  base_amt: money,
-  penal_amt: money.default('0'),
-  net_amt: money,
-  taxable_amt: money,
-  gst_pct: percent,
-  cgst: money,
-  sgst: money,
-  igst: money,
-  gst_flag: ynEnum.default('N'),
-  pay_mode: z.enum(['C', 'U']),
-  upi_ref: nullable(z.string().trim().max(50)),
-  bill_printed: ynEnum.default('Y'),
-});
+export const receiptRow = z
+  .object({
+    trans_id: uuid,
+    local_version: localVersion,
+    bill_no: z.string().trim().min(1).max(20),
+    bill_dt: dateOnly,
+    user_id: positiveId,
+    device_id: z.string().trim().min(1).max(100),
+    shift_id: nullable(positiveId),
+    luggage_qty: z.coerce.number().int().min(1).max(999),
+    days_charged: z.coerce.number().int().min(1).max(65_535),
+    /** Slabs the bill was made with (Phase 13). Older apps send only the two-rate fields. */
+    rate_slabs: rateSlabs.optional(),
+    /** Two-rate snapshot: required without rate_slabs, else optional (the server derives it). */
+    block_hours: z.coerce.number().int().min(1).max(720).optional(),
+    first_block_rate: money.optional(),
+    next_block_rate: money.optional(),
+    base_amt: money,
+    penal_amt: money.default('0'),
+    net_amt: money,
+    /** Advance taken at check-in, subtracted on this bill (must equal the bag's adv_amt). */
+    adv_amt: money.default('0'),
+    /** Collected at check-out = max(0, net_amt − adv_amt). Omitted (older app) → computed. */
+    bal_amt: money.optional(),
+    taxable_amt: money,
+    gst_pct: percent,
+    cgst: money,
+    sgst: money,
+    igst: money,
+    /** N = 0 % GST. Omitted: the billing user's GST_FLAG setting (default Y). */
+    gst_flag: ynEnum.optional(),
+    /** Billing options the device used (Phase 11); omitted → the customer's settings. */
+    grace_minutes: z.coerce.number().int().min(0).max(1440).optional(),
+    gst_inclusive: ynEnum.optional(),
+    penalty_gst_flag: ynEnum.optional(),
+    pay_mode: z.enum(['C', 'U']),
+    upi_ref: nullable(z.string().trim().max(50)),
+    bill_printed: ynEnum.default('Y'),
+  })
+  .superRefine((r, ctx) => {
+    if (r.rate_slabs) return;
+    for (const f of ['block_hours', 'first_block_rate', 'next_block_rate'] as const) {
+      if (r[f] === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [f],
+          message: 'required when rate_slabs is not sent',
+        });
+      }
+    }
+  });
 export type ReceiptRow = z.infer<typeof receiptRow>;
 
 export const PULL_PAGE_MAX = 1000;

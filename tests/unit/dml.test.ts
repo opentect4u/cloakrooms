@@ -207,7 +207,7 @@ describe('buildInsert', () => {
     );
     expect(b.sql).toBe(
       'INSERT INTO `t_tenant` (`name`, `customer_id`, `sync_flag`, `created_by`, `created_at`,' +
-        ' `updated_by`, `updated_at`) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), ?, UTC_TIMESTAMP())',
+        ' `updated_by`, `updated_at`) VALUES (?, ?, ?, ?, NOW(), ?, NOW())',
     );
     expect(b.params).toEqual(['n', 7, 'N', 'admin7', 'admin7']);
   });
@@ -225,7 +225,7 @@ describe('buildInsert', () => {
   it('only stamps columns the table has', () => {
     expect(buildInsert(global, { label: 'x' }, A).sql).toBe(
       'INSERT INTO `t_global` (`label`, `created_by`, `created_at`, `updated_by`, `updated_at`)' +
-        ' VALUES (?, ?, UTC_TIMESTAMP(), ?, UTC_TIMESTAMP())',
+        ' VALUES (?, ?, NOW(), ?, NOW())',
     );
     expect(buildInsert(plain, { k: 'a', v: 'b' }, A).sql).toBe(
       'INSERT INTO `t_plain` (`k`, `v`) VALUES (?, ?)',
@@ -245,7 +245,7 @@ describe('buildUpdate', () => {
     const b = buildUpdate(tenant, { name: 'n', customer_id: 99, updated_at: 'x' }, { id: 5 }, A);
     expect(b.sql).toBe(
       "UPDATE `t_tenant` SET `name` = ?, `sync_flag` = 'N', `updated_by` = ?," +
-        ' `updated_at` = UTC_TIMESTAMP() WHERE `id` = ? AND `customer_id` = ? AND `is_deleted` = ?',
+        ' `updated_at` = NOW() WHERE `id` = ? AND `customer_id` = ? AND `is_deleted` = ?',
     );
     expect(b.params).toEqual(['n', 'admin7', 5, 7, 'N']);
   });
@@ -278,14 +278,14 @@ describe('buildSoftDelete', () => {
     const b = buildSoftDelete(tenant, { id: 5 }, A);
     expect(b.sql).toBe(
       "UPDATE `t_tenant` SET `is_deleted` = 'Y', `sync_flag` = 'N', `updated_by` = ?," +
-        ' `updated_at` = UTC_TIMESTAMP() WHERE `id` = ? AND `is_deleted` = ? AND `customer_id` = ?',
+        ' `updated_at` = NOW() WHERE `id` = ? AND `is_deleted` = ? AND `customer_id` = ?',
     );
     expect(b.params).toEqual(['admin7', 5, 'N', 7]);
   });
 
   it('works on tables without sync_flag and refuses tables without is_deleted', () => {
     expect(buildSoftDelete(global, { gid: 1 }, A).sql).toBe(
-      "UPDATE `t_global` SET `is_deleted` = 'Y', `updated_by` = ?, `updated_at` = UTC_TIMESTAMP()" +
+      "UPDATE `t_global` SET `is_deleted` = 'Y', `updated_by` = ?, `updated_at` = NOW()" +
         ' WHERE `gid` = ? AND `is_deleted` = ?',
     );
     expectApiError(() => buildSoftDelete(plain, { k: 'a' }, A), 400);

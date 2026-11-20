@@ -5,7 +5,13 @@ import type { RequestContext } from '../core/context';
 import { crudService } from '../core/crud/crudService';
 import type { Row } from '../core/db/dml';
 import { ApiError } from '../core/http/ApiError';
-import { SETTING_NAMES, type SettingName } from '../modules/settings/settings.schema';
+import {
+  isSettingName,
+  SETTING_NAMES,
+  SETTING_RULES,
+  type SettingName,
+} from '../modules/settings/settings.schema';
+import { ctxOf } from '../core/middleware/requireRole';
 import { settingsCrud } from '../modules/settings/settings.routes';
 import { verifyCsrf } from './csrf';
 import { flash } from './flash';
@@ -13,7 +19,13 @@ import { formFailure, formValues } from './forms';
 import { idParam } from './listing';
 import { loadLookups, optionsOf } from './lookups';
 import { handle, page } from './render';
-import { SETTING_GROUPS, SETTING_META, settingText } from './settingsMeta';
+import {
+  defaultText,
+  SETTING_GROUPS,
+  SETTING_META,
+  settingText,
+  USER_SCOPED,
+} from './settingsMeta';
 
 const settings = crudService(settingsCrud);
 const tctxOf = (res: Response) => res.locals.tctx as RequestContext;
@@ -24,21 +36,34 @@ async function allSettings(ctx: RequestContext): Promise<Row[]> {
   return rows;
 }
 
-/** Creates the row or updates the live one (customer-wide when userId is null). */
+/**
+ * Creates the row or updates the live one (customer-wide when userId is null). The row is found
+ * with the tenant context; keys only Synergic may write (SETTING_RULES.superOnly) are then written
+ * with the super admin's own context (+ customer_id), everything else with the tenant context.
+ */
 async function upsert(
-  ctx: RequestContext,
+  tctx: RequestContext,
+  sctx: RequestContext,
+  cid: number,
   name: SettingName,
   value: string,
   userId: number | null,
 ) {
-  const rows = await allSettings(ctx);
+  const rows = await allSettings(tctx);
   const existing = rows.find(
     (r) => r.setting_name === name && (r.user_id === null ? null : Number(r.user_id)) === userId,
   );
+  const superOnly = (SETTING_RULES as Record<string, { superOnly?: boolean }>)[name]?.superOnly;
+  const ctx = superOnly ? sctx : tctx;
   if (existing) {
     await settings.update(ctx, Number(existing.setting_id), { setting_value: value });
   } else {
-    await settings.create(ctx, { setting_name: name, setting_value: value, user_id: userId });
+    await settings.create(ctx, {
+      setting_name: name,
+      setting_value: value,
+      user_id: userId,
+      ...(superOnly ? { customer_id: cid } : {}),
+    });
   }
 }
 
@@ -81,11 +106,13 @@ export function settingsRoutes(): Router {
             value: name === 'REPORT_PWD' ? '' : value,
             isSet: Boolean(row),
             text: settingText(name, row ? value : null),
+            defaultText: row ? null : defaultText(name),
+            unsetText: row ? null : (SETTING_META[name].unsetText ?? null),
           };
         }),
       }));
       const overrides = rows
-        .filter((r) => r.user_id !== null)
+        .filter((r) => r.user_id !== null && isSettingName(String(r.setting_name)))
         .map((r) => {
           const name = String(r.setting_name) as SettingName;
           return {
@@ -102,7 +129,7 @@ export function settingsRoutes(): Router {
         groups,
         overrides,
         userOptions: optionsOf(lookups.users),
-        settingOptions: SETTING_NAMES.map((n) => [n, SETTING_META[n].label]),
+        settingOptions: USER_SCOPED.map((n) => [n, SETTING_META[n].label]),
         meta: SETTING_META,
         focus: typeof req.query.saved === 'string' ? req.query.saved : '',
       });
@@ -121,7 +148,14 @@ export function settingsRoutes(): Router {
         return res.redirect(303, `${base(res)}#overrides`);
       }
       try {
-        await upsert(tctxOf(res), name.data, v.setting_value ?? '', userId);
+        await upsert(
+          tctxOf(res),
+          ctxOf(req),
+          Number(res.locals.cid),
+          name.data,
+          v.setting_value ?? '',
+          userId,
+        );
         flash(req, res, 'success', `Override saved: ${SETTING_META[name.data].label}.`);
       } catch (err) {
         flash(req, res, 'danger', describe(err));
@@ -156,7 +190,7 @@ export function settingsRoutes(): Router {
         return res.redirect(303, `${base(res)}#${name.data}`);
       }
       try {
-        await upsert(tctxOf(res), name.data, value, null);
+        await upsert(tctxOf(res), ctxOf(req), Number(res.locals.cid), name.data, value, null);
         flash(req, res, 'success', `${SETTING_META[name.data].label}: saved.`);
       } catch (err) {
         flash(req, res, 'danger', describe(err));

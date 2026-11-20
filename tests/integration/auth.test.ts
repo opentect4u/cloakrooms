@@ -104,7 +104,9 @@ describe('POST /auth/login', () => {
     expect(d.masters.id_proofs.length).toBeGreaterThanOrEqual(6);
     expect(d.masters.gst).toHaveLength(1);
     expect(d.masters.shifts.map((s: { shift_name: string }) => s.shift_name)).toEqual(['Day']);
-    expect(d.settings).toEqual({ RECEIPT_RESET: 'M', QR_FLAG: 'N' });
+    // Stored (customer-wide + the user's override) on top of every key's default.
+    expect(d.settings).toMatchObject({ RECEIPT_RESET: 'M', QR_FLAG: 'N', GRACE_MINUTES: '0' });
+    expect(d.settings).not.toHaveProperty('REPORT_PWD');
     expect(d.counters).toEqual({
       reset: 'M',
       period_key: periodKey('M'),
@@ -208,8 +210,8 @@ describe('POST /auth/login', () => {
     const user = await seedUser(await seedCustomer());
     const old = await tokensFor(app, user, 'lost-device');
     await raw(
-      `UPDATE td_user_session SET last_seen_at = UTC_TIMESTAMP() - INTERVAL 31 DAY,
-              started_at = UTC_TIMESTAMP() - INTERVAL 31 DAY WHERE session_id = ?`,
+      `UPDATE td_user_session SET last_seen_at = NOW() - INTERVAL 31 DAY,
+              started_at = NOW() - INTERVAL 31 DAY WHERE session_id = ?`,
       [sidOf(old.access)],
     );
     expect((await loginAs(app, user, 'new-device')).status).toBe(200);

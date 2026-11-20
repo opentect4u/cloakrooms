@@ -73,7 +73,7 @@ interface Op {
 const ERROR_TEXT: Record<number, string> = {
   400: 'VALIDATION_ERROR / BAD_REQUEST / INVALID_JSON',
   401: 'UNAUTHORIZED / TOKEN_EXPIRED / SESSION_ENDED',
-  403: 'FORBIDDEN (role, tenant or feature not allowed)',
+  403: 'FORBIDDEN (role, tenant or feature not allowed); login: OUTSIDE_SHIFT',
   404: 'NOT_FOUND (or another tenant’s record)',
   409: 'CONFLICT (duplicate unique value)',
   413: 'PAYLOAD_TOO_LARGE',

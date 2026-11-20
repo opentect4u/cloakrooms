@@ -76,6 +76,7 @@ async function billFor(transId: string, over: Record<string, unknown>) {
       igst: '0',
       pay_mode: 'C',
       ...over,
+      bal_amt: over.bal_amt ?? over.net_amt ?? '50',
     },
     { flag: 'I' },
     A,
@@ -242,7 +243,7 @@ describe('collection reports', () => {
         upi_ref: 'UPI-9',
       }),
     ]);
-    expect(unprinted.body.meta.totals).toEqual({ bills: 1, net_amt: '70.00' });
+    expect(unprinted.body.meta.totals).toEqual({ bills: 1, net_amt: '70.00', bal_amt: '70.00' });
   });
 });
 
@@ -263,7 +264,12 @@ describe('registers (IST day boundaries)', () => {
       trans.L2,
       trans.L3,
     ]);
-    expect(may2.body.meta.totals).toEqual({ bags_entries: 2, bags: 4 });
+    expect(may2.body.meta.totals).toEqual({
+      bags_entries: 2,
+      bags: 4,
+      extra_bags: 0,
+      adv_amt: '0.00',
+    });
     expect(may2.body.data[0].date_time_in_ist).toBe('2026-05-02 00:30:00');
 
     const night = await get(
@@ -285,7 +291,14 @@ describe('registers (IST day boundaries)', () => {
         shift_name_out: 'Night',
       }),
     ]);
-    expect(res.body.meta.totals).toEqual({ bags_entries: 1, bags: 1, net_amt: '70.00' });
+    expect(res.body.meta.totals).toEqual({
+      bags_entries: 1,
+      bags: 1,
+      extra_bags: 0,
+      net_amt: '70.00',
+      adv_amt: '0.00',
+      bal_amt: '70.00',
+    });
     expect(
       (await get(`/check-out-register${RANGE}&pay_mode=C`, admin)).body.meta.totals.net_amt,
     ).toBe('100.00');
@@ -297,7 +310,12 @@ describe('registers (IST day boundaries)', () => {
       expect.objectContaining({ trans_id: trans.L3, luggage_qty: 3 }),
     ]);
     expect(res.body.data[0].minutes_stored).toBeGreaterThan(0);
-    expect(res.body.meta.totals).toEqual({ bags_entries: 1, bags: 3 });
+    expect(res.body.meta.totals).toEqual({
+      bags_entries: 1,
+      bags: 3,
+      extra_bags: 0,
+      adv_amt: '0.00',
+    });
     expect((await get('/bags-in-store?from=2026-05-03', admin)).body.data).toEqual([]);
   });
 });

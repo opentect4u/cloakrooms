@@ -6,12 +6,15 @@ import type { RequestContext } from '../../core/context';
 import { fetch, type Row } from '../../core/db/dml';
 import type { GstRates, GstType } from '../../domain/gst';
 import { isResetMode, type ResetMode } from '../../domain/numbering';
+import type { RateSlab } from '../../domain/slabs';
 
 export interface RateRow {
   effective_from: string;
   block_hours: number;
   first_block_rate: string;
   next_block_rate: string;
+  /** NULL only for rows written before migration 008 (then the two-rate fields apply). */
+  rate_slabs?: RateSlab[] | null;
 }
 
 export interface GstRow extends GstRates {
@@ -27,6 +30,8 @@ export interface PushRefs {
   /** md_customer.gst_no now — stamped on every bill stored by this push. */
   customerGstNo: string | null;
   setting(userId: number, name: string): string | undefined;
+  /** Customer-wide value only (keys with scope 'customer'). */
+  customerSetting(name: string): string | undefined;
   resetModeFor(userId: number): ResetMode;
   gstTypeFor(userId: number): GstType;
 }
@@ -39,7 +44,15 @@ export async function loadPushRefs(ctx: RequestContext): Promise<PushRefs> {
     fetch('md_id_proof', { ...all, columns: ['id_proof_id', 'mask_flag'] }, ctx),
     fetch(
       'md_rate_dtls',
-      { columns: ['effective_from', 'block_hours', 'first_block_rate', 'next_block_rate'] },
+      {
+        columns: [
+          'effective_from',
+          'block_hours',
+          'first_block_rate',
+          'next_block_rate',
+          'rate_slabs',
+        ],
+      },
       ctx,
     ),
     fetch('md_gst', { columns: ['effective_from', 'cgst_pct', 'sgst_pct', 'igst_pct'] }, ctx),
@@ -72,6 +85,7 @@ export async function loadPushRefs(ctx: RequestContext): Promise<PushRefs> {
     gst: gst.rows as unknown as GstRow[],
     customerGstNo: (customer.rows[0]?.gst_no as string | null | undefined) || null,
     setting,
+    customerSetting: (name) => customerWide.get(name),
     resetModeFor: (userId) => {
       const v = setting(userId, 'RECEIPT_RESET');
       return isResetMode(v) ? v : 'Y';

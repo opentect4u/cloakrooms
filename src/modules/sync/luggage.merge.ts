@@ -8,6 +8,7 @@
  *  - QR check-out first (Case 1): a device that checked a bag out from its QR code does not know
  *    the check-in device, shift or ID proof, so its row may arrive with those NULL. They are the
  *    only check-in fields that are fill-only: the later check-in push fills them once;
+ *  - extra_lugage_qty / adv_amt / adv_hours (Phase 13) are filled once while still 0;
  *  - a different check-out for an already checked-out bag → DUPLICATE_CHECKOUT exception.
  *
  * Plain INSERT instead of the §5 `ON DUPLICATE KEY UPDATE`: ODKU also fires on the secondary
@@ -18,6 +19,7 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import type { RequestContext } from '../../core/context';
 import { raw, save, type Executor, type Row } from '../../core/db/dml';
+import { toPaise } from '../../core/utils/money';
 import { maskIdNumber } from '../../domain/masking';
 import { parseDocNo, periodKeyOfDate } from '../../domain/numbering';
 import { checkRefs, type PushRefs } from './sync.refs';
@@ -68,6 +70,14 @@ export function checkinFillPatch(existing: Row, incoming: LuggageRow, refs: Push
   const patch: Row = {};
   for (const f of IN_FILL_FIELDS) {
     if (existing[f] === null && incoming[f] !== null) patch[f] = incoming[f];
+  }
+  // Phase 13 fields arrive as 0 from a QR row without them or a row synced before the app knew
+  // them: filled once while 0, then write-once like the other check-in fields.
+  for (const f of ['extra_lugage_qty', 'adv_hours'] as const) {
+    if (Number(existing[f] ?? 0) === 0 && incoming[f] > 0) patch[f] = incoming[f];
+  }
+  if (toPaise(String(existing.adv_amt ?? '0')) === 0 && toPaise(incoming.adv_amt) > 0) {
+    patch.adv_amt = incoming.adv_amt;
   }
   if (existing.id_proof_id === null && incoming.id_proof_id !== null) {
     patch.id_proof_id = incoming.id_proof_id;

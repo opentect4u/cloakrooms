@@ -21,6 +21,8 @@ import { getCurrentCounters } from '../counters/counters.service';
 import { CUSTOMER_PUBLIC_COLUMNS } from '../customers/customers.schema';
 import { loadMasters, loadSettings } from '../masters/masters.service';
 import type { ChangePasswordInput, LoginInput } from './auth.schema';
+import { assertWithinShift } from './shiftLogin';
+import { customerSettingValue } from '../settings/settings.read';
 import {
   activeSessionsOfUser,
   countActiveSessionsOfCustomer,
@@ -182,6 +184,7 @@ export async function login(input: LoginInput, opts: LoginOptions = {}) {
   if (user.user_type !== 'S') {
     customer = user.customer_id === null ? null : await getCustomer(user.customer_id);
     assertCustomerUsable(customer);
+    await assertWithinShift(user, customer.customer_id);
   }
 
   const sessionId = randomUUID();
@@ -203,7 +206,12 @@ export async function login(input: LoginInput, opts: LoginOptions = {}) {
     await raw('SELECT id FROM md_user WHERE id = ? FOR UPDATE', [user.id], conn);
 
     const active = await activeSessionsOfUser(user.id, conn);
-    const elsewhere = active.find((s) => s.device_id !== input.device_id);
+    // SINGLE_SESSION_FLAG = N (set by Synergic per station): the user may be signed in on
+    // several devices; each session still takes a seat of user_limit below.
+    const singleSession =
+      !customer ||
+      (await customerSettingValue(customer.customer_id, 'SINGLE_SESSION_FLAG', conn)) !== 'N';
+    const elsewhere = singleSession && active.find((s) => s.device_id !== input.device_id);
     if (elsewhere) {
       throw new ApiError(409, 'SESSION_ACTIVE', 'User is already logged in on another device', {
         session_started_at: elsewhere.started_at,
@@ -211,7 +219,12 @@ export async function login(input: LoginInput, opts: LoginOptions = {}) {
       });
     }
     // Same device logging in again (app reinstalled / token lost): the new session replaces it.
-    const ended = await endSessions(active, 'L', 'system:relogin', conn);
+    const ended = await endSessions(
+      active.filter((s) => s.device_id === input.device_id),
+      'L',
+      'system:relogin',
+      conn,
+    );
 
     if (
       customer &&
@@ -305,7 +318,7 @@ export async function refresh(refreshToken: string) {
       s.session_id,
     );
     await raw(
-      `UPDATE td_user_session SET token_hash = ?, refresh_hash = ?, last_seen_at = UTC_TIMESTAMP()
+      `UPDATE td_user_session SET token_hash = ?, refresh_hash = ?, last_seen_at = NOW()
         WHERE session_id = ?`,
       [tokens.accessHash, tokens.refreshHash, s.session_id],
       conn,

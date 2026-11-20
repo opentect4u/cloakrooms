@@ -12,7 +12,7 @@ export function dbName(): string {
 
 /**
  * Single connection for CLI scripts (migrate/seed). Runtime code uses the pool in core/db.
- * Session time zone is forced to UTC so UTC_TIMESTAMP()/NOW() agree with stored values.
+ * Session time zone is IST (+05:30) so NOW() matches stored values (migration 009).
  */
 export async function openConnection(
   opts: { withDatabase?: boolean; multipleStatements?: boolean } = {},
@@ -28,6 +28,6 @@ export async function openConnection(
     dateStrings: true,
     charset: 'utf8mb4',
   });
-  await conn.query("SET time_zone = '+00:00'");
+  await conn.query("SET time_zone = '+05:30'");
   return conn;
 }

@@ -1,8 +1,50 @@
+# Dependencies
 node_modules/
+
+# Build output and test coverage
 dist/
 coverage/
+*.tsbuildinfo
+.vitest/
+
+# Environment (secrets) - commit only the example
 .env
 .env.*
 !.env.example
+
+# Logs
 *.log
+logs/
+iisnode/
+npm-debug.log*
+
+# APK downloads (served at runtime, not source)
 /downloads/
+
+# Archives / backups of the project
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+*.sql.gz
+*.bak
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+docs
+tests
+web.config

@@ -10,7 +10,39 @@
   var req = f.required ? ' required' : '';
 %>
 <div class="<%= f.col || 'col-12' %>">
-<% if (f.type === 'switch') { %>
+<% if (f.type === 'slabs') { %>
+  <fieldset class="slab-editor<%= invalid %>" data-slab-editor<%- aria %>>
+    <legend class="form-label"><%= f.label %><% if (f.required) { %> <span class="req" aria-hidden="true">*</span><% } %></legend>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle slab-table mb-2">
+        <thead><tr><th scope="col">Slab</th><th scope="col">From</th><th scope="col">Up to</th><th scope="col">Price per bag</th></tr></thead>
+        <tbody>
+        <% slabRows.forEach(function (row) { %>
+          <tr data-slab-row<%= row.open ? '' : ' data-slab-closed' %>>
+            <th scope="row" class="text-muted fw-semibold"><%= row.i %></th>
+            <td class="text-nowrap"><span data-slab-from><%= row.from %></span> h</td>
+            <td>
+              <div class="input-group input-group-sm">
+                <input class="form-control" type="number" min="1" max="8760" name="slab_to_<%= row.i %>" value="<%= row.to %>" aria-label="Slab <%= row.i %> ends at hour" data-slab-to>
+                <span class="input-group-text">h</span>
+              </div>
+            </td>
+            <td>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">₹</span>
+                <input class="form-control" type="text" inputmode="decimal" pattern="\d{1,8}(\.\d{1,2})?" name="slab_rate_<%= row.i %>" value="<%= row.rate %>" aria-label="Slab <%= row.i %> price per bag">
+              </div>
+            </td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-light btn-sm" type="button" data-slab-add hidden><i class="bi bi-plus-lg me-1"></i>Add slab</button>
+  </fieldset>
+  <% if (err) { %><div class="field-error" id="<%= id %>-err"><i class="bi bi-exclamation-circle"></i> <%= err %></div><% } %>
+  <% if (f.help) { %><div class="form-text" id="<%= id %>-help"><%= f.help %></div><% } %>
+<% } else if (f.type === 'switch') { %>
   <div class="switch-field<%= invalid %>">
     <input type="hidden" name="<%= f.name %>" value="N">
     <div class="form-check form-switch">

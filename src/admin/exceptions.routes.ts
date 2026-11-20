@@ -32,6 +32,8 @@ export const EXCEPTION_HELP: Record<string, string> = {
   CHECKOUT_MISSING: 'A bill arrived but the bag is not marked as checked out.',
   NO_RATE: 'No tariff was in force on the check-in date.',
   AMOUNT_MISMATCH: 'The device’s bill differs from the server’s calculation. The bill was kept.',
+  APP_UPDATE_REQUIRED:
+    'An older app billed a tariff with price slabs it cannot calculate. The bill was not stored; update the app and bill again.',
   DB_ERROR: 'The server could not store the row.',
 };
 

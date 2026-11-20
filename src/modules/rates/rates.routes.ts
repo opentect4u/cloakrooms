@@ -1,26 +1,8 @@
-import { z } from 'zod';
 import { crudFactory, type CrudConfig } from '../../core/crud/crudFactory';
-import { dateOnly, money } from '../../core/validation/fragments';
 import { MASTER_ROLES } from '../masters/refs';
+import { rateCreate, rateCreateData, rateUpdate, rateUpdateData } from './rates.schema';
 
-const blockHours = z.coerce.number().int().min(1).max(720);
-
-/** Per-bag tariff, versioned by effective_from (one row per date per customer). */
-export const rateCreate = z.object({
-  block_hours: blockHours.default(24),
-  first_block_rate: money,
-  next_block_rate: money,
-  effective_from: dateOnly,
-});
-
-export const rateUpdate = z
-  .object({
-    block_hours: blockHours,
-    first_block_rate: money,
-    next_block_rate: money,
-    effective_from: dateOnly,
-  })
-  .partial();
+export { rateCreate, rateCreateData, rateSlabs, rateUpdate, rateUpdateData } from './rates.schema';
 
 export const ratesCrud: CrudConfig = {
   table: 'md_rate_dtls',
@@ -32,6 +14,10 @@ export const ratesCrud: CrudConfig = {
   defaultSort: [{ column: 'effective_from', dir: 'desc' }],
   // UNIQUE (customer_id, effective_from): re-adding a deleted date revives that row.
   reviveDeletedOn: ['effective_from'],
+  hooks: {
+    beforeCreate: (data) => rateCreateData(data),
+    beforeUpdate: (data, existing) => rateUpdateData(data, existing),
+  },
 };
 
 export const ratesRoutes = crudFactory(ratesCrud);

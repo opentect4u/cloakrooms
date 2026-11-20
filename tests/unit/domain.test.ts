@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   baseAmountPaise,
+  billableMinutes,
   computeBill,
   daysCharged,
   minutesStored,
@@ -8,8 +9,9 @@ import {
   selectEffective,
   type Tariff,
 } from '../../src/domain/billing';
-import { gstPctFor, roundDiv, splitGst } from '../../src/domain/gst';
+import { addGst, gstPctFor, roundDiv, splitGst } from '../../src/domain/gst';
 import { formatDocNo, parseDocNo, periodKeyOfDate } from '../../src/domain/numbering';
+import { hhmm, istMinutesOfDay, minutesOfDay, opensAt, withinShift } from '../../src/domain/shift';
 
 const TARIFF: Tariff = { block_hours: 24, first_block_rate: '50.00', next_block_rate: '20.00' };
 const IN = '2026-05-01 10:00:00';
@@ -49,6 +51,10 @@ describe('CLAUDE.md §3 test vectors', () => {
       block_hours: 24,
       first_block_rate: '50.00',
       next_block_rate: '20.00',
+      rate_slabs: [
+        { from_hour: 0, to_hour: 24, rate: '50.00' },
+        { from_hour: 24, to_hour: 48, rate: '20.00' },
+      ],
       base_amt: '70.00',
       penal_amt: '0.00',
       net_amt: '70.00',
@@ -113,6 +119,7 @@ describe('billing details', () => {
     expect(() => daysCharged(1.5, 24)).toThrow(RangeError);
     expect(() => daysCharged(10, 0)).toThrow(RangeError);
     expect(() => baseAmountPaise(0, TARIFF, 1)).toThrow(RangeError);
+    expect(() => bill('2026-05-02 10:00:00', 0)).toThrow(/luggage_qty/);
   });
 
   it('selectEffective picks the latest row on or before the date', () => {
@@ -174,5 +181,178 @@ describe('numbering', () => {
     expect(periodKeyOfDate('Y', '2026-03-31')).toBe('FY2025-26');
     expect(periodKeyOfDate('Y', '2026-04-01')).toBe('FY2026-27');
     expect(() => periodKeyOfDate('D', '2026-13-01')).toThrow(RangeError);
+  });
+});
+
+describe('Phase 11 billing options (A3)', () => {
+  const pick = (b: ReturnType<typeof computeBill>) => ({
+    days: b.days_charged,
+    base: b.base_amt,
+    penal: b.penal_amt,
+    net: b.net_amt,
+    taxable: b.taxable_amt,
+    pct: b.gst_pct,
+    cgst: b.cgst,
+    sgst: b.sgst,
+    igst: b.igst,
+  });
+
+  it('defaults reproduce the original formula', () => {
+    expect(bill('2026-05-02 10:01:00', 1, { options: {} })).toEqual(bill('2026-05-02 10:01:00', 1));
+  });
+
+  it('grace minutes are taken off before counting blocks', () => {
+    // 24 h 10 min: 2 blocks without grace, 1 block with 15 minutes of grace.
+    expect(bill('2026-05-02 10:10:00', 1).days_charged).toBe(2);
+    expect(bill('2026-05-02 10:10:00', 1, { options: { graceMinutes: 15 } })).toMatchObject({
+      days_charged: 1,
+      net_amt: '50.00',
+    });
+    // Grace larger than the stay still charges the first block.
+    expect(bill('2026-05-01 10:05:00', 1, { options: { graceMinutes: 30 } }).days_charged).toBe(1);
+    expect(billableMinutes(10, 15)).toBe(0);
+    expect(() => billableMinutes(10, -1)).toThrow(RangeError);
+    expect(() => billableMinutes(10, 1.5)).toThrow(RangeError);
+  });
+
+  it('GST on top: taxable = rent, GST added, net = rent + penalty + GST', () => {
+    expect(pick(bill('2026-05-01 12:00:00', 1, { options: { gstInclusive: false } }))).toEqual({
+      days: 1,
+      base: '50.00',
+      penal: '0.00',
+      net: '59.00',
+      taxable: '50.00',
+      pct: '18.00',
+      cgst: '4.50',
+      sgst: '4.50',
+      igst: '0.00',
+    });
+    // GST also on the penalty (default): taxed 60.00 → 10.80.
+    expect(
+      pick(bill('2026-05-01 12:00:00', 1, { penal_amt: '10', options: { gstInclusive: false } })),
+    ).toEqual({
+      days: 1,
+      base: '50.00',
+      penal: '10.00',
+      net: '70.80',
+      taxable: '60.00',
+      pct: '18.00',
+      cgst: '5.40',
+      sgst: '5.40',
+      igst: '0.00',
+    });
+    // Odd paisa of GST goes to CGST; inter-state is all IGST.
+    const odd = { ...TARIFF, first_block_rate: '50.05' };
+    expect(
+      pick(bill('2026-05-01 12:00:00', 1, { tariff: odd, options: { gstInclusive: false } })),
+    ).toMatchObject({ net: '59.06', taxable: '50.05', cgst: '4.51', sgst: '4.50' });
+    expect(
+      pick(bill('2026-05-01 12:00:00', 1, { gst_type: 'I', options: { gstInclusive: false } })),
+    ).toMatchObject({ net: '59.00', igst: '9.00', cgst: '0.00', sgst: '0.00' });
+  });
+
+  it('penalty without GST stays outside the taxable value', () => {
+    // Inclusive: GST worked back from the rent only (₹70 → 59.32 + 5.34 + 5.34), penalty on top.
+    expect(
+      pick(bill('2026-05-02 10:01:00', 1, { penal_amt: '10', options: { penaltyGst: false } })),
+    ).toEqual({
+      days: 2,
+      base: '70.00',
+      penal: '10.00',
+      net: '80.00',
+      taxable: '59.32',
+      pct: '18.00',
+      cgst: '5.34',
+      sgst: '5.34',
+      igst: '0.00',
+    });
+    // On top: GST on the rent only.
+    expect(
+      pick(
+        bill('2026-05-01 12:00:00', 1, {
+          penal_amt: '10',
+          options: { gstInclusive: false, penaltyGst: false },
+        }),
+      ),
+    ).toMatchObject({ net: '69.00', taxable: '50.00', cgst: '4.50', sgst: '4.50' });
+  });
+
+  it('GST_FLAG = N bills 0 % GST', () => {
+    for (const gstInclusive of [true, false]) {
+      expect(
+        pick(bill('2026-05-02 10:01:00', 1, { options: { gstEnabled: false, gstInclusive } })),
+      ).toEqual({
+        days: 2,
+        base: '70.00',
+        penal: '0.00',
+        net: '70.00',
+        taxable: '70.00',
+        pct: '0.00',
+        cgst: '0.00',
+        sgst: '0.00',
+        igst: '0.00',
+      });
+    }
+  });
+
+  it('addGst validates its input', () => {
+    expect(addGst(5000, '18.00', 'E')).toEqual({
+      taxable: 5000,
+      gst: 900,
+      cgst: 450,
+      sgst: 450,
+      igst: 0,
+    });
+    expect(() => addGst(-1, '18', 'E')).toThrow(RangeError);
+    expect(() => addGst(1.5, '18', 'E')).toThrow(RangeError);
+  });
+});
+
+describe('RECEIPT_RESET = N (Phase 11)', () => {
+  it('uses one period for ever', () => {
+    expect(periodKeyOfDate('N', '2026-05-01')).toBe('ALL');
+    expect(periodKeyOfDate('N', '2031-12-31')).toBe('ALL');
+    expect(() => periodKeyOfDate('N', 'bad')).toThrow(RangeError);
+  });
+});
+
+describe('login shift window (Phase 11, B1)', () => {
+  const at = (hm: string) => minutesOfDay(hm);
+
+  it('parses times of day', () => {
+    expect(minutesOfDay('06:00')).toBe(360);
+    expect(minutesOfDay('23:59:59')).toBe(1439);
+    expect(() => minutesOfDay('24:00')).toThrow(RangeError);
+    expect(hhmm(5)).toBe('00:05');
+    expect(hhmm(1439)).toBe('23:59');
+    // 2026-05-01 18:30 UTC = 2026-05-02 00:00 IST.
+    expect(istMinutesOfDay(new Date('2026-05-01T18:30:00Z'))).toBe(0);
+    expect(istMinutesOfDay(new Date('2026-05-01T04:31:20Z'))).toBe(at('10:01'));
+  });
+
+  it('day shift: opens early, closes at the end', () => {
+    const [from, to] = [at('06:00'), at('14:00')];
+    expect(withinShift(at('05:44'), from, to, 15)).toBe(false);
+    expect(withinShift(at('05:45'), from, to, 15)).toBe(true);
+    expect(withinShift(at('13:59'), from, to, 15)).toBe(true);
+    expect(withinShift(at('14:00'), from, to, 15)).toBe(false);
+    expect(withinShift(at('05:59'), from, to, 0)).toBe(false);
+  });
+
+  it('night shift crosses midnight', () => {
+    const [from, to] = [at('22:00'), at('06:00')];
+    expect(withinShift(at('21:30'), from, to, 30)).toBe(true);
+    expect(withinShift(at('02:00'), from, to, 30)).toBe(true);
+    expect(withinShift(at('06:00'), from, to, 30)).toBe(false);
+    expect(withinShift(at('12:00'), from, to, 30)).toBe(false);
+  });
+
+  it('early window that starts the evening before', () => {
+    const [from, to] = [at('00:10'), at('08:00')];
+    expect(opensAt(from, 15)).toBe(at('23:55'));
+    expect(withinShift(at('23:56'), from, to, 15)).toBe(true);
+    expect(withinShift(at('23:50'), from, to, 15)).toBe(false);
+    expect(() => withinShift(0, from, to, -1)).toThrow(RangeError);
+    expect(() => withinShift(0, from, to, 1440)).toThrow(RangeError);
   });
 });
