@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -36,7 +37,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,10 +75,12 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 private val DATE = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+private val TIME = DateTimeFormatter.ofPattern("hh:mm a")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,6 +127,8 @@ fun ReportsScreen(onBack: () -> Unit, title: String = "Reports", viewModel: Repo
                 Filters(
                     from = s.from,
                     to = s.to,
+                    fromTime = s.fromTime,
+                    toTime = s.toTime,
                     users = s.users,
                     canChooseUser = (s.access as ReportAccess.Allowed).canChooseUser,
                     userId = s.userId,
@@ -129,6 +136,8 @@ fun ReportsScreen(onBack: () -> Unit, title: String = "Reports", viewModel: Repo
                     shiftId = s.shiftId,
                     onFrom = viewModel::setFrom,
                     onTo = viewModel::setTo,
+                    onFromTime = viewModel::setFromTime,
+                    onToTime = viewModel::setToTime,
                     onUser = viewModel::setUser,
                     onShift = viewModel::setShift,
                 )
@@ -207,6 +216,8 @@ private fun PasswordGate(error: String?, onUnlock: (String) -> Unit, modifier: M
 private fun Filters(
     from: LocalDate,
     to: LocalDate,
+    fromTime: LocalTime,
+    toTime: LocalTime,
     users: List<ReportUser>,
     canChooseUser: Boolean,
     userId: Long?,
@@ -214,14 +225,21 @@ private fun Filters(
     shiftId: Long?,
     onFrom: (LocalDate) -> Unit,
     onTo: (LocalDate) -> Unit,
+    onFromTime: (LocalTime) -> Unit,
+    onToTime: (LocalTime) -> Unit,
     onUser: (Long?) -> Unit,
     onShift: (Long?) -> Unit,
 ) {
     var picking by remember { mutableStateOf<String?>(null) }
+    var pickingTime by remember { mutableStateOf<String?>(null) }
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { picking = "from" }, modifier = Modifier.weight(1f)) { Text("From ${from.format(DATE)}") }
+            OutlinedButton(onClick = { pickingTime = "from" }, modifier = Modifier.weight(1f)) { Text(fromTime.format(TIME)) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { picking = "to" }, modifier = Modifier.weight(1f)) { Text("To ${to.format(DATE)}") }
+            OutlinedButton(onClick = { pickingTime = "to" }, modifier = Modifier.weight(1f)) { Text(toTime.format(TIME)) }
         }
         if (canChooseUser) {
             FilterDropdown(
@@ -258,6 +276,24 @@ private fun Filters(
             },
             dismissButton = { TextButton(onClick = { picking = null }) { Text("Cancel") } },
         ) { DatePicker(state = pickerState) }
+    }
+
+    pickingTime?.let { which ->
+        val initial = if (which == "from") fromTime else toTime
+        val timeState = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = false)
+        AlertDialog(
+            onDismissRequest = { pickingTime = null },
+            title = { Text(if (which == "from") "From time" else "To time") },
+            text = { TimePicker(state = timeState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val time = LocalTime.of(timeState.hour, timeState.minute)
+                    if (which == "from") onFromTime(time) else onToTime(time)
+                    pickingTime = null
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { pickingTime = null }) { Text("Cancel") } },
+        )
     }
 }
 

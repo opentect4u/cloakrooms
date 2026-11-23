@@ -178,10 +178,18 @@ class RemoteReportRepository(
 
     override suspend fun report(filter: ReportFilter): ReportData {
         val s = requireAllowed()
-        val (from, to) = if (filter.from <= filter.to) filter.from to filter.to else filter.to to filter.from
-        val f = filter.copy(from = from, to = to)
-        val q = query(s, from.toString(), to.toString()).copy(userId = f.userId, shiftId = f.shiftId)
+        val f = filter.ordered()
+        val q = query(s, f.from.toString(), f.to.toString()).copy(userId = f.userId, shiftId = f.shiftId)
         val codes = userCodes()
+        if (!f.wholeDays) {
+            // The server filters by date only: take the days' rows and keep those inside the times.
+            // Totals are then summed from the rows (bill rows carry no GST breakup, so it shows 0).
+            return coroutineScope {
+                val checkins = async { f.keepInPeriod(api.checkinRegister(q).rows.map { it.toCheckin(codes) }) }
+                val bills = async { f.keepBillsInPeriod(api.checkoutRegister(q).rows.filter { it.billNo != null }.map { it.toBill(codes) }) }
+                ReportData(f, checkins.await(), bills.await())
+            }
+        }
         // All calls at once: the screen waits for the slowest one only.
         return coroutineScope {
             val checkins = async { api.checkinRegister(q).rows.map { it.toCheckin(codes) } }

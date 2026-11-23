@@ -123,8 +123,9 @@ class ReportRepositoryImpl @Inject constructor(
         val to = f.to.toString()
         val codes = db.userDao().getAll(Tenant.CUSTOMER_ID).associate { it.id to it.userCode.orEmpty() }
         val shifts = db.shiftDao().getAllIncludingRemoved(Tenant.CUSTOMER_ID).associate { it.shiftId to it.shiftName }
-        val checkins = db.luggageDao().getCheckins(Tenant.CUSTOMER_ID, from, to, f.userId, f.shiftId).map { it.toRow(codes, shifts) }
-        val bills = db.receiptDao().getBillsWithBag(Tenant.CUSTOMER_ID, from, to, f.userId, f.shiftId).map { it.toRow(codes, shifts) }
+        // The query picks the dates; the times (if not whole days) are checked on the rows.
+        val checkins = f.keepInPeriod(db.luggageDao().getCheckins(Tenant.CUSTOMER_ID, from, to, f.userId, f.shiftId).map { it.toRow(codes, shifts) })
+        val bills = f.keepBillsInPeriod(db.receiptDao().getBillsWithBag(Tenant.CUSTOMER_ID, from, to, f.userId, f.shiftId).map { it.toRow(codes, shifts) })
         return ReportData(f, checkins, bills)
     }
 
@@ -175,8 +176,7 @@ class ReportRepositoryImpl @Inject constructor(
             filter.userId == null || filter.userId == session.id -> session.id
             else -> throw NotAuthorizedException("You can only see your own reports.")
         }
-        val (from, to) = if (filter.from <= filter.to) filter.from to filter.to else filter.to to filter.from
-        return ReportFilter(from, to, userId, filter.shiftId)
+        return filter.ordered().copy(userId = userId)
     }
 
     /** Today's local date, re-checked every minute so the dashboard rolls over at midnight. */

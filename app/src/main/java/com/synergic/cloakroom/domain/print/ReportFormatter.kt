@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter
 object ReportFormatter {
 
     private val DATE = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+    private val TIME = DateTimeFormatter.ofPattern("hh:mm a")
 
     /**
      * [userLabel] e.g. "All users" or "U02 Counter User"; [shiftLabel] e.g. "All shifts" or
@@ -31,9 +32,13 @@ object ReportFormatter {
         headerLines.ifEmpty { listOf(customerName) }.forEachIndexed { i, line -> p.center(line, bold = i == 0) }
         p.divider()
         p.center("COLLECTION REPORT", bold = true)
-        val period = if (data.filter.from == data.filter.to) data.filter.from.format(DATE)
-        else "${data.filter.from.format(DATE)} to ${data.filter.to.format(DATE)}"
-        p.center(period)
+        val f = data.filter
+        if (f.wholeDays) {
+            p.center(if (f.from == f.to) f.from.format(DATE) else "${f.from.format(DATE)} to ${f.to.format(DATE)}")
+        } else {
+            p.center("From ${f.from.format(DATE)} ${f.fromTime.format(TIME)}")
+            p.center("To ${f.to.format(DATE)} ${f.toTime.format(TIME)}")
+        }
         p.center(userLabel)
         p.center(shiftLabel)
         p.divider()

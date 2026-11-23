@@ -29,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
 data class ReportsUiState(
@@ -38,6 +39,9 @@ data class ReportsUiState(
     val passwordError: String? = null,
     val from: LocalDate,
     val to: LocalDate,
+    /** Local times of the period ends; the defaults cover whole days. */
+    val fromTime: LocalTime = ReportFilter.DAY_START,
+    val toTime: LocalTime = ReportFilter.DAY_END,
     /** Admin filter; null = all users. Ignored for normal users (always their own). */
     val userId: Long? = null,
     val users: List<ReportUser> = emptyList(),
@@ -109,13 +113,29 @@ class ReportsViewModel @Inject constructor(
         }
     }
 
-    fun setFrom(date: LocalDate) {
-        _state.update { it.copy(from = date, to = if (it.to < date) date else it.to) }
+    fun setFrom(date: LocalDate) = setFrom(date, _state.value.fromTime)
+
+    fun setTo(date: LocalDate) = setTo(date, _state.value.toTime)
+
+    fun setFromTime(time: LocalTime) = setFrom(_state.value.from, time)
+
+    fun setToTime(time: LocalTime) = setTo(_state.value.to, time)
+
+    /** A start after the end moves the end up to it. */
+    private fun setFrom(date: LocalDate, time: LocalTime) {
+        _state.update {
+            val later = date.atTime(time) > it.to.atTime(it.toTime)
+            it.copy(from = date, fromTime = time, to = if (later) date else it.to, toTime = if (later) time else it.toTime)
+        }
         load()
     }
 
-    fun setTo(date: LocalDate) {
-        _state.update { it.copy(to = date, from = if (it.from > date) date else it.from) }
+    /** An end before the start moves the start back to it. */
+    private fun setTo(date: LocalDate, time: LocalTime) {
+        _state.update {
+            val earlier = date.atTime(time) < it.from.atTime(it.fromTime)
+            it.copy(to = date, toTime = time, from = if (earlier) date else it.from, fromTime = if (earlier) time else it.fromTime)
+        }
         load()
     }
 
@@ -129,7 +149,7 @@ class ReportsViewModel @Inject constructor(
         load()
     }
 
-    private fun filter() = _state.value.let { ReportFilter(it.from, it.to, it.userId, it.shiftId) }
+    private fun filter() = _state.value.let { ReportFilter(it.from, it.to, it.userId, it.shiftId, it.fromTime, it.toTime) }
 
     /** The report being loaded; a new filter cancels it, so an older, slower answer never replaces a newer one. */
     private var loadJob: Job? = null

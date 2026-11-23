@@ -3,14 +3,63 @@ package com.synergic.cloakroom.domain.report
 import com.synergic.cloakroom.domain.billing.ZERO_MONEY
 import com.synergic.cloakroom.domain.billing.money
 import com.synergic.cloakroom.domain.settings.PayMode
+import com.synergic.cloakroom.domain.time.DateTimes
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
- * Report period (local dates, both included), user and shift.
+ * Report period (local dates and times, both ends included to the minute), user and shift.
  * [userId] null = all users (admin only); [shiftId] null = all shifts.
+ * The default times (00:00 to 23:59) cover whole days.
  */
-data class ReportFilter(val from: LocalDate, val to: LocalDate, val userId: Long?, val shiftId: Long? = null)
+data class ReportFilter(
+    val from: LocalDate,
+    val to: LocalDate,
+    val userId: Long?,
+    val shiftId: Long? = null,
+    val fromTime: LocalTime = DAY_START,
+    val toTime: LocalTime = DAY_END,
+) {
+    val fromDateTime: LocalDateTime get() = from.atTime(fromTime.withSecond(0).withNano(0))
+
+    /** The last second of the "to" minute. */
+    val toDateTime: LocalDateTime get() = to.atTime(toTime.withSecond(59).withNano(0))
+
+    /** True when the times cover whole days, so the date filter alone is enough. */
+    val wholeDays: Boolean get() = fromTime.withSecond(0).withNano(0) == DAY_START && toTime.withSecond(0).withNano(0) == DAY_END
+
+    /**
+     * Start before end. Dates in the wrong order are swapped (times kept, so whole days stay whole
+     * days); if the start is still after the end, the times are swapped as well.
+     */
+    fun ordered(): ReportFilter {
+        if (fromDateTime <= toDateTime) return this
+        val dates = if (from > to) copy(from = to, to = from) else this
+        return if (dates.fromDateTime <= dates.toDateTime) dates else dates.copy(fromTime = toTime, toTime = fromTime)
+    }
+
+    /** True if the local time [at] lies in the period. */
+    fun contains(at: LocalDateTime): Boolean = !at.isBefore(fromDateTime) && !at.isAfter(toDateTime)
+
+    /** True if the UTC database time [dbText] lies in the period (local time); unreadable or blank text is kept. */
+    fun containsDbTime(dbText: String): Boolean = runCatching {
+        contains(DateTimes.fromDbText(dbText).atZone(DateTimes.DISPLAY_ZONE).toLocalDateTime())
+    }.getOrDefault(true)
+
+    /** The rows inside the period by time; whole days need no time check (the date query did it). */
+    fun keepInPeriod(checkins: List<CheckinRow>): List<CheckinRow> =
+        if (wholeDays) checkins else checkins.filter { containsDbTime(it.dateTimeIn) }
+
+    fun keepBillsInPeriod(bills: List<BillRow>): List<BillRow> =
+        if (wholeDays) bills else bills.filter { containsDbTime(it.dateTimeOut) }
+
+    companion object {
+        val DAY_START: LocalTime = LocalTime.MIDNIGHT
+        val DAY_END: LocalTime = LocalTime.of(23, 59)
+    }
+}
 
 /** A shift in the report filter. [removed] = deleted in Masters but may still be in old data. */
 data class ReportShift(val id: Long, val name: String, val fromTime: String, val toTime: String, val removed: Boolean) {
